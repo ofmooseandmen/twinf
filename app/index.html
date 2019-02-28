@@ -1,0 +1,28 @@
+<html>
+
+<head>
+  <script type="module" src="angle"></script>
+  <script type="module" src="coordinate-systems"></script>
+  <script type="module" src="geodetics"></script>
+  <script type="module" src="latlong"></script>
+  <script type="module" src="shapes"></script>
+  <script type="module" src="space2d"></script>
+  <script type="module" src="space3d"></script>
+  <script type="module" src="triangles"></script>
+  <script type="module" src="webgl"></script>
+  <script type="module">
+    import { WebGL } from './webgl'
+    window.onload = function() {
+      var canvas = document.getElementById("c");
+      var gl = canvas.getContext("webgl");
+      WebGL.draw(gl);
+    }
+  </script>
+</head>
+
+<body>
+  <canvas id="c" width="1024" height="1024"></canvas>
+
+</body>
+
+</html>
