@@ -11,17 +11,17 @@
   <script type="module" src="triangles"></script>
   <script type="module" src="webgl"></script>
   <script type="module">
-    import { WebGL } from './webgl'
+    import { Test } from './test'
     window.onload = function() {
       var canvas = document.getElementById("c");
       var gl = canvas.getContext("webgl");
-      WebGL.draw(gl);
+      Test.shoot(gl);
     }
   </script>
 </head>
 
 <body>
-  <canvas id="c" width="1024" height="1024"></canvas>
+  <canvas id="c" width="1920" height="1080" style="width: 1920px; height: 1080px;"></canvas>
 
 </body>
 

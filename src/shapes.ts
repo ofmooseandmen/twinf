@@ -22,9 +22,9 @@ export class Offset {
 export enum ShapeType {
     GeoCircle,
     GeoPolygon,
-    RelativeGeoPolygon,
-    GeoLine,
-    RelativeGeoLine,
+    GeoRelativePolygon,
+    GeoPolyline,
+    GeoRelativePolyline,
 }
 
 /**
@@ -71,9 +71,9 @@ export class GeoPolygon {
  * Polygon whose vertices are defined as pixels offsets from a reference
  * latitude/longitude.
  */
-export class RelativeGeoPolygon {
+export class GeoRelativePolygon {
 
-    readonly type: ShapeType.RelativeGeoPolygon = ShapeType.RelativeGeoPolygon;
+    readonly type: ShapeType.GeoRelativePolygon = ShapeType.GeoRelativePolygon;
     readonly ref: LatLong
     readonly vertices: Array<Offset>
 
@@ -83,18 +83,18 @@ export class RelativeGeoPolygon {
         this.vertices = vertices
     }
 
-    static new(ref: LatLong, vertices: Array<Offset>): RelativeGeoPolygon {
-        return new RelativeGeoPolygon(ref, vertices)
+    static new(ref: LatLong, vertices: Array<Offset>): GeoRelativePolygon {
+        return new GeoRelativePolygon(ref, vertices)
     }
 
 }
 
 /**
- * Line whose points are latitude/longitude
+ * Polyline whose points are latitude/longitude
  */
-export class GeoLine {
+export class GeoPolyline {
 
-    readonly type: ShapeType.GeoLine = ShapeType.GeoLine;
+    readonly type: ShapeType.GeoPolyline = ShapeType.GeoPolyline;
     readonly points: Array<LatLong>
 
     // FIXME private?
@@ -102,19 +102,19 @@ export class GeoLine {
         this.points = points
     }
 
-    static new(points: Array<LatLong>): GeoLine {
-        return new GeoLine(points)
+    static new(points: Array<LatLong>): GeoPolyline {
+        return new GeoPolyline(points)
     }
 
 }
 
 /**
- * Line whose points are defined as pixels offsets from a reference
+ * Polyline whose points are defined as pixels offsets from a reference
  * latitude/longitude.
  */
-export class RelativeGeoLine {
+export class GeoRelativePolyline {
 
-    readonly type: ShapeType.RelativeGeoLine = ShapeType.RelativeGeoLine;
+    readonly type: ShapeType.GeoRelativePolyline = ShapeType.GeoRelativePolyline;
     readonly ref: LatLong
     readonly points: Array<Offset>
 
@@ -124,8 +124,8 @@ export class RelativeGeoLine {
         this.points = points
     }
 
-    static new(ref: LatLong, points: Array<Offset>): RelativeGeoLine {
-        return new RelativeGeoLine(ref, points)
+    static new(ref: LatLong, points: Array<Offset>): GeoRelativePolyline {
+        return new GeoRelativePolyline(ref, points)
     }
 
 }
@@ -136,24 +136,24 @@ export class RelativeGeoLine {
 export type Shape =
     GeoCircle
     | GeoPolygon
-    | RelativeGeoPolygon
-    | GeoLine
-    | RelativeGeoLine
+    | GeoRelativePolygon
+    | GeoPolyline
+    | GeoRelativePolyline
 
 export const Shape = {
     ShapeType,
     GeoCircle,
     GeoPolygon,
-    RelativeGeoPolygon,
-    GeoLine,
-    RelativeGeoLine,
+    GeoRelativePolygon,
+    GeoPolyline,
+    GeoRelativePolyline,
 }
 
 export enum RenderableShapeType {
     WorldTriangles,
-    RelativeWorldTriangles,
-    WorldLine,
-    RelativeWorldLine,
+    WorldRelativeTriangles,
+    WorldPolyline,
+    WorldRelativePolyline,
 }
 
 /**
@@ -173,9 +173,9 @@ export class WorldTriangles {
 /**
  * Triangles whose vertices are defined as pixel offsets from a reference stereographic positions.
  */
-export class RelativeWorldTriangles {
+export class WorldRelativeTriangles {
 
-    readonly type: RenderableShapeType.RelativeWorldTriangles = RenderableShapeType.RelativeWorldTriangles;
+    readonly type: RenderableShapeType.WorldRelativeTriangles = RenderableShapeType.WorldRelativeTriangles;
     readonly ref: Vector2d
     readonly triangles: Array<Triangle<Vector2d>>
 
@@ -189,9 +189,9 @@ export class RelativeWorldTriangles {
 /**
  * Line whose points are stereographic positions.
  */
-export class WorldLine {
+export class WorldPolyline {
 
-    readonly type: RenderableShapeType.WorldLine = RenderableShapeType.WorldLine;
+    readonly type: RenderableShapeType.WorldPolyline = RenderableShapeType.WorldPolyline;
     readonly points: Array<Vector2d>
 
     constructor(points: Array<Vector2d>) {
@@ -201,11 +201,11 @@ export class WorldLine {
 }
 
 /**
- * Line whose points are defined as pixel offsets from a reference stereographic positions.
+ * Polyline whose points are defined as pixel offsets from a reference stereographic positions.
  */
-export class RelativeWorldLine {
+export class WorldRelativePolyline {
 
-    readonly type: RenderableShapeType.RelativeWorldLine = RenderableShapeType.RelativeWorldLine;
+    readonly type: RenderableShapeType.WorldRelativePolyline = RenderableShapeType.WorldRelativePolyline;
     readonly ref: Vector2d
     readonly points: Array<Vector2d>
 
@@ -218,16 +218,16 @@ export class RelativeWorldLine {
 
 export type RenderableShape =
     WorldTriangles
-    | RelativeWorldTriangles
-    | WorldLine
-    | RelativeWorldLine
+    | WorldRelativeTriangles
+    | WorldPolyline
+    | WorldRelativePolyline
 
 export const RenderableShape = {
     RenderableShapeType,
     WorldTriangles,
-    RelativeWorldTriangles,
-    WorldLine,
-    RelativeWorldLine,
+    WorldRelativeTriangles,
+    WorldPolyline,
+    WorldRelativePolyline,
 }
 
 export class ShapeConverter {
@@ -238,9 +238,9 @@ export class ShapeConverter {
         switch (s.type) {
             case ShapeType.GeoCircle: return ShapeConverter.fromGeoCircle(s, sp)
             case ShapeType.GeoPolygon: return ShapeConverter.fromGeoPolygon(s, sp)
-            case ShapeType.GeoLine: return ShapeConverter.fromGeoLine(s, sp)
-            case ShapeType.RelativeGeoLine: return ShapeConverter.fromRelativeGeoLine(s, sp)
-            case ShapeType.RelativeGeoPolygon: return ShapeConverter.fromRelativeGeoPolygon(s, sp)
+            case ShapeType.GeoPolyline: return ShapeConverter.fromGeoPolyline(s, sp)
+            case ShapeType.GeoRelativePolyline: return ShapeConverter.fromGeoRelativePolyline(s, sp)
+            case ShapeType.GeoRelativePolygon: return ShapeConverter.fromGeoRelativePolygon(s, sp)
         }
     }
 
@@ -251,11 +251,11 @@ export class ShapeConverter {
         return new WorldTriangles(ts)
     }
 
-    private static fromGeoLine(l: GeoLine, sp: StereographicProjection): RenderableShape {
+    private static fromGeoPolyline(l: GeoPolyline, sp: StereographicProjection): RenderableShape {
         const pts = l.points
             .map(CoordinateSystems.latLongToGeocentric)
             .map(g => CoordinateSystems.geocentricToStereographic(g, sp))
-        return new WorldLine(pts)
+        return new WorldPolyline(pts)
     }
 
     private static fromGeoPolygon(p: GeoPolygon, sp: StereographicProjection): RenderableShape {
@@ -265,18 +265,18 @@ export class ShapeConverter {
         return new WorldTriangles(vs)
     }
 
-    private static fromRelativeGeoLine(l: RelativeGeoLine, sp: StereographicProjection): RenderableShape {
+    private static fromGeoRelativePolyline(l: GeoRelativePolyline, sp: StereographicProjection): RenderableShape {
         const pts = l.points.map(p => new Vector2d(p.x, p.y))
         const ref = CoordinateSystems.geocentricToStereographic(
             CoordinateSystems.latLongToGeocentric(l.ref), sp)
-        return new RelativeWorldLine(ref, pts)
+        return new WorldRelativePolyline(ref, pts)
     }
 
-    private static fromRelativeGeoPolygon(p: RelativeGeoPolygon, sp: StereographicProjection): RenderableShape {
+    private static fromGeoRelativePolygon(p: GeoRelativePolygon, sp: StereographicProjection): RenderableShape {
         const vs = Triangulator.PLANAR.triangulate(p.vertices.map(v => new Vector2d(v.x, v.y)))
         const ref = CoordinateSystems.geocentricToStereographic(
             CoordinateSystems.latLongToGeocentric(p.ref), sp)
-        return new RelativeWorldTriangles(ref, vs)
+        return new WorldRelativeTriangles(ref, vs)
     }
 
     private static toStereo(t: Triangle<Vector3d>, sp: StereographicProjection): Triangle<Vector2d> {
