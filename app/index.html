@@ -5,17 +5,18 @@
   <script type="module" src="coordinate-systems"></script>
   <script type="module" src="geodetics"></script>
   <script type="module" src="latlong"></script>
+  <script type="module" src="playground"></script>
+  <script type="module" src="renderer"></script>
   <script type="module" src="shapes"></script>
   <script type="module" src="space2d"></script>
   <script type="module" src="space3d"></script>
   <script type="module" src="triangles"></script>
-  <script type="module" src="webgl"></script>
   <script type="module">
-    import { Test } from './test'
+    import { Playground } from './playground'
     window.onload = function() {
       var canvas = document.getElementById("c");
       var gl = canvas.getContext("webgl");
-      Test.shoot(gl);
+      Playground.play(gl);
     }
   </script>
 </head>

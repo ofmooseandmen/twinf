@@ -115,7 +115,8 @@ export class Geodetics {
             .map(a => new Vector3d(radius * Math.cos(a), radius * Math.sin(a), z))
             /* rotate each point to circle centre */
             .map(v => Math3d.multmv(rz, Math3d.multmv(ry, v)))
-
+            /* unit. */
+            .map(Math3d.unit)
     }
 
     /**

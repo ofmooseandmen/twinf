@@ -67,7 +67,7 @@ export class Triangulator<T>  {
         if (polygon.length == 3) {
             return [new Triangle(polygon[0], polygon[1], polygon[2])]
         }
-        var r = new Array
+        let r = new Array<Triangle<T>>()
         const sps = this.simplePolygons(polygon)
         // 'flatMap' the result of the triangulation of each simple polygon
         sps.forEach(sp => r = r.concat(this.triangulateSimple(sp), r))
@@ -104,7 +104,7 @@ export class Triangulator<T>  {
 
     private earClipping(vs: Array<T>): Array<Triangle<T>> {
         const ovs = this.orient(vs)
-        var triangles = new Array
+        let triangles = new Array<Triangle<T>>()
         while (true) {
             if (ovs.length == 3) {
                 triangles.push(new Triangle(ovs[0], ovs[1], ovs[2]))

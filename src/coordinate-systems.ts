@@ -129,7 +129,7 @@ export class CoordinateSystems {
          * [   0    1    ty  ]
          * [   0    0    1   ]
          */
-        var m = [
+        let m = [
             new Vector3d(1, 0, tx),
             new Vector3d(0, 1, ty),
             new Vector3d(0, 0, 1)
@@ -171,8 +171,8 @@ export class CoordinateSystems {
     }
 
     static canvasToStereographic(p: Vector2d, at: CanvasAffineTransform): Vector2d {
-        var x = p.x() - at.r0().z()
-        var y = p.y() - at.r1().z()
+        let x = p.x() - at.r0().z()
+        let y = p.y() - at.r1().z()
         const det = at.r0().x() * at.r1().y() - at.r0().y() * at.r1().x()
         x = (x * at.r1().y() - y * at.r0().y()) / det
         y = (y * at.r0().x() - x * at.r1().x()) / det
@@ -208,7 +208,7 @@ export class CoordinateSystems {
 
     private static makeGlMatrix(r0: Vector3d, r1: Vector3d): Float32Array {
         /* WebGL is column-major order. */
-        var arr = [
+        let arr = [
             1, 0, 0, 0, // column 0
             0, 1, 0, 0, // column 1
             0, 0, 1, 0, // column 2

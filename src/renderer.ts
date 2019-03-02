@@ -28,10 +28,8 @@ export class Renderer {
     }
 
     draw(shapes: Array<RenderableShape>, at: CanvasAffineTransform) {
-        var ts: Array<number>
-        ts = new Array
-        var ps: Array<number>
-        ps = new Array
+        let ts = new Array<number>()
+        let ps = new Array<number>()
         for (let i = 0; i < shapes.length; i++) {
             const s = shapes[i]
             switch (s.type) {
@@ -51,8 +49,12 @@ export class Renderer {
             }
         }
         /* first draw the triangles, then the lines. */
-        Renderer.glDraw(ts, this.gl.TRIANGLES, this.gl, this.program, at)
-        Renderer.glDraw(ps, this.gl.LINE_STRIP, this.gl, this.program, at)
+        if (ts.length > 0) {
+            Renderer.glDraw(ts, this.gl.TRIANGLES, this.gl, this.program, at)
+        }
+        if (ps.length > 0) {
+            Renderer.glDraw(ps, this.gl.LINES, this.gl, this.program, at)
+        }
     }
 
     private static glDraw(vs: Array<number>, mode: number,
@@ -62,10 +64,10 @@ export class Renderer {
         // set the resolution
         gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
 
-        const afUniformLocation = gl.getUniformLocation(program, "af_matrix");
+        const afUniformLocation = gl.getUniformLocation(program, "u_affine");
         gl.uniformMatrix4fv(afUniformLocation, false, at.glMatrix())
 
-        const positionAttributeLocation = gl.getAttribLocation(program, "stereo_position")
+        const positionAttributeLocation = gl.getAttribLocation(program, "a_stereo_pos")
 
         const positionBuffer = gl.createBuffer()
 
@@ -77,16 +79,16 @@ export class Renderer {
 
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
 
-        var size = 2 // take 2 elements from the buffer at the time (x, y)
-        var type = gl.FLOAT
-        var normalize = false
-        var stride = 0
-        var offset = 0
+        const size = 2 // take 2 elements from the buffer at the time (x, y)
+        const type = gl.FLOAT
+        const normalize = false
+        const stride = 0
+        const offset = 0
         gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
 
-        var offset = 0
-        var count = vs.length / 2
-        gl.drawArrays(mode, offset, count);
+        const first = 0
+        const count = vs.length / 2
+        gl.drawArrays(mode, first, count);
     }
 
     private static fromWT(ts: WorldTriangles, arr: Array<number>) {
@@ -98,7 +100,18 @@ export class Renderer {
     }
 
     private static fromWL(l: WorldPolyline, arr: Array<number>) {
-        l.points.forEach(p => arr.push(p.x(), p.y()))
+        /*
+         * since we draw with LINES we need to repeat each intermediate point.
+         * drawing with LINE_STRIP would not require this but would not allow
+         * to draw multiple polyline at once.
+         */
+        const last = l.points.length - 1
+        l.points.forEach((p, i) => {
+            arr.push(p.x(), p.y())
+            if (i !== 0 && i !== last) {
+                arr.push(p.x(), p.y())
+            }
+        })
     }
 
     private static createShader(gl: WebGL2RenderingContext, type: number,
@@ -136,18 +149,18 @@ export class Renderer {
     }
 
     private static readonly VERTEX_SHADER = `
-      // 3x3 affine transform matrix: stereo -> screen pixels.
-      uniform mat4 af_matrix;
+      // 3x3 affine transform matrix: stereo -> screen pixels
+      uniform mat4 u_affine;
 
       // resolution (canvas width and height): screen pixels to clip space
       uniform vec2 u_resolution;
 
       // stereographic position
-      attribute vec2 stereo_position;
+      attribute vec2 a_stereo_pos;
 
       void main() {
           // convert stereographic position to pixels
-          vec4 c_pos = af_matrix * vec4(stereo_position, 0, 1);
+          vec4 c_pos = u_affine * vec4(a_stereo_pos, 0, 1);
 
           // convert the position from pixels to 0.0 to 1.0
           vec2 zero_to_one = vec2(c_pos.x, c_pos.y) / u_resolution;
