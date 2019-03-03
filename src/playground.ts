@@ -3,18 +3,21 @@ import { LatLong } from "./latlong"
 import {
     CoordinateSystems,
     StereographicProjection,
-    CanvasAffineTransform,
     CanvasDimension
 } from "./coordinate-systems"
-import { Renderer } from "./renderer"
+import { Renderer, Drawing, Animator } from "./renderer"
 import * as S from "./shapes"
 
 export class Playground {
 
-    private constructor() { }
+    private readonly drawings: Array<Drawing>
 
-    static play(gl: WebGL2RenderingContext) {
-        const cd = new CanvasDimension(gl.canvas.width, gl.canvas.height)
+    constructor() {
+        this.drawings = new Array<Drawing>()
+    }
+
+    play(gl: WebGL2RenderingContext) {
+        const cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight)
 
         const ystad = LatLong.ofDegrees(55.4295, 13.82)
         const malmo = LatLong.ofDegrees(55.6050, 13.0038)
@@ -60,21 +63,41 @@ export class Playground {
 
         // canvas is centred at linkoping with a range of 2000 km (1000 km either side)
         const range = 2_000_000
-        const af = CoordinateSystems.computeCanvasAffineTransform(linkoping, Angle.ofDegrees(0), range, cd, sp)
+        const at = CoordinateSystems.computeCanvasAffineTransform(linkoping, Angle.ofDegrees(0), range, cd, sp)
 
         const shapes = [p, c1, c2, c3, c4, c5, l1, l2].map(s => S.ShapeConverter.toRenderableShape(s, sp))
 
+        let polygons = new Array<S.StereoPolygon>()
+        let polylines = new Array<S.StereoPolyline>()
+        for (let i = 0; i < shapes.length; i++) {
+            const s = shapes[i]
+            switch (s.type) {
+                case S.RenderableShapeType.StereoPolyline: {
+                    polylines.push(s)
+                    break
+                }
+                case S.RenderableShapeType.StereoPolygon: {
+                    polygons.push(s)
+                    break
+                }
+            }
+        }
+
         const renderer = new Renderer(gl)
-        renderer.draw(shapes, af)
-        // this.drawCoastline(renderer, sp, af)
+
+        const polygonsDrawing = renderer.setPolygons(renderer.newDrawing(), polygons)
+        const polylinesDrawing = renderer.setPolylines(renderer.newDrawing(), polylines)
+        this.drawings.push(polygonsDrawing)
+        this.drawings.push(polylinesDrawing)
+        Playground.parseCoastlines(renderer, sp, this.drawings)
+        const animator = new Animator(() => renderer.draw(this.drawings, at), 25)
+        animator.start()
     }
 
-    private static drawCoastline(renderer: Renderer, sp: StereographicProjection,
-        af: CanvasAffineTransform) {
+    private static parseCoastlines(renderer: Renderer, sp: StereographicProjection, drawings: Array<Drawing>) {
         Playground.load("./coastline.json",
             (data: any) => {
                 let length = data.features.length
-                let shapes = new Array<S.RenderableShape>()
                 for (let i = 0; i < length; i++) {
                     let feature = data.features[i]
                     if (feature.properties.featurecla == "Coastline") {
@@ -88,12 +111,16 @@ export class Playground {
                             positions.push(point)
                         }
                         const line = new S.GeoPolyline(positions)
-                        shapes.push(S.ShapeConverter.toRenderableShape(line, sp))
+                        const rs = S.ShapeConverter.toRenderableShape(line, sp);
+                        switch (rs.type) {
+                            case S.RenderableShapeType.StereoPolyline: {
+                                drawings.push(renderer.setPolylines(renderer.newDrawing(), [rs]))
+                            }
+                        }
                     }
                 }
-                renderer.draw(shapes, af)
             },
-            (error: any) => {
+            (_: any) => {
                 /* damn. */
             })
     }

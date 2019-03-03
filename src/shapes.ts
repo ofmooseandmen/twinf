@@ -5,20 +5,6 @@ import { Triangle, Triangulator } from "./triangles"
 import { Vector2d } from "./space2d"
 import { Vector3d } from "./space3d"
 
-/**
- * Offset in pixels (x axis is down and y axis is right).
- */
-export class Offset {
-
-    readonly x: number
-    readonly y: number
-
-    constructor(x: number, y: number) {
-        this.x = x
-        this.y = y
-    }
-}
-
 export enum ShapeType {
     GeoCircle,
     GeoPolygon,
@@ -70,20 +56,22 @@ export class GeoPolygon {
 /**
  * Polygon whose vertices are defined as pixels offsets from a reference
  * latitude/longitude.
+ *
+ * Offset is in pixels (x axis is down and y axis is right).
  */
 export class GeoRelativePolygon {
 
     readonly type: ShapeType.GeoRelativePolygon = ShapeType.GeoRelativePolygon;
     readonly ref: LatLong
-    readonly vertices: Array<Offset>
+    readonly vertices: Array<Vector2d>
 
     // FIXME private?
-    constructor(ref: LatLong, vertices: Array<Offset>) {
+    constructor(ref: LatLong, vertices: Array<Vector2d>) {
         this.ref = ref
         this.vertices = vertices
     }
 
-    static new(ref: LatLong, vertices: Array<Offset>): GeoRelativePolygon {
+    static new(ref: LatLong, vertices: Array<Vector2d>): GeoRelativePolygon {
         return new GeoRelativePolygon(ref, vertices)
     }
 
@@ -111,20 +99,22 @@ export class GeoPolyline {
 /**
  * Polyline whose points are defined as pixels offsets from a reference
  * latitude/longitude.
+ *
+ * Offset is in pixels (x axis is down and y axis is right).
  */
 export class GeoRelativePolyline {
 
     readonly type: ShapeType.GeoRelativePolyline = ShapeType.GeoRelativePolyline;
     readonly ref: LatLong
-    readonly points: Array<Offset>
+    readonly points: Array<Vector2d>
 
     // FIXME private?
-    constructor(ref: LatLong, points: Array<Offset>) {
+    constructor(ref: LatLong, points: Array<Vector2d>) {
         this.ref = ref
         this.points = points
     }
 
-    static new(ref: LatLong, points: Array<Offset>): GeoRelativePolyline {
+    static new(ref: LatLong, points: Array<Vector2d>): GeoRelativePolyline {
         return new GeoRelativePolyline(ref, points)
     }
 
@@ -146,88 +136,84 @@ export const Shape = {
     GeoPolygon,
     GeoRelativePolygon,
     GeoPolyline,
-    GeoRelativePolyline,
+    GeoRelativePolyline
+}
+
+/**
+ * A point in space with additional attributes.
+ */
+export class Vertex<T> {
+
+    private readonly _position: T
+    private readonly _offset: Vector2d
+
+    constructor(position: T, offset: Vector2d) {
+        this._position = position
+        this._offset = offset
+    }
+
+    /**
+     * Position of this vertex.
+     */
+    position(): T {
+        return this._position
+    }
+
+    /**
+     * Offset in pixels from the position.
+     *
+     * The vertex shall be rendered at position (transformed in pixels) + offset
+     */
+    offset(): Vector2d {
+        return this._offset
+    }
+
+
 }
 
 export enum RenderableShapeType {
-    WorldTriangles,
-    WorldRelativeTriangles,
-    WorldPolyline,
-    WorldRelativePolyline,
+    StereoPolygon,
+    StereoPolyline,
 }
 
 /**
- * Triangles whose vertices are stereographic positions.
+ * A renderable shape representing a polygon described by a set of triangles
+ * whose vertices are stereographic position (with or without offset)
  */
-export class WorldTriangles {
+export class StereoPolygon {
 
-    readonly type: RenderableShapeType.WorldTriangles = RenderableShapeType.WorldTriangles;
-    readonly triangles: Array<Triangle<Vector2d>>
+    readonly type: RenderableShapeType.StereoPolygon = RenderableShapeType.StereoPolygon;
+    readonly triangles: Array<Triangle<Vertex<Vector2d>>>
 
-    constructor(triangles: Array<Triangle<Vector2d>>) {
+    constructor(triangles: Array<Triangle<Vertex<Vector2d>>>) {
         this.triangles = triangles
     }
 
 }
 
 /**
- * Triangles whose vertices are defined as pixel offsets from a reference stereographic positions.
+ * A renderable shape representing a polyline whose points are
+ * are stereographic positions (with or without offset)
  */
-export class WorldRelativeTriangles {
+export class StereoPolyline {
 
-    readonly type: RenderableShapeType.WorldRelativeTriangles = RenderableShapeType.WorldRelativeTriangles;
-    readonly ref: Vector2d
-    readonly triangles: Array<Triangle<Vector2d>>
+    readonly type: RenderableShapeType.StereoPolyline = RenderableShapeType.StereoPolyline;
+    readonly points: Array<Vertex<Vector2d>>
 
-    constructor(ref: Vector2d, triangles: Array<Triangle<Vector2d>>) {
-        this.ref = ref
-        this.triangles = triangles
-    }
-
-}
-
-/**
- * Line whose points are stereographic positions.
- */
-export class WorldPolyline {
-
-    readonly type: RenderableShapeType.WorldPolyline = RenderableShapeType.WorldPolyline;
-    readonly points: Array<Vector2d>
-
-    constructor(points: Array<Vector2d>) {
-        this.points = points
-    }
-
-}
-
-/**
- * Polyline whose points are defined as pixel offsets from a reference stereographic positions.
- */
-export class WorldRelativePolyline {
-
-    readonly type: RenderableShapeType.WorldRelativePolyline = RenderableShapeType.WorldRelativePolyline;
-    readonly ref: Vector2d
-    readonly points: Array<Vector2d>
-
-    constructor(ref: Vector2d, points: Array<Vector2d>) {
-        this.ref = ref
+    constructor(points: Array<Vertex<Vector2d>>) {
         this.points = points
     }
 
 }
 
 export type RenderableShape =
-    WorldTriangles
-    | WorldRelativeTriangles
-    | WorldPolyline
-    | WorldRelativePolyline
+    StereoPolyline
+    | StereoPolygon
 
 export const RenderableShape = {
     RenderableShapeType,
-    WorldTriangles,
-    WorldRelativeTriangles,
-    WorldPolyline,
-    WorldRelativePolyline,
+    StereoPolyline,
+    StereoPolygon
 }
 
 export class ShapeConverter {
@@ -248,42 +234,49 @@ export class ShapeConverter {
         const vs = Geodetics.discretiseCircle(c.centre, c.radius, sp.earthRadius(), 100)
         const ts = Triangulator.SPHERICAL.triangulateSimple(vs)
             .map(t => ShapeConverter.toStereo(t, sp))
-        return new WorldTriangles(ts)
+        return new StereoPolygon(ts)
     }
 
     private static fromGeoPolyline(l: GeoPolyline, sp: StereographicProjection): RenderableShape {
-        const pts = l.points
+        const vs = l.points
             .map(CoordinateSystems.latLongToGeocentric)
             .map(g => CoordinateSystems.geocentricToStereographic(g, sp))
-        return new WorldPolyline(pts)
+            .map(p => new Vertex(p, Vector2d.ZERO))
+        return new StereoPolyline(vs)
     }
 
     private static fromGeoPolygon(p: GeoPolygon, sp: StereographicProjection): RenderableShape {
         const vs = Triangulator.SPHERICAL.triangulate(
             p.vertices.map(CoordinateSystems.latLongToGeocentric)
         ).map(t => ShapeConverter.toStereo(t, sp))
-        return new WorldTriangles(vs)
+        return new StereoPolygon(vs)
     }
 
     private static fromGeoRelativePolyline(l: GeoRelativePolyline, sp: StereographicProjection): RenderableShape {
-        const pts = l.points.map(p => new Vector2d(p.x, p.y))
         const ref = CoordinateSystems.geocentricToStereographic(
             CoordinateSystems.latLongToGeocentric(l.ref), sp)
-        return new WorldRelativePolyline(ref, pts)
+        const vs = l.points.map(p => new Vertex(ref, p))
+        return new StereoPolyline(vs)
     }
 
     private static fromGeoRelativePolygon(p: GeoRelativePolygon, sp: StereographicProjection): RenderableShape {
-        const vs = Triangulator.PLANAR.triangulate(p.vertices.map(v => new Vector2d(v.x, v.y)))
         const ref = CoordinateSystems.geocentricToStereographic(
             CoordinateSystems.latLongToGeocentric(p.ref), sp)
-        return new WorldRelativeTriangles(ref, vs)
+        const vs = Triangulator.PLANAR.triangulate(p.vertices)
+            .map(t => new Triangle(
+                new Vertex(ref, t.v1()),
+                new Vertex(ref, t.v2()),
+                new Vertex(ref, t.v3())
+            ))
+        return new StereoPolygon(vs)
     }
 
-    private static toStereo(t: Triangle<Vector3d>, sp: StereographicProjection): Triangle<Vector2d> {
-        return new Triangle
-            (CoordinateSystems.geocentricToStereographic(t.v1(), sp),
-            CoordinateSystems.geocentricToStereographic(t.v2(), sp),
-            CoordinateSystems.geocentricToStereographic(t.v3(), sp))
+    private static toStereo(t: Triangle<Vector3d>, sp: StereographicProjection): Triangle<Vertex<Vector2d>> {
+        return new Triangle(
+            new Vertex(CoordinateSystems.geocentricToStereographic(t.v1(), sp), Vector2d.ZERO),
+            new Vertex(CoordinateSystems.geocentricToStereographic(t.v2(), sp), Vector2d.ZERO),
+            new Vertex(CoordinateSystems.geocentricToStereographic(t.v3(), sp), Vector2d.ZERO)
+        )
     }
 
 }

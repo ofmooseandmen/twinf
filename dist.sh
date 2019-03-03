@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 rm -rf app/build
 cp -rp app build
 pushd build/app

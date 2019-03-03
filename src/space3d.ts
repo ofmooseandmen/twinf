@@ -22,7 +22,7 @@ export class Vector3d {
         return this._z
     }
 
-    /** vector of norm 0. */
+    /** origin: (0, 0, 0). */
     static readonly ZERO = new Vector3d(0, 0, 0)
 
 }

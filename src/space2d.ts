@@ -14,6 +14,10 @@ export class Vector2d {
     y(): number {
         return this._y
     }
+
+    /** origin: (0, 0). */
+    static readonly ZERO = new Vector2d(0, 0)
+
 }
 
 export class Geometry2d {

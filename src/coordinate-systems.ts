@@ -5,13 +5,14 @@ import { Vector2d } from "./space2d"
 import { Math3d, Vector3d } from "./space3d"
 
 /**
- * Conversions between positions in different coordinate systems used when rendering shapes
+ * Transformations between positions in different coordinate systems used when rendering shapes
  * defined by latitude/longitude into a canvas.
  *
- * The typical conversion flows is:
+ * The transformation flow is:
  * latitude/longitude (geodetic position) -> geocentric
  * geocentric -> stereographic
- * stereographic -> screen (canvas pixels)
+ * stereographic -> canvas (pixels)
+ * canvas -> WebGL clipspace
  *
  * Geocentric positions a represented as n-vectors: the normal vector to the sphere.
  * n-vector prientation: z-axis points to the North Pole along the Earth's
@@ -21,19 +22,29 @@ import { Math3d, Vector3d } from "./space3d"
  *
  * Stereographic Coordinate System: the stereographic projection, projects points on
  * a sphere onto a plane with respect to a projection centre.
- * Note: this conversion can be done in the GPU
+ * Note: this transformation can be done in the GPU
  *
- * Canvas coordinate system: Allows conversion between positions in the stereographic
+ * Canvas coordinate system: Allows transformation between positions in the stereographic
  * coordinate system and the canvas coordinate system.
  * Canvas coordinate system: origin is at top-left corner of the canvas, x axis is towards
  * the right and y-axis towards the bottom of the canvas.
- * Note: this conversion is always done in the GPU. Positions in the canvas Coordinate
- * system must be converted one last time to the GL clip space (-1 to +1 for both x
- * and y axes).
+ * Note: this transformation is always done in the GPU.
+ *
+ * WebGL clipspace is x, y between (-1, 1), x axis is towards
+ * the right and y-axis towards the bottom of the canvas.
+ * Note: this transformation is always done in the GPU. The two last transformations
+ * are not merged in order to allow for pixels to be offset in the GPU.
+ *
+ * Note: all matrices are given in row major order, so in the shader vector * matrix
+ * shall be used.
  */
 export class CoordinateSystems {
 
     private constructor() { }
+
+    /*****************************************
+     *** Latitude/Longitude <=> Geocentric ***
+     *****************************************/
 
     /**
      * Converts the given latitude/longitude to a geocentric position (n-vector).
@@ -56,6 +67,10 @@ export class CoordinateSystems {
         const lon = Angle.atan2(nv.y(), nv.x())
         return new LatLong(lat, lon)
     }
+
+    /*****************************************
+     ***    Geocentric <=> Stereographic   ***
+     *****************************************/
 
     /**
      * Computes the attribues of a stereographic projection.
@@ -100,6 +115,10 @@ export class CoordinateSystems {
         const c = Math3d.scale(sp.centre(), earthRadius)
         return Math3d.unit(Math3d.add(c, Math3d.multmv(sp.inverseRotation(), system)))
     }
+
+    /*****************************************
+     *** Stereographic <=> Canvas (pixels) ***
+     *****************************************/
 
     static computeCanvasAffineTransform(centre: LatLong, rotation: Angle, hrange: number,
         canvas: CanvasDimension, sp: StereographicProjection): CanvasAffineTransform {
@@ -158,8 +177,11 @@ export class CoordinateSystems {
         const r0 = m[0]
         const r1 = m[1]
 
-        const glMatrix = CoordinateSystems.makeGlMatrix(r0, r1)
-
+        const glMatrix = Float32Array.of(
+            m[0].x(), m[0].y(), m[0].z(),
+            m[1].x(), m[1].y(), m[1].z(),
+            0, 0, 1
+        )
         return new CanvasAffineTransform(r0, r1, glMatrix)
     }
 
@@ -177,6 +199,18 @@ export class CoordinateSystems {
         x = (x * at.r1().y() - y * at.r0().y()) / det
         y = (y * at.r0().x() - x * at.r1().x()) / det
         return new Vector2d(x, y)
+    }
+
+    /******************************************
+     *** Canvas (pixels) => WebGL clipspace ***
+     ******************************************/
+
+    static canvasToClipspace(width: number, height: number): Float32Array {
+        return Float32Array.of(
+            2 / width, 0, -1,
+            0, -2 / height, 1,
+            0, 0, 1
+        )
     }
 
     private static translate(m: Array<Vector3d>, tx: number, ty: number): Array<Vector3d> {
@@ -205,25 +239,6 @@ export class CoordinateSystems {
         return CoordinateSystems.translate(
             Math3d.multmm(CoordinateSystems.translate(m, atX, atY), r), -atX, -atY)
     }
-
-    private static makeGlMatrix(r0: Vector3d, r1: Vector3d): Float32Array {
-        /* WebGL is column-major order. */
-        let arr = [
-            1, 0, 0, 0, // column 0
-            0, 1, 0, 0, // column 1
-            0, 0, 1, 0, // column 2
-            0, 0, 0, 1  // column 3
-        ]
-        arr[0] = r0.x()
-        arr[1] = r1.x()
-        arr[4] = r0.y()
-        arr[5] = r1.y()
-        arr[12] = r0.z()
-        arr[13] = r1.z()
-
-        return Float32Array.from(arr)
-    }
-
 
 }
 
@@ -290,13 +305,14 @@ export class CanvasDimension {
  * in the canvas coordinate system.
  */
 export class CanvasAffineTransform {
+
     /* first row of the 3*3 affine transform matrix. */
     private readonly _r0: Vector3d
 
     /* second row of the 3*3 affine transform matrix. */
     private readonly _r1: Vector3d
 
-    /* Equivalent 4x4 matrix suitable to transform openGL vec4 positions. */
+    /* affine transform matrix wrapped in a Float32Array for WebGL (row major). */
     private readonly _glMatrix: Float32Array
 
     constructor(r0: Vector3d, r1: Vector3d, glMatrix: Float32Array) {

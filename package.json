@@ -10,7 +10,7 @@
   "scripts": {
     "clean": "rm -rf build",
     "test": "jest",
-    "compile": "tsc --build tsconfig.json",
+    "compile": "npm run clean && tsc --build tsconfig.json",
     "prepare": "npm run compile",
     "pretest": "npm run compile"
   },
