@@ -183,11 +183,13 @@ export class ShapeConverter {
 
     private static geoTrianglesToArray(ts: Array<Triangle<Vector3d>>): Array<number> {
         let res = new Array<number>()
-        ts.forEach(t =>
+        const len = ts.length
+        for (let i = 0; i < len; i++) {
+            const t = ts[i];
             res.push(t.v1().x(), t.v1().y(), t.v1().z(),
                 t.v2().x(), t.v2().y(), t.v2().z(),
                 t.v3().x(), t.v3().y(), t.v3().z())
-        )
+        }
         return res
     }
 
@@ -198,13 +200,15 @@ export class ShapeConverter {
          * to draw multiple polylines at once.
          */
         let res = new Array<number>()
-        const last = ps.length - 1
-        ps.forEach((p, i) => {
+        const len = ps.length
+        const last = len - 1
+        for (let i = 0; i < len; i++) {
+            const p = ps[i]
             res.push(p.x(), p.y(), p.z())
             if (i !== 0 && i !== last) {
                 res.push(p.x(), p.y(), p.z())
             }
-        })
+        }
         return res
     }
 

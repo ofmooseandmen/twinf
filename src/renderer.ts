@@ -182,15 +182,27 @@ export class Renderer {
     }
 
     setGeometry(ctx: DrawingContext, shapes: Array<GeoShape>): Drawing {
-        const triangles = shapes.filter(s => s.drawMode() === DrawMode.TRIANGLES)
-        const lines = shapes.filter(s => s.drawMode() === DrawMode.LINES)
-
         /* first the triangles then the lines. */
-        const tvs = Renderer.flatten(triangles.map(s => s.vertices()))
-        const tos = Renderer.flatten(triangles.map(s => s.offsets()))
+        const atvs = new Array<Array<number>>()
+        const atos = new Array<Array<number>>()
+        const alvs = new Array<Array<number>>()
+        const alos = new Array<Array<number>>()
+        const len = shapes.length
+        for (let i = 0; i < len; i++) {
+            const s = shapes[i]
+            if (s.drawMode() === DrawMode.TRIANGLES) {
+                atvs.push(s.vertices())
+                atos.push(s.offsets())
+            } else if (s.drawMode() === DrawMode.LINES) {
+                alvs.push(s.vertices())
+                alos.push(s.offsets())
+            }
+        }
+        const tvs = Renderer.flatten(atvs)
+        const tos = Renderer.flatten(atos)
         const countTriangles = tvs.length / 3
-        const lvs = Renderer.flatten(lines.map(s => s.vertices()))
-        const los = Renderer.flatten(lines.map(s => s.offsets()))
+        const lvs = Renderer.flatten(alvs)
+        const los = Renderer.flatten(alos)
         const countLines = lvs.length / 3
         this.gl.useProgram(ctx.program())
 
