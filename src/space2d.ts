@@ -25,7 +25,7 @@ export class Geometry2d {
      * Determines whether p0 is right of the line from p1 to p2.
      */
     static right(p0: Vector2d, p1: Vector2d, p2: Vector2d): boolean {
-        return false
+        return (p2.x() - p1.x()) * (p0.y() - p1.y()) - (p2.y() - p1.y()) * (p0.x() - p1.x()) <= 0
     }
 
     /**
@@ -38,7 +38,25 @@ export class Geometry2d {
      * - this method always returns false if the list contains less than 3 positions.
      */
     static insideSurface(p: Vector2d, ps: Array<Vector2d>): boolean {
-        return false
+        const len = ps.length
+        if (len < 3) {
+            return false
+        }
+        // ray casting
+        const x = p.x();
+        const y = p.y();
+        let inside = false;
+        for (let i = 0, j = len - 1; i < len; j = i++) {
+            const xi = ps[i].x();
+            const yi = ps[i].y();
+            const xj = ps[j].x();
+            const yj = ps[j].y();
+            const intersect = yi > y != yj > y && x < (xj - xi) * (y - yi) / (yj - yi) + xi;
+            if (intersect) {
+                inside = !inside;
+            }
+        }
+        return inside;
     }
 
 }

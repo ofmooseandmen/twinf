@@ -157,7 +157,8 @@ export class ShapeConverter {
             case ShapeType.GeoCircle: return ShapeConverter.fromGeoCircle(s, earthRadius)
             case ShapeType.GeoPolygon: return ShapeConverter.fromGeoPolygon(s)
             case ShapeType.GeoPolyline: return ShapeConverter.fromGeoPolyline(s)
-            default: throw new Error("Unsupported yet")
+            case ShapeType.GeoRelativePolygon: return ShapeConverter.fromGeoRelativePoygon(s)
+            case ShapeType.GeoRelativePolyline: return ShapeConverter.fromGeoRelativePoyline(s)
         }
     }
 
@@ -181,6 +182,19 @@ export class ShapeConverter {
         return new GeoShape(vs, ShapeConverter.noOffsets(vs), DrawMode.TRIANGLES)
     }
 
+    private static fromGeoRelativePoygon(p: GeoRelativePolygon): GeoShape {
+        const ts = Triangulator.PLANAR.triangulate(p.vertices)
+        const os = ShapeConverter.offsetTrianglesToArray(ts)
+        const vs = ShapeConverter.reference(CoordinateSystems.latLongToGeocentric(p.ref), os)
+        return new GeoShape(vs, os, DrawMode.TRIANGLES)
+    }
+
+    private static fromGeoRelativePoyline(l: GeoRelativePolyline): GeoShape {
+        const os = ShapeConverter.offsetPointsToArray(l.points)
+        const vs = ShapeConverter.reference(CoordinateSystems.latLongToGeocentric(l.ref), os)
+        return new GeoShape(vs, os, DrawMode.LINES)
+    }
+
     private static geoTrianglesToArray(ts: Array<Triangle<Vector3d>>): Array<number> {
         let res = new Array<number>()
         const len = ts.length
@@ -189,6 +203,18 @@ export class ShapeConverter {
             res.push(t.v1().x(), t.v1().y(), t.v1().z(),
                 t.v2().x(), t.v2().y(), t.v2().z(),
                 t.v3().x(), t.v3().y(), t.v3().z())
+        }
+        return res
+    }
+
+    private static offsetTrianglesToArray(ts: Array<Triangle<Vector2d>>): Array<number> {
+        let res = new Array<number>()
+        const len = ts.length
+        for (let i = 0; i < len; i++) {
+            const t = ts[i];
+            res.push(t.v1().x(), t.v1().y(),
+                t.v2().x(), t.v2().y(),
+                t.v3().x(), t.v3().y())
         }
         return res
     }
@@ -212,6 +238,25 @@ export class ShapeConverter {
         return res
     }
 
+    private static offsetPointsToArray(ps: Array<Vector2d>): Array<number> {
+        /*
+         * since we draw with LINES we need to repeat each intermediate point.
+         * drawing with LINE_STRIP would not require this but would not allow
+         * to draw multiple polylines at once.
+         */
+        let res = new Array<number>()
+        const len = ps.length
+        const last = len - 1
+        for (let i = 0; i < len; i++) {
+            const p = ps[i]
+            res.push(p.x(), p.y())
+            if (i !== 0 && i !== last) {
+                res.push(p.x(), p.y())
+            }
+        }
+        return res
+    }
+
     private static noOffsets(vs: Array<number>): Array<number> {
         return new Array(ShapeConverter.offsetArrayLength(vs)).fill(0)
     }
@@ -219,6 +264,15 @@ export class ShapeConverter {
     private static offsetArrayLength(vs: Array<number>): number {
         // vertices have 3 components each, offsets only 2
         return (vs.length / 3) * 2
+    }
+
+    private static reference(v: Vector3d, offsets: Array<number>): Array<number> {
+        const n = offsets.length / 2
+        let arr = new Array<number>()
+        for (let i = 0; i < n; i++) {
+            arr.push(v.x(), v.y(), v.z())
+        }
+        return arr
     }
 
 }

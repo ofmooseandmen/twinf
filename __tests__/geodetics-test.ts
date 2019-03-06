@@ -2,7 +2,6 @@ import { Angle } from "../src/angle"
 import { CoordinateSystems } from "../src/coordinate-systems"
 import { Geodetics } from "../src/geodetics"
 import { LatLong } from "../src/latlong"
-import { Vector3d } from "../src/space3d"
 
 import * as U from "./util"
 

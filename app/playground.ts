@@ -3,6 +3,7 @@ import { CoordinateSystems } from "../src/coordinate-systems"
 import { LatLong } from "../src/latlong"
 import * as S from "../src/shapes"
 import { Graphic, World } from "../src/world"
+import { Vector2d } from "../src/space2d"
 import { Math3d, Vector3d } from "../src/space3d"
 
 export class Playground {
@@ -71,7 +72,14 @@ export class Playground {
             farosund, slite, gothem, ljugarn,
             nar, vamlingbo, sundre, sanda, visby])
 
+        const rp = new S.GeoRelativePolygon(linkoping,
+            [new Vector2d(50, 50), new Vector2d(100, 50), new Vector2d(50, 100)])
+
+        const rl = new S.GeoRelativePolyline(norrkoping,
+            [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(50, 150)])
+
         this.world.putGraphic(new Graphic("sak", [p, c2, c3, c4, c5, l1, l2]))
+        this.world.putGraphic(new Graphic("andra", [rp, rl]))
         Playground.parseCoastlines(this.world)
 
         this.simulateTrack(CoordinateSystems.latLongToGeocentric(stockholm),
