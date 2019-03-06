@@ -125,15 +125,21 @@ export enum DrawMode {
 export class GeoShape {
 
     private readonly _vertices: Array<number>
+    private readonly _offsets: Array<number>
     private readonly _drawMode: DrawMode
 
-    constructor(vertices: Array<number>, drawMode: DrawMode) {
+    constructor(vertices: Array<number>, offsets: Array<number>, drawMode: DrawMode) {
         this._vertices = vertices
+        this._offsets = offsets
         this._drawMode = drawMode
     }
 
     vertices(): Array<number> {
         return this._vertices
+    }
+
+    offsets(): Array<number> {
+        return this._offsets
     }
 
     drawMode(): DrawMode {
@@ -159,24 +165,23 @@ export class ShapeConverter {
         const ts = Triangulator.SPHERICAL.triangulate(
             Geodetics.discretiseCircle(c.centre, c.radius, earthRadius, 100))
         const vs = ShapeConverter.geoTrianglesToArray(ts)
-        return new GeoShape(vs, DrawMode.TRIANGLES)
+        return new GeoShape(vs, ShapeConverter.noOffsets(vs), DrawMode.TRIANGLES)
     }
 
     private static fromGeoPolyline(l: GeoPolyline): GeoShape {
         const gs = l.points.map(CoordinateSystems.latLongToGeocentric)
         const vs = ShapeConverter.geoPointsToArray(gs)
-        return new GeoShape(vs, DrawMode.LINES)
+        return new GeoShape(vs, ShapeConverter.noOffsets(vs), DrawMode.LINES)
     }
 
     private static fromGeoPolygon(p: GeoPolygon): GeoShape {
         const ts = Triangulator.SPHERICAL.triangulate(
             p.vertices.map(CoordinateSystems.latLongToGeocentric))
         const vs = ShapeConverter.geoTrianglesToArray(ts)
-        return new GeoShape(vs, DrawMode.TRIANGLES)
+        return new GeoShape(vs, ShapeConverter.noOffsets(vs), DrawMode.TRIANGLES)
     }
 
     private static geoTrianglesToArray(ts: Array<Triangle<Vector3d>>): Array<number> {
-        // FIMXE: pass length to array
         let res = new Array<number>()
         ts.forEach(t =>
             res.push(t.v1().x(), t.v1().y(), t.v1().z(),
@@ -190,9 +195,8 @@ export class ShapeConverter {
         /*
          * since we draw with LINES we need to repeat each intermediate point.
          * drawing with LINE_STRIP would not require this but would not allow
-         * to draw multiple polyline at once.
+         * to draw multiple polylines at once.
          */
-        // FIMXE: pass length to array
         let res = new Array<number>()
         const last = ps.length - 1
         ps.forEach((p, i) => {
@@ -202,6 +206,15 @@ export class ShapeConverter {
             }
         })
         return res
+    }
+
+    private static noOffsets(vs: Array<number>): Array<number> {
+        return new Array(ShapeConverter.offsetArrayLength(vs)).fill(0)
+    }
+
+    private static offsetArrayLength(vs: Array<number>): number {
+        // vertices have 3 components each, offsets only 2
+        return (vs.length / 3) * 2
     }
 
 }

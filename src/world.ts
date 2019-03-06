@@ -48,9 +48,9 @@ export class World {
     private readonly renderer: Renderer
     private readonly animator: Animator
 
-    constructor(gl: WebGL2RenderingContext, centre: LatLong, hrange: number, rotation: Angle, fps: number) {
+    constructor(gl: WebGL2RenderingContext, centre: LatLong, range: number, rotation: Angle, fps: number) {
         this._centre = centre
-        this._range = hrange
+        this._range = range
         this._rotation = rotation
         this.cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight)
         this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS)
@@ -100,6 +100,9 @@ export class World {
     }
 
     setRange(range: number) {
+        if (range <= 0) {
+            return
+        }
         this._range = range
         // recompute affine transform
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)

@@ -59,10 +59,10 @@ export class DrawingContext {
 
     private readonly _program: WebGLProgram
     private readonly _vao: WebGLVertexArrayObject
-    private readonly _buffers: Array<WebGLBuffer>
+    private readonly _buffers: Map<String, WebGLBuffer>
 
     constructor(program: WebGLProgram, vao: WebGLVertexArrayObject,
-        buffers: Array<WebGLBuffer>) {
+        buffers: Map<String, WebGLBuffer>) {
         this._program = program
         this._vao = vao
         this._buffers = buffers
@@ -76,7 +76,7 @@ export class DrawingContext {
         return this._vao
     }
 
-    buffers(): Array<WebGLBuffer> {
+    buffers(): Map<String, WebGLBuffer> {
         return this._buffers
     }
 
@@ -142,27 +142,10 @@ export class Animator {
 
     private render() {
         this.handle = requestAnimationFrame(() => this.render());
-
         this.now = Date.now();
         this.delta = this.now - this.then;
-
         if (this.delta > this.interval) {
-            // update time stuffs
-
-            // Just `then = now` is not enough.
-            // Lets say we set fps at 10 which means
-            // each frame must take 100ms
-            // Now frame executes in 16ms (60fps) so
-            // the loop iterates 7 times (16*7 = 112ms) until
-            // delta > interval === true
-            // Eventually this lowers down the FPS as
-            // 112*10 = 1120ms (NOT 1000ms).
-            // So we have to get rid of that extra 12ms
-            // by subtracting delta (112) % interval (100).
-            // Hope that makes sense.
-
             this.then = this.now - (this.delta % this.interval);
-
             this.callback()
         }
     }
@@ -175,19 +158,21 @@ export class Animator {
 export class Renderer {
 
     private readonly gl: WebGL2RenderingContext
-
+    private readonly aGeoPos: Attribute
+    private readonly aOffset: Attribute
     private readonly program: WebGLProgram
 
     constructor(gl: WebGL2RenderingContext) {
         this.gl = gl
+        this.aGeoPos = new Attribute("a_geo_pos", 3, this.gl.FLOAT, false)
+        this.aOffset = new Attribute("a_offset", 2, this.gl.FLOAT, false)
         const vertexShader = WebGL2.createShader(this.gl, this.gl.VERTEX_SHADER, Renderer.VERTEX_SHADER)
         const fragmentShader = WebGL2.createShader(this.gl, this.gl.FRAGMENT_SHADER, Renderer.FRAGMENT_SHADER)
         this.program = WebGL2.createProgram(this.gl, vertexShader, fragmentShader)
     }
 
     newDrawing(): DrawingContext {
-        const stereoPosAtt = new Attribute("a_geo_pos", 3, this.gl.FLOAT, false)
-        return Renderer.newDrawing(this.gl, this.program, [stereoPosAtt])
+        return Renderer.newDrawing(this.gl, this.program, [this.aGeoPos, this.aOffset])
     }
 
     deleteDrawing(ctx: DrawingContext) {
@@ -197,12 +182,25 @@ export class Renderer {
     }
 
     setGeometry(ctx: DrawingContext, shapes: Array<GeoShape>): Drawing {
+        const triangles = shapes.filter(s => s.drawMode() === DrawMode.TRIANGLES)
+        const lines = shapes.filter(s => s.drawMode() === DrawMode.LINES)
+
         /* first the triangles then the lines. */
-        const ts = Renderer.flatten(shapes.filter(s => s.drawMode() === DrawMode.TRIANGLES).map(s => s.vertices()))
-        const countTriangles = ts.length / 3
-        const ls = Renderer.flatten(shapes.filter(s => s.drawMode() === DrawMode.LINES).map(s => s.vertices()))
-        const countLines = ls.length / 3
-        Renderer.setBufferData(ctx, ts.concat(ls), this.gl, this.program)
+        const tvs = Renderer.flatten(triangles.map(s => s.vertices()))
+        const tos = Renderer.flatten(triangles.map(s => s.offsets()))
+        const countTriangles = tvs.length / 3
+        const lvs = Renderer.flatten(lines.map(s => s.vertices()))
+        const los = Renderer.flatten(lines.map(s => s.offsets()))
+        const countLines = lvs.length / 3
+        this.gl.useProgram(ctx.program())
+
+        const gb = ctx.buffers().get(this.aGeoPos.name())
+        const ob = ctx.buffers().get(this.aOffset.name())
+        if (gb === undefined || ob === undefined) {
+            throw new Error("Missing buffer for either geocentric position or offset")
+        }
+        Renderer.setBufferData(gb, tvs.concat(lvs), this.gl)
+        Renderer.setBufferData(ob, tos.concat(los), this.gl)
         return new Drawing(ctx, countTriangles, countLines)
     }
 
@@ -255,9 +253,8 @@ export class Renderer {
         }
         gl.bindVertexArray(vao)
 
-        let buffers = new Array<WebGLBuffer>()
-
-        attributes.forEach(a => {
+        let buffers = new Map<String, WebGLBuffer>()
+        for (const a of attributes) {
             const attLocation = gl.getAttribLocation(program, a.name())
             gl.enableVertexAttribArray(attLocation)
 
@@ -265,7 +262,7 @@ export class Renderer {
             if (attBuff === null) {
                 throw new Error("Could not create buffer for attribute: " + a.name())
             }
-            buffers.push(attBuff)
+            buffers.set(a.name(), attBuff)
             gl.bindBuffer(gl.ARRAY_BUFFER, attBuff)
 
             /* 0 = move forward size * sizeof(type) each iteration to get the next position */
@@ -274,22 +271,22 @@ export class Renderer {
             const offset = 0;
             gl.vertexAttribPointer(attLocation, a.size(), a.type(), a.normalised(), stride, offset)
             gl.bindBuffer(gl.ARRAY_BUFFER, null)
-        })
+        }
         gl.bindVertexArray(null);
         return new DrawingContext(program, vao, buffers)
     }
 
-    private static setBufferData(ctx: DrawingContext, vs: Array<number>,
-        gl: WebGL2RenderingContext, program: WebGLProgram) {
-        gl.useProgram(program)
-        gl.bindBuffer(gl.ARRAY_BUFFER, ctx.buffers()[0]);
+    private static setBufferData(buffer: WebGLBuffer, vs: Array<number>,
+        gl: WebGL2RenderingContext) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vs), gl.STATIC_DRAW, 0);
     }
 
     private static flatten(arr: Array<Array<number>>): Array<number> {
-        const len = arr.map(a => a.length).reduce((a, b) => a + b, 0)
-        let res = new Array<number>(len)
-        arr.forEach(a => Array.prototype.push.apply(res, a))
+        let res = new Array<number>()
+        for (const a of arr) {
+            Array.prototype.push.apply(res, a)
+        }
         return res
     }
 
@@ -330,14 +327,16 @@ uniform mat3 u_canvas_to_clipspace;
 // geocentric position
 in vec3 a_geo_pos;
 
+// offset in pixels
+in vec2 a_offset;
+
 void main() {
     // geocentric to stereographic
     vec2 stereo_pos = geocentric_to_stereographic(a_geo_pos, u_earth_radius, u_geo_centre, u_geo_to_system);
 
-    // convert stereographic position to canvas pixels
+    // convert stereographic position to canvas pixels and add offset
     // u_stereo_to_canvas is row major so v * m
-
-    vec3 c_pos = (vec3(stereo_pos, 1) * u_stereo_to_canvas);
+    vec3 c_pos = (vec3(stereo_pos, 1) * u_stereo_to_canvas) + (vec3(a_offset, 0));
 
     // canvas pixels to clipspace
     // u_projection is row major so v * m
@@ -346,7 +345,7 @@ void main() {
 `
 
     private static readonly FRAGMENT_SHADER =
-`#version 300 es
+        `#version 300 es
 precision mediump float;
 
 out vec4 colour;
