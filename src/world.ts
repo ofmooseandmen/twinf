@@ -34,8 +34,9 @@ export class World {
 
     static readonly EARTH_RADIUS = 6_371_000
 
-    private hrange: number
-    private rotation: Angle
+    private _centre: LatLong
+    private _range: number
+    private _rotation: Angle
     private cd: CanvasDimension
 
     private sp: StereographicProjection
@@ -48,11 +49,12 @@ export class World {
     private readonly animator: Animator
 
     constructor(gl: WebGL2RenderingContext, centre: LatLong, hrange: number, rotation: Angle, fps: number) {
-        this.hrange = hrange
-        this.rotation = rotation
+        this._centre = centre
+        this._range = hrange
+        this._rotation = rotation
         this.cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight)
-        this.sp = CoordinateSystems.computeStereographicProjection(centre, World.EARTH_RADIUS)
-        this.at = CoordinateSystems.computeCanvasAffineTransform(centre, this.hrange, this.rotation, this.cd, this.sp)
+        this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS)
+        this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
         this.graphics = new Map<String, Graphic>()
         this.drawings = new Map<String, Drawing>()
         this.renderer = new Renderer(gl)
@@ -87,25 +89,28 @@ export class World {
         const newCentreGeo = CoordinateSystems.stereographicToGeocentric(newCentreStereo, this.sp)
 
         // geocentric to latitude/longitude
-        const newCentreLatLong = CoordinateSystems.geocentricToLatLong(newCentreGeo)
+        this._centre = CoordinateSystems.geocentricToLatLong(newCentreGeo)
 
         // recompute stereographic projection using new canvas centre
-        this.sp = CoordinateSystems.computeStereographicProjection(newCentreLatLong, this.sp.earthRadius())
+        this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS)
 
         // recompute affine transform
-        this.at = CoordinateSystems.computeCanvasAffineTransform(newCentreLatLong,
-            this.hrange, this.rotation, this.cd, this.sp)
+        this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre,
+            this._range, this._rotation, this.cd, this.sp)
     }
 
-    setRange(hrange: number) {
-        this.hrange = hrange
-        const centre = CoordinateSystems.geocentricToLatLong(this.sp.centre())
+    setRange(range: number) {
+        this._range = range
         // recompute affine transform
-        this.at = CoordinateSystems.computeCanvasAffineTransform(centre, this.hrange, this.rotation, this.cd, this.sp)
+        this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
     }
 
     range(): number {
-        return this.hrange
+        return this._range
+    }
+
+    centre(): LatLong {
+        return this._centre
     }
 
 }

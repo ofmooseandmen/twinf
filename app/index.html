@@ -8,25 +8,47 @@
         border: 0;
         overflow: hidden; /*  Disable scrollbars */
         display: block;  /* No floating content on sides */
+				font-family: Arial, Helvetica, sans-serif
+      }
+
+			#info {
+				position:absolute;
+        left:0px;
+        top:0px;
+        z-index: 100;
+				margin-top: 5px;
+        margin-left: 5px;
+				padding-left: 5px;
+				padding-right: 5px;
+        color: white;
+				background-color: rgba(128, 128, 128, 0.7);
       }
     </style>
 		<script type="module" src="playground"></script>
 		<script type="module">
       import { Playground } from './playground'
       window.onload = function() {
-        var canvas = document.getElementById("c");
+        const canvas = document.getElementById("canvas");
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        var gl = canvas.getContext("webgl2");
-        var playground = new Playground(gl)
+        const gl = canvas.getContext("webgl2");
+        const playground = new Playground(gl)
         canvas.addEventListener("keydown", function(event) {
             playground.handleKeyboardEvent(event)
+        })
+				playground.setOnChange(function(centre, range) {
+          document.getElementById("centre").innerHTML = centre
+          document.getElementById("range").innerHTML = range
         })
         playground.play(gl);
       }
     </script>
 	</head>
 	<body>
-		<canvas id="c" style='position:absolute; left:0px; top:0px;' tabindex='1'></canvas>
+    <div id="info">
+      <p id="centre"/>
+      <p id="range"/>
+    </div>
+		<canvas id="canvas" style='position:absolute; left:0px; top:0px;' tabindex='1'></canvas>
 	</body>
 </html>

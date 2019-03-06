@@ -8,18 +8,30 @@ import { Math3d, Vector3d } from "../src/space3d"
 export class Playground {
 
     private static readonly DELTA = new Map<string, [number, number]>([
-        ["i", [0, -10]],
-        ["m", [0, 10]],
-        ["j", [-10, 0]],
-        ["l", [10, 0]]
+        ["ArrowUp", [0, -10]],
+        ["ArrowDown", [0, 10]],
+        ["ArrowLeft", [-10, 0]],
+        ["ArrowRight", [10, 0]]
+    ])
+
+    private static readonly FACTOR = new Map<string, number>([
+        ["+", 0.95],
+        ["-", 1.05],
     ])
 
     private readonly world: World
+    private l: (c: string, r: string) => void
 
     constructor(gl: WebGL2RenderingContext) {
         const linkoping = LatLong.ofDegrees(58.4108, 15.6214)
         const range = 2_000_000
         this.world = new World(gl, linkoping, range, Angle.ofDegrees(0), 60)
+        this.l = (_c, _r) => { }
+    }
+
+    setOnChange(l: (c: string, r: string) => void) {
+        this.l = l
+        this.fireEvent()
     }
 
     play() {
@@ -70,10 +82,27 @@ export class Playground {
 
     handleKeyboardEvent(evt: KeyboardEvent) {
         const delta = Playground.DELTA.get(evt.key)
-        if (delta === undefined) {
+        const factor = Playground.FACTOR.get(evt.key)
+        if (delta !== undefined) {
+            this.world.pan(delta[0], delta[1])
+        } else if (factor !== undefined) {
+            this.world.setRange(this.world.range() * factor)
+        } else {
             return
         }
-        this.world.pan(delta[0], delta[1])
+        this.fireEvent()
+    }
+
+    private fireEvent() {
+        const c = this.world.centre()
+        const lat = c.latitude().degrees()
+        const lon = c.longitude().degrees()
+        const ll = lat.toFixed(4)
+            + (lat < 0 ? 'S' : 'N')
+            + ' ' + lon.toFixed(4)
+            + (lon < 0 ? 'W' : 'E')
+        const r = (this.world.range() / 1000).toFixed(0) + " km"
+        this.l(ll, r)
     }
 
     private simulateTrack(p0: Vector3d, b: Angle, ms: number) {
