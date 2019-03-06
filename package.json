@@ -12,7 +12,8 @@
     "test": "jest",
     "compile": "npm run clean && tsc --build tsconfig.json",
     "prepare": "npm run compile",
-    "pretest": "npm run compile"
+    "pretest": "npm run compile",
+    "dist": "cp -p app/* build/app"
   },
   "devDependencies": {
     "@babel/core": "^7.3.3",

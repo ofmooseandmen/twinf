@@ -15,7 +15,7 @@ describe("canvas coordinate system", () => {
     const range = 1852000
     const rotation = Angle.ofDegrees(0)
     const cd = new CanvasDimension(1920, 1080)
-    const af = CoordinateSystems.computeCanvasAffineTransform(cCentre, rotation, range, cd, sp)
+    const af = CoordinateSystems.computeCanvasAffineTransform(cCentre, range, rotation, cd, sp)
 
     test("stereographic => canvas", () => {
         // tested against java AffineTransform

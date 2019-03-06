@@ -28,6 +28,7 @@ export class Vector3d {
 }
 
 export class Math3d {
+
     /**
      * Adds the 2 given vectors.
      */

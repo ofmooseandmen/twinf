@@ -1,8 +1,5 @@
-import { CanvasAffineTransform, CoordinateSystems } from "./coordinate-systems"
-import {
-    StereoPolyline,
-    StereoPolygon
-} from "./shapes"
+import { CanvasAffineTransform, CoordinateSystems, StereographicProjection } from "./coordinate-systems"
+import { DrawMode, GeoShape } from "./shapes"
 import { WebGL2 } from "./webgl2"
 
 /**
@@ -88,25 +85,27 @@ export class DrawingContext {
 export class Drawing {
 
     private readonly _context: DrawingContext
-    private readonly _mode: number
-    private readonly _count: number
+    private readonly _countTriangles: number
+    private readonly _countLines: number
 
-    constructor(context: DrawingContext, mode: number, count: number) {
+    constructor(context: DrawingContext, countTriangles: number, countLines: number) {
         this._context = context
-        this._mode = mode
-        this._count = count
+        this._countTriangles = countTriangles
+        this._countLines = countLines
     }
 
     context(): DrawingContext {
         return this._context
     }
-    mode(): number {
-        return this._mode
+
+    /** number of indices to be rendered with LINES. */
+    countTriangles(): number {
+        return this._countTriangles
     }
 
-    /** number of indices to be rendered. */
-    count(): number {
-        return this._count
+    /** number of indices to be rendered with LINES. */
+    countLines(): number {
+        return this._countLines
     }
 
 }
@@ -187,7 +186,7 @@ export class Renderer {
     }
 
     newDrawing(): DrawingContext {
-        const stereoPosAtt = new Attribute("a_stereo_pos", 2, this.gl.FLOAT, false)
+        const stereoPosAtt = new Attribute("a_geo_pos", 3, this.gl.FLOAT, false)
         return Renderer.newDrawing(this.gl, this.program, [stereoPosAtt])
     }
 
@@ -197,39 +196,53 @@ export class Renderer {
         this.gl.deleteVertexArray(ctx.vao())
     }
 
-    setPolylines(ctx: DrawingContext, shapes: Array<StereoPolyline>): Drawing {
-        let vs = new Array<number>()
-        shapes.forEach(s => Renderer.fromStereoPolyline(s, vs))
-        Renderer.setBufferData(ctx, vs, this.gl, this.program)
-        const mode = this.gl.LINES
-        const count = vs.length / 2
-        return new Drawing(ctx, mode, count)
+    setGeometry(ctx: DrawingContext, shapes: Array<GeoShape>): Drawing {
+        /* first the triangles then the lines. */
+        const ts = Renderer.flatten(shapes.filter(s => s.drawMode() === DrawMode.TRIANGLES).map(s => s.vertices()))
+        const countTriangles = ts.length / 3
+        const ls = Renderer.flatten(shapes.filter(s => s.drawMode() === DrawMode.LINES).map(s => s.vertices()))
+        const countLines = ls.length / 3
+        Renderer.setBufferData(ctx, ts.concat(ls), this.gl, this.program)
+        return new Drawing(ctx, countTriangles, countLines)
     }
 
-    setPolygons(ctx: DrawingContext, shapes: Array<StereoPolygon>) {
-        let vs = new Array<number>()
-        shapes.forEach(s => Renderer.fromStereoPolygon(s, vs))
-        Renderer.setBufferData(ctx, vs, this.gl, this.program)
-        const mode = this.gl.TRIANGLES
-        const count = vs.length / 2
-        return new Drawing(ctx, mode, count)
-    }
-
-    draw(drawings: Array<Drawing>, at: CanvasAffineTransform) {
+    draw(drawings: IterableIterator<Drawing>, sp: StereographicProjection, at: CanvasAffineTransform) {
         this.gl.clearColor(0.85, 0.85, 0.85, 1)
         this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight)
         this.gl.clear(this.gl.COLOR_BUFFER_BIT)
-        drawings.forEach(d => {
-            const projectionUniformLocation = this.gl.getUniformLocation(d.context().program(), "u_projection");
-            const proj = CoordinateSystems.canvasToClipspace(this.gl.canvas.clientWidth, this.gl.canvas.clientHeight)
-            this.gl.uniformMatrix3fv(projectionUniformLocation, false, proj);
 
-            const affineUniformLocation = this.gl.getUniformLocation(d.context().program(), "u_affine");
-            this.gl.uniformMatrix3fv(affineUniformLocation, false, at.glMatrix())
+        const geoCentre = [sp.centre().x(), sp.centre().y(), sp.centre().z()]
+        const geoToSys = sp.directRotationGl()
+        const canvasToClipspace = CoordinateSystems.canvasToClipspace(this.gl.canvas.clientWidth, this.gl.canvas.clientHeight)
+
+        for (const d of drawings) {
+            this.gl.useProgram(d.context().program())
+
+            const earthRadiusUniformLocation = this.gl.getUniformLocation(d.context().program(), "u_earth_radius")
+            this.gl.uniform1f(earthRadiusUniformLocation, sp.earthRadius())
+
+            const geoCentreUniformLocation = this.gl.getUniformLocation(d.context().program(), "u_geo_centre")
+            this.gl.uniform3fv(geoCentreUniformLocation, geoCentre)
+
+            const geoToSysUniformLocation = this.gl.getUniformLocation(d.context().program(), "u_geo_to_system")
+            this.gl.uniformMatrix3fv(geoToSysUniformLocation, false, geoToSys)
+
+            const stereoToCanvasLocation = this.gl.getUniformLocation(d.context().program(), "u_stereo_to_canvas")
+            this.gl.uniformMatrix3fv(stereoToCanvasLocation, false, at.glMatrix());
+
+            const canvasToClipspaceLocation = this.gl.getUniformLocation(d.context().program(), "u_canvas_to_clipspace");
+            this.gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
 
             this.gl.bindVertexArray(d.context().vao());
-            this.gl.drawArrays(d.mode(), 0, d.count());
-        })
+            /* first triangles. */
+            if (d.countTriangles() > 0) {
+                this.gl.drawArrays(this.gl.TRIANGLES, 0, d.countTriangles());
+            }
+            /* then lines. */
+            if (d.countLines() > 0) {
+                this.gl.drawArrays(this.gl.LINES, d.countTriangles(), d.countLines());
+            }
+        }
     }
 
     private static newDrawing(gl: WebGL2RenderingContext, program: WebGLProgram,
@@ -273,60 +286,74 @@ export class Renderer {
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vs), gl.STATIC_DRAW, 0);
     }
 
-    private static fromStereoPolygon(ts: StereoPolygon, arr: Array<number>) {
-        ts.triangles
-            .forEach(t => arr.push(
-                t.v1().position().x(), t.v1().position().y(),
-                t.v2().position().x(), t.v2().position().y(),
-                t.v3().position().x(), t.v3().position().y()))
+    private static flatten(arr: Array<Array<number>>): Array<number> {
+        const len = arr.map(a => a.length).reduce((a, b) => a + b, 0)
+        let res = new Array<number>(len)
+        arr.forEach(a => Array.prototype.push.apply(res, a))
+        return res
     }
 
-    private static fromStereoPolyline(l: StereoPolyline, arr: Array<number>) {
-        /*
-         * since we draw with LINES we need to repeat each intermediate point.
-         * drawing with LINE_STRIP would not require this but would not allow
-         * to draw multiple polyline at once.
-         */
-        const last = l.points.length - 1
-        l.points.forEach((p, i) => {
-            arr.push(p.position().x(), p.position().y())
-            if (i !== 0 && i !== last) {
-                arr.push(p.position().x(), p.position().y())
-            }
-        })
-    }
+    private static readonly VERTEX_SHADER =
+        `#version 300 es
+// geocentric to stereographic conversion
+vec2 geocentric_to_stereographic(vec3 geo, float er, vec3 centre, mat3 rotation) {
+    // n-vector to system
+    vec3 translated = (geo - centre) * er;
+    vec3 system = translated * rotation;
+    // system to stereo
+    float k = (2.0 * er) / (2.0 * er + system.z);
+    return (system * k).xy;
+}
+// -------------------------- //
+//  stereographic projection  //
+// -------------------------- //
 
-    private static readonly VERTEX_SHADER = `
-      // 3x3 affine transform matrix (row major): stereo -> canvas pixels
-      uniform mat3 u_affine;
+// earth radius (metres)
+uniform float u_earth_radius;
 
-      // 3x3 projection matrix (row major): canvas pixels to clipspace
-      uniform mat3 u_projection;
+// centre of the stereographic projection
+uniform vec3 u_geo_centre;
 
-      // stereographic position
-      attribute vec2 a_stereo_pos;
+// geocentric to system tranformation matrix (row major)
+uniform mat3 u_geo_to_system;
 
-      void main() {
-          // convert stereographic position to canvas pixels
-          // u_affine is row major so v * m
-          vec3 c_pos = (vec3(a_stereo_pos, 1) * u_affine);
+// ----------------------- //
+//   stereo to clipspace   //
+// ----------------------- //
 
-          // canvas pixels to clipspace
-          // u_projection is row major so v * m
-          gl_Position = vec4((c_pos * u_projection).xy, 0, 1);
-      }
-    `
+// 3x3 affine transform matrix (row major): stereo -> canvas pixels
+uniform mat3 u_stereo_to_canvas;
 
-    private static readonly FRAGMENT_SHADER = `
-      // fragment shaders don't have a default precision so we need
-      // to pick one. mediump is a good default
-      precision mediump float;
+// 3x3 projection matrix (row major): canvas pixels to clipspace
+uniform mat3 u_canvas_to_clipspace;
 
-      void main() {
-        // gl_FragColor is a special variable a fragment shader
-        // is responsible for setting
-        gl_FragColor = vec4(1, 0, 0.5, 1); // return redish-purple
-      }
-    `
+// geocentric position
+in vec3 a_geo_pos;
+
+void main() {
+    // geocentric to stereographic
+    vec2 stereo_pos = geocentric_to_stereographic(a_geo_pos, u_earth_radius, u_geo_centre, u_geo_to_system);
+
+    // convert stereographic position to canvas pixels
+    // u_stereo_to_canvas is row major so v * m
+
+    vec3 c_pos = (vec3(stereo_pos, 1) * u_stereo_to_canvas);
+
+    // canvas pixels to clipspace
+    // u_projection is row major so v * m
+    gl_Position = vec4((c_pos * u_canvas_to_clipspace).xy, 0, 1);
+}
+`
+
+    private static readonly FRAGMENT_SHADER =
+`#version 300 es
+precision mediump float;
+
+out vec4 colour;
+
+void main() {
+  colour = vec4(1, 0, 0.5, 1); // return redish-purple
+}
+`
 
 }

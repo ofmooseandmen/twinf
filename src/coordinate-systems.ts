@@ -20,15 +20,15 @@ import { Math3d, Vector3d } from "./space3d"
  * Note: on a spherical model earth, a n-vector is equivalent to a normalised
  * version of an (ECEF) cartesian coordinate.
  *
+ * Transformations done on the GPU:
+ *
  * Stereographic Coordinate System: the stereographic projection, projects points on
  * a sphere onto a plane with respect to a projection centre.
- * Note: this transformation can be done in the GPU
  *
  * Canvas coordinate system: Allows transformation between positions in the stereographic
  * coordinate system and the canvas coordinate system.
  * Canvas coordinate system: origin is at top-left corner of the canvas, x axis is towards
  * the right and y-axis towards the bottom of the canvas.
- * Note: this transformation is always done in the GPU.
  *
  * WebGL clipspace is x, y between (-1, 1), x axis is towards
  * the right and y-axis towards the bottom of the canvas.
@@ -88,8 +88,12 @@ export class CoordinateSystems {
         const r3 = new Vector3d(cosPcLat * cosPcLon, cosPcLat * sinPcLon, sinPcLat)
         const dr = [r1, r2, r3]
         const ir = Math3d.transpose(dr)
+        const drGl = Float32Array.of(
+            dr[0].x(), dr[0].y(), dr[0].z(),
+            dr[1].x(), dr[1].y(), dr[1].z(),
+            dr[2].x(), dr[2].y(), dr[2].z())
 
-        return new StereographicProjection(geoCentre, earthRadius, dr, ir)
+        return new StereographicProjection(geoCentre, earthRadius, dr, drGl, ir)
     }
 
     static geocentricToStereographic(nv: Vector3d, sp: StereographicProjection): Vector2d {
@@ -120,7 +124,7 @@ export class CoordinateSystems {
      *** Stereographic <=> Canvas (pixels) ***
      *****************************************/
 
-    static computeCanvasAffineTransform(centre: LatLong, rotation: Angle, hrange: number,
+    static computeCanvasAffineTransform(centre: LatLong, hrange: number, rotation: Angle,
         canvas: CanvasDimension, sp: StereographicProjection): CanvasAffineTransform {
         const gc = CoordinateSystems.latLongToGeocentric(centre)
         const left = CoordinateSystems.geocentricToStereographic(
@@ -182,7 +186,7 @@ export class CoordinateSystems {
             m[1].x(), m[1].y(), m[1].z(),
             0, 0, 1
         )
-        return new CanvasAffineTransform(r0, r1, glMatrix)
+        return new CanvasAffineTransform(sc, r0, r1, glMatrix)
     }
 
     static stereographicToCanvas(p: Vector2d, at: CanvasAffineTransform): Vector2d {
@@ -199,6 +203,10 @@ export class CoordinateSystems {
         x = (x * at.r1().y() - y * at.r0().y()) / det
         y = (y * at.r0().x() - x * at.r1().x()) / det
         return new Vector2d(x, y)
+    }
+
+    static canvasOffsetToStereographic(o: Vector2d, at: CanvasAffineTransform): Vector2d {
+        return new Vector2d(o.x() / at.r0().x(), o.y() / at.r1().y())
     }
 
     /******************************************
@@ -247,33 +255,42 @@ export class CoordinateSystems {
  */
 export class StereographicProjection {
 
+    /* projection centre in geocentric coordinate system. */
     private readonly _centre: Vector3d
     private readonly _earthRadius: number
     /* n-vector to system rotation matrix (direct projection). */
     private readonly _dr: Array<Vector3d>
+    /* as above but in WebGl format (row major). */
+    private readonly _drGl: Float32Array
     /* system to n-vector rotation matrix (inverse projection). */
     private readonly _ir: Array<Vector3d>
 
-    constructor(centre: Vector3d, earthRadius: number, dr: Array<Vector3d>, ir: Array<Vector3d>) {
+    constructor(centre: Vector3d, earthRadius: number, dr: Array<Vector3d>,
+        drGl: Float32Array, ir: Array<Vector3d>) {
         this._centre = centre
         this._earthRadius = earthRadius
         this._dr = dr
+        this._drGl = drGl
         this._ir = ir
     }
 
-    centre() {
+    centre(): Vector3d {
         return this._centre
     }
 
-    earthRadius() {
+    earthRadius(): number {
         return this._earthRadius
     }
 
-    directRotation() {
+    directRotation(): Array<Vector3d> {
         return this._dr
     }
 
-    inverseRotation() {
+    directRotationGl(): Float32Array {
+        return this._drGl
+    }
+
+    inverseRotation(): Array<Vector3d> {
         return this._ir
     }
 
@@ -306,6 +323,9 @@ export class CanvasDimension {
  */
 export class CanvasAffineTransform {
 
+    /* centre in the stereographic coordinate system. */
+    private readonly _centre: Vector2d
+
     /* first row of the 3*3 affine transform matrix. */
     private readonly _r0: Vector3d
 
@@ -315,10 +335,16 @@ export class CanvasAffineTransform {
     /* affine transform matrix wrapped in a Float32Array for WebGL (row major). */
     private readonly _glMatrix: Float32Array
 
-    constructor(r0: Vector3d, r1: Vector3d, glMatrix: Float32Array) {
+    constructor(centre: Vector2d, r0: Vector3d, r1: Vector3d,
+        glMatrix: Float32Array) {
+        this._centre = centre
         this._r0 = r0
         this._r1 = r1
         this._glMatrix = glMatrix
+    }
+
+    centre(): Vector2d {
+        return this._centre
     }
 
     r0(): Vector3d {
