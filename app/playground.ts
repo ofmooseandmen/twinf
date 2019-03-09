@@ -1,7 +1,8 @@
 import { Angle } from "../src/angle"
 import { CoordinateSystems } from "../src/coordinate-systems"
+import { Colour } from "../src/colour"
 import { LatLong } from "../src/latlong"
-import * as S from "../src/shapes"
+import * as S from "../src/shape"
 import { Graphic, World } from "../src/world"
 import { Vector2d } from "../src/space2d"
 import { Math3d, Vector3d } from "../src/space3d"
@@ -26,7 +27,7 @@ export class Playground {
     constructor(gl: WebGL2RenderingContext) {
         const linkoping = LatLong.ofDegrees(58.4108, 15.6214)
         const range = 2_000_000
-        this.world = new World(gl, linkoping, range, Angle.ofDegrees(0), 60)
+        this.world = new World(gl, linkoping, range, Angle.ofDegrees(0), Colour.ALICEBLUE, 60)
         this.l = (_c, _r) => { }
     }
 
@@ -105,9 +106,9 @@ export class Playground {
         const c = this.world.centre()
         const lat = c.latitude().degrees()
         const lon = c.longitude().degrees()
-        const ll = lat.toFixed(4)
+        const ll = Math.abs(lat).toFixed(4)
             + (lat < 0 ? 'S' : 'N')
-            + ' ' + lon.toFixed(4)
+            + ' ' + Math.abs(lon).toFixed(4)
             + (lon < 0 ? 'W' : 'E')
         const r = (this.world.range() / 1000).toFixed(0) + " km"
         this.l(ll, r)

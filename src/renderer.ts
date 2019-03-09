@@ -1,5 +1,6 @@
 import { CanvasAffineTransform, CoordinateSystems, StereographicProjection } from "./coordinate-systems"
-import { DrawMode, GeoShape } from "./shapes"
+import { Colour } from "./colour"
+import { DrawMode, GeoMesh } from "./mesh"
 import { WebGL2 } from "./webgl2"
 
 /**
@@ -181,21 +182,21 @@ export class Renderer {
         this.gl.deleteVertexArray(ctx.vao())
     }
 
-    setGeometry(ctx: DrawingContext, shapes: Array<GeoShape>): Drawing {
+    setGeometry(ctx: DrawingContext, meshes: Array<GeoMesh>): Drawing {
         /* first the triangles then the lines. */
         const atvs = new Array<Array<number>>()
         const atos = new Array<Array<number>>()
         const alvs = new Array<Array<number>>()
         const alos = new Array<Array<number>>()
-        const len = shapes.length
+        const len = meshes.length
         for (let i = 0; i < len; i++) {
-            const s = shapes[i]
-            if (s.drawMode() === DrawMode.TRIANGLES) {
-                atvs.push(s.vertices())
-                atos.push(s.offsets())
-            } else if (s.drawMode() === DrawMode.LINES) {
-                alvs.push(s.vertices())
-                alos.push(s.offsets())
+            const m = meshes[i]
+            if (m.drawMode() === DrawMode.TRIANGLES) {
+                atvs.push(m.vertices())
+                atos.push(m.offsets())
+            } else if (m.drawMode() === DrawMode.LINES) {
+                alvs.push(m.vertices())
+                alos.push(m.offsets())
             }
         }
         const tvs = Renderer.flatten(atvs)
@@ -216,8 +217,9 @@ export class Renderer {
         return new Drawing(ctx, countTriangles, countLines)
     }
 
-    draw(drawings: IterableIterator<Drawing>, sp: StereographicProjection, at: CanvasAffineTransform) {
-        this.gl.clearColor(0.85, 0.85, 0.85, 1)
+    draw(drawings: IterableIterator<Drawing>, bgColour: Colour,
+        sp: StereographicProjection, at: CanvasAffineTransform) {
+        this.gl.clearColor(bgColour.red(), bgColour.blue(), bgColour.green(), bgColour.alpha())
         this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight)
         this.gl.clear(this.gl.COLOR_BUFFER_BIT)
 
@@ -342,6 +344,9 @@ in vec3 a_geo_pos;
 // offset in pixels
 in vec2 a_offset;
 
+// colour for fragment shader
+out vec4 v_colour;
+
 void main() {
     // geocentric to stereographic
     vec2 stereo_pos = geocentric_to_stereographic(a_geo_pos, u_earth_radius, u_geo_centre, u_geo_to_system);
@@ -353,12 +358,16 @@ void main() {
     // canvas pixels to clipspace
     // u_projection is row major so v * m
     gl_Position = vec4((c_pos * u_canvas_to_clipspace).xy, 0, 1);
+
+    v_colour = vec4(1, 0, 0.5, 1);
 }
 `
 
     private static readonly FRAGMENT_SHADER =
         `#version 300 es
 precision mediump float;
+
+in vec4 v_colour;
 
 out vec4 colour;
 

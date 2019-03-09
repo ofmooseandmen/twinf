@@ -1,4 +1,5 @@
 import { Angle } from "./angle"
+import { Colour } from "./colour"
 import { LatLong } from "./latlong"
 import {
     CoordinateSystems,
@@ -6,9 +7,10 @@ import {
     CanvasDimension,
     CanvasAffineTransform
 } from "./coordinate-systems"
+import { MeshGenerator } from "../src/mesh"
 import { Renderer, Drawing, Animator } from "./renderer"
 import { Vector2d } from "./space2d"
-import { Shape, ShapeConverter } from "./shapes"
+import { Shape } from "./shape"
 
 export class Graphic {
 
@@ -37,6 +39,7 @@ export class World {
     private _centre: LatLong
     private _range: number
     private _rotation: Angle
+    private bgColour: Colour
     private cd: CanvasDimension
 
     private sp: StereographicProjection
@@ -48,17 +51,22 @@ export class World {
     private readonly renderer: Renderer
     private readonly animator: Animator
 
-    constructor(gl: WebGL2RenderingContext, centre: LatLong, range: number, rotation: Angle, fps: number) {
+    // FIXME range is Length
+    // FIXME centre, range, rotation, bgColour, fps as one object
+    constructor(gl: WebGL2RenderingContext, centre: LatLong, range: number,
+        rotation: Angle, bgColour: Colour, fps: number) {
         this._centre = centre
         this._range = range
         this._rotation = rotation
+        this.bgColour = bgColour
         this.cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight)
         this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS)
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
         this.graphics = new Map<String, Graphic>()
         this.drawings = new Map<String, Drawing>()
         this.renderer = new Renderer(gl)
-        this.animator = new Animator(() => this.renderer.draw(this.drawings.values(), this.sp, this.at), fps)
+        this.animator = new Animator(() =>
+            this.renderer.draw(this.drawings.values(), this.bgColour, this.sp, this.at), fps)
     }
 
     startRendering() {
@@ -69,10 +77,14 @@ export class World {
         this.animator.stop()
     }
 
+    setBackground(colour: Colour) {
+        this.bgColour = colour
+    }
+
     putGraphic(graphic: Graphic) {
         const name = graphic.name()
         this.graphics.set(name, graphic)
-        const rs = graphic.shapes().map(s => ShapeConverter.toRenderableShape(s, World.EARTH_RADIUS))
+        const rs = graphic.shapes().map(s => MeshGenerator.mesh(s, World.EARTH_RADIUS))
         const drawing = this.drawings.get(name)
         const drawingCtx = drawing === undefined ? this.renderer.newDrawing() : drawing.context()
         this.drawings.set(graphic.name(), this.renderer.setGeometry(drawingCtx, rs))
@@ -99,6 +111,7 @@ export class World {
             this._range, this._rotation, this.cd, this.sp)
     }
 
+    // FIXME range is Length
     setRange(range: number) {
         if (range <= 0) {
             return
@@ -108,6 +121,7 @@ export class World {
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
     }
 
+    // FIXME range is Length
     range(): number {
         return this._range
     }
