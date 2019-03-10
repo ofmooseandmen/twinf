@@ -21,7 +21,7 @@
     "src/**/*.ts",
     "test/*.ts",
     "test/**/*.ts",
-    "app/*.ts",
+    "demo/*.ts",
   ],
   "exclude": [
     "node_modules"

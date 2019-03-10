@@ -7,7 +7,7 @@ import {
     CanvasDimension,
     CanvasAffineTransform
 } from "./coordinate-systems"
-import { MeshGenerator } from "../src/mesh"
+import { GeoMesh, MeshGenerator } from "../src/mesh"
 import { Renderer, Drawing, Animator } from "./renderer"
 import { Vector2d } from "./space2d"
 import { Shape } from "./shape"
@@ -34,7 +34,8 @@ export class Graphic {
 
 export class World {
 
-    static readonly EARTH_RADIUS = 6_371_000
+    // earth radius in metres: WGS-84 ellipsoid, mean radius of semi-axis (R1). */
+    static readonly EARTH_RADIUS = 6_371_008.7714
 
     private _centre: LatLong
     private _range: number
@@ -45,7 +46,6 @@ export class World {
     private sp: StereographicProjection
     private at: CanvasAffineTransform
 
-    private graphics: Map<String, Graphic>
     private drawings: Map<String, Drawing>
 
     private readonly renderer: Renderer
@@ -62,7 +62,6 @@ export class World {
         this.cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight)
         this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS)
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
-        this.graphics = new Map<String, Graphic>()
         this.drawings = new Map<String, Drawing>()
         this.renderer = new Renderer(gl)
         this.animator = new Animator(() =>
@@ -83,11 +82,14 @@ export class World {
 
     putGraphic(graphic: Graphic) {
         const name = graphic.name()
-        this.graphics.set(name, graphic)
-        const rs = graphic.shapes().map(s => MeshGenerator.mesh(s, World.EARTH_RADIUS))
+        const shapes = graphic.shapes()
+        let meshes = new Array<GeoMesh>()
+        for (let i = 0; i < shapes.length; i++) {
+            meshes = meshes.concat(MeshGenerator.mesh(shapes[i], World.EARTH_RADIUS));
+        }
         const drawing = this.drawings.get(name)
         const drawingCtx = drawing === undefined ? this.renderer.newDrawing() : drawing.context()
-        this.drawings.set(graphic.name(), this.renderer.setGeometry(drawingCtx, rs))
+        this.drawings.set(graphic.name(), this.renderer.setGeometry(drawingCtx, meshes))
     }
 
     pan(deltaX: number, deltaY: number) {
@@ -118,7 +120,8 @@ export class World {
         }
         this._range = range
         // recompute affine transform
-        this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
+        this.at = CoordinateSystems.computeCanvasAffineTransform(
+            this._centre, this._range, this._rotation, this.cd, this.sp)
     }
 
     // FIXME range is Length

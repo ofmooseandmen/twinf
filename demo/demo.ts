@@ -7,7 +7,7 @@ import { Graphic, World } from "../src/world"
 import { Vector2d } from "../src/space2d"
 import { Math3d, Vector3d } from "../src/space3d"
 
-export class Playground {
+export class Demo {
 
     private static readonly DELTA = new Map<string, [number, number]>([
         ["ArrowUp", [0, -10]],
@@ -62,26 +62,30 @@ export class Playground {
         const sundre = LatLong.ofDegrees(56.9364, 18.1834)
         const sanda = LatLong.ofDegrees(57.4295, 18.2223)
 
-        const p = new S.GeoPolygon([ystad, malmo, lund, helsingborg, kristianstad])
-        const c2 = new S.GeoCircle(goteborg, 10000)
-        const c3 = new S.GeoCircle(jonkoping, 5000)
-        const c4 = new S.GeoCircle(norrkoping, 5000)
-        const c5 = new S.GeoCircle(linkoping, 5000)
-        const l1 = new S.GeoPolyline([jonkoping, linkoping, norrkoping, stockholm, goteborg])
-        const l2 = new S.GeoPolyline([
-            visby, irevik, larbro, blase,
-            farosund, slite, gothem, ljugarn,
-            nar, vamlingbo, sundre, sanda, visby])
+        const p = new S.GeoPolygon([ystad, malmo, lund, helsingborg, kristianstad],
+            S.Painting.stroked(Colour.GREENYELLOW))
+        const paint = S.Painting.filled(Colour.CORAL)
+        const c2 = new S.GeoCircle(goteborg, 10000, paint)
+        const c3 = new S.GeoCircle(jonkoping, 5000, paint)
+        const c4 = new S.GeoCircle(norrkoping, 5000, paint)
+        const c5 = new S.GeoCircle(linkoping, 5000, paint)
+        const l1 = new S.GeoPolyline([jonkoping, linkoping, norrkoping, stockholm, goteborg], Colour.POWDERBLUE)
+        const l2 = new S.GeoPolyline(
+            [visby, irevik, larbro, blase,
+             farosund, slite, gothem, ljugarn,
+             nar, vamlingbo, sundre, sanda, visby],
+            Colour.POWDERBLUE)
 
         const rp = new S.GeoRelativePolygon(linkoping,
-            [new Vector2d(50, 50), new Vector2d(100, 50), new Vector2d(50, 100)])
+            [new Vector2d(50, 50), new Vector2d(100, 50), new Vector2d(50, 100)],
+            S.Painting.strokedAndFilled(Colour.LIMEGREEN, Colour.SKYBLUE))
 
         const rl = new S.GeoRelativePolyline(norrkoping,
-            [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(50, 150)])
+            [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(50, 150)], Colour.POWDERBLUE)
 
         this.world.putGraphic(new Graphic("sak", [p, c2, c3, c4, c5, l1, l2]))
         this.world.putGraphic(new Graphic("andra", [rp, rl]))
-        Playground.parseCoastlines(this.world)
+        Demo.parseCoastlines(this.world)
 
         this.simulateTrack(CoordinateSystems.latLongToGeocentric(stockholm),
             Angle.ofDegrees(135), 555.5556)
@@ -90,8 +94,8 @@ export class Playground {
     }
 
     handleKeyboardEvent(evt: KeyboardEvent) {
-        const delta = Playground.DELTA.get(evt.key)
-        const factor = Playground.FACTOR.get(evt.key)
+        const delta = Demo.DELTA.get(evt.key)
+        const factor = Demo.FACTOR.get(evt.key)
         if (delta !== undefined) {
             this.world.pan(delta[0], delta[1])
         } else if (factor !== undefined) {
@@ -118,16 +122,17 @@ export class Playground {
         var elapsedSecs = 0
         const h = () => {
             elapsedSecs = elapsedSecs + 1
-            const p = Playground.position(p0, b, ms, elapsedSecs)
+            const p = Demo.position(p0, b, ms, elapsedSecs)
             const ll = CoordinateSystems.geocentricToLatLong(p)
-            this.world.putGraphic(new Graphic("Track", [new S.GeoCircle(ll, 10000)]))
+            const c = [new S.GeoCircle(ll, 10000, S.Painting.stroked(Colour.FUCHSIA))]
+            this.world.putGraphic(new Graphic("Track", c))
             setTimeout(h, 1000)
         }
         setTimeout(h, 1000)
     }
 
     private static parseCoastlines(world: World) {
-        Playground.load("./coastline.json",
+        Demo.load("./coastline.json",
             (data: any) => {
                 let length = data.features.length
                 let shapes = new Array<S.Shape>()
@@ -143,7 +148,7 @@ export class Playground {
                             let point = LatLong.ofDegrees(coord[1], coord[0])
                             positions.push(point)
                         }
-                        shapes.push(new S.GeoPolyline(positions))
+                        shapes.push(new S.GeoPolyline(positions, Colour.LIGHTGREY))
                     }
                 }
                 world.putGraphic(new Graphic("coastlines", shapes))
@@ -172,7 +177,7 @@ export class Playground {
     }
 
     private static position(p0: Vector3d, b: Angle, ms: number, sec: number): Vector3d {
-        const c = Playground.course(p0, b)
+        const c = Demo.course(p0, b)
         const a = ms / World.EARTH_RADIUS * sec
         return Math3d.add(Math3d.scale(p0, Math.cos(a)), Math3d.scale(c, Math.sin(a)))
     }
@@ -181,9 +186,9 @@ export class Playground {
         const ll = CoordinateSystems.geocentricToLatLong(p)
         const lat = ll.latitude()
         const lon = ll.longitude()
-        const _rx = Playground.rx(b)
-        const _ry = Playground.ry(lat)
-        const _rz = Playground.rz(Angle.ofDegrees(-lon.degrees()))
+        const _rx = Demo.rx(b)
+        const _ry = Demo.ry(lat)
+        const _rz = Demo.rz(Angle.ofDegrees(-lon.degrees()))
         const r = Math3d.multmm(Math3d.multmm(_rz, _ry), _rx)
         return new Vector3d(r[0].z(), r[1].z(), r[2].z())
     }

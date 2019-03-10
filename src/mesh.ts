@@ -43,7 +43,7 @@ export class MeshGenerator {
 
     private constructor() { }
 
-    static mesh(s: S.Shape, earthRadius: number): GeoMesh {
+    static mesh(s: S.Shape, earthRadius: number): Array<GeoMesh> {
         switch (s.type) {
             case S.ShapeType.GeoCircle: return MeshGenerator.fromGeoCircle(s, earthRadius)
             case S.ShapeType.GeoPolygon: return MeshGenerator.fromGeoPolygon(s)
@@ -53,37 +53,65 @@ export class MeshGenerator {
         }
     }
 
-    private static fromGeoCircle(c: S.GeoCircle, earthRadius: number): GeoMesh {
-        const ts = Triangulator.SPHERICAL.triangulate(
-            Geodetics.discretiseCircle(c.centre, c.radius, earthRadius, 100))
-        const vs = MeshGenerator.geoTrianglesToArray(ts)
-        return new GeoMesh(vs, MeshGenerator.noOffsets(vs), DrawMode.TRIANGLES)
+    private static fromGeoCircle(c: S.GeoCircle, earthRadius: number): Array<GeoMesh> {
+        const gs = Geodetics.discretiseCircle(c.centre(), c.radius(), earthRadius, 100)
+        const paint = c.painting()
+        let res = new Array<GeoMesh>()
+        if (paint.stroke() !== undefined) {
+            const vs = MeshGenerator.geoPointsToArray(gs, true)
+            res.push(new GeoMesh(vs, MeshGenerator.noOffsets(vs), DrawMode.LINES))
+        }
+        if (paint.fill() !== undefined) {
+            const ts = Triangulator.SPHERICAL.triangulate(gs)
+            const vs = MeshGenerator.geoTrianglesToArray(ts)
+            res.push(new GeoMesh(vs, MeshGenerator.noOffsets(vs), DrawMode.TRIANGLES))
+        }
+        return res
     }
 
-    private static fromGeoPolyline(l: S.GeoPolyline): GeoMesh {
-        const gs = l.points.map(CoordinateSystems.latLongToGeocentric)
-        const vs = MeshGenerator.geoPointsToArray(gs)
-        return new GeoMesh(vs, MeshGenerator.noOffsets(vs), DrawMode.LINES)
+    private static fromGeoPolyline(l: S.GeoPolyline): Array<GeoMesh> {
+        const gs = l.points().map(CoordinateSystems.latLongToGeocentric)
+        const vs = MeshGenerator.geoPointsToArray(gs, false)
+        return [new GeoMesh(vs, MeshGenerator.noOffsets(vs), DrawMode.LINES)]
     }
 
-    private static fromGeoPolygon(p: S.GeoPolygon): GeoMesh {
-        const ts = Triangulator.SPHERICAL.triangulate(
-            p.vertices.map(CoordinateSystems.latLongToGeocentric))
-        const vs = MeshGenerator.geoTrianglesToArray(ts)
-        return new GeoMesh(vs, MeshGenerator.noOffsets(vs), DrawMode.TRIANGLES)
+    private static fromGeoPolygon(p: S.GeoPolygon): Array<GeoMesh> {
+        const gs = p.vertices().map(CoordinateSystems.latLongToGeocentric)
+        const paint = p.painting()
+        let res = new Array<GeoMesh>()
+        if (paint.stroke() !== undefined) {
+            const vs = MeshGenerator.geoPointsToArray(gs, true)
+            res.push(new GeoMesh(vs, MeshGenerator.noOffsets(vs), DrawMode.LINES))
+        }
+        if (paint.fill() !== undefined) {
+            const ts = Triangulator.SPHERICAL.triangulate(gs)
+            const vs = MeshGenerator.geoTrianglesToArray(ts)
+            res.push(new GeoMesh(vs, MeshGenerator.noOffsets(vs), DrawMode.TRIANGLES))
+        }
+        return res
     }
 
-    private static fromGeoRelativePoygon(p: S.GeoRelativePolygon): GeoMesh {
-        const ts = Triangulator.PLANAR.triangulate(p.vertices)
-        const os = MeshGenerator.offsetTrianglesToArray(ts)
-        const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(p.ref), os)
-        return new GeoMesh(vs, os, DrawMode.TRIANGLES)
+    private static fromGeoRelativePoygon(p: S.GeoRelativePolygon): Array<GeoMesh> {
+        const paint = p.painting()
+        let res = new Array<GeoMesh>()
+        if (paint.stroke() !== undefined) {
+            const os = MeshGenerator.offsetPointsToArray(p.vertices(), true)
+            const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(p.ref()), os)
+            res.push(new GeoMesh(vs, os, DrawMode.LINES))
+        }
+        if (paint.fill() !== undefined) {
+            const ts = Triangulator.PLANAR.triangulate(p.vertices())
+            const os = MeshGenerator.offsetTrianglesToArray(ts)
+            const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(p.ref()), os)
+            res.push(new GeoMesh(vs, os, DrawMode.TRIANGLES))
+        }
+        return res
     }
 
-    private static fromGeoRelativePoyline(l: S.GeoRelativePolyline): GeoMesh {
-        const os = MeshGenerator.offsetPointsToArray(l.points)
-        const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(l.ref), os)
-        return new GeoMesh(vs, os, DrawMode.LINES)
+    private static fromGeoRelativePoyline(l: S.GeoRelativePolyline): Array<GeoMesh> {
+        const os = MeshGenerator.offsetPointsToArray(l.points(), false)
+        const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(l.ref()), os)
+        return [new GeoMesh(vs, os, DrawMode.LINES)]
     }
 
     private static geoTrianglesToArray(ts: Array<Triangle<Vector3d>>): Array<number> {
@@ -110,7 +138,7 @@ export class MeshGenerator {
         return res
     }
 
-    private static geoPointsToArray(ps: Array<Vector3d>): Array<number> {
+    private static geoPointsToArray(ps: Array<Vector3d>, close: boolean): Array<number> {
         /*
          * since we draw with LINES we need to repeat each intermediate point.
          * drawing with LINE_STRIP would not require this but would not allow
@@ -126,10 +154,14 @@ export class MeshGenerator {
                 res.push(p.x(), p.y(), p.z())
             }
         }
+        if (close) {
+            res.push(ps[last].x(), ps[last].y(), ps[last].z())
+            res.push(ps[0].x(), ps[0].y(), ps[0].z())
+        }
         return res
     }
 
-    private static offsetPointsToArray(ps: Array<Vector2d>): Array<number> {
+    private static offsetPointsToArray(ps: Array<Vector2d>, close: boolean): Array<number> {
         /*
          * since we draw with LINES we need to repeat each intermediate point.
          * drawing with LINE_STRIP would not require this but would not allow
@@ -144,6 +176,10 @@ export class MeshGenerator {
             if (i !== 0 && i !== last) {
                 res.push(p.x(), p.y())
             }
+        }
+        if (close) {
+            res.push(ps[last].x(), ps[last].y())
+            res.push(ps[0].x(), ps[0].y())
         }
         return res
     }
