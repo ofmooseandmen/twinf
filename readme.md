@@ -29,7 +29,7 @@ the WebGL2 context.
 The following transformation are applied to shapes:
 
 - In the CPU: conversion from latitude/longitude coordinate system to geocentric coordinate system assuming a spherical earth model
-- In the CPU: triangulation of spherical and plan polygons
+- In the CPU: triangulation of spherical and planar polygons
 - In the GPU: conversion from geocentric coordinate system to stereographic coordinate system
 - In the GPU: conversion from stereographic coordinate system to canvas coordinate system
 - In the GPU: conversion from canvas to WebGL clipspace
