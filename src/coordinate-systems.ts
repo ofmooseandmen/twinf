@@ -1,5 +1,6 @@
 import { Angle } from "./angle"
 import { LatLong } from "./latlong"
+import { Length } from "./length"
 import { Geodetics } from "./geodetics"
 import { Vector2d } from "./space2d"
 import { Math3d, Vector3d } from "./space3d"
@@ -24,6 +25,7 @@ import { Math3d, Vector3d } from "./space3d"
  *
  * Stereographic Coordinate System: the stereographic projection, projects points on
  * a sphere onto a plane with respect to a projection centre.
+ * Note: x and y ordinates of a stereographic position are in metres.
  *
  * Canvas coordinate system: Allows transformation between positions in the stereographic
  * coordinate system and the canvas coordinate system.
@@ -74,10 +76,8 @@ export class CoordinateSystems {
 
     /**
      * Computes the attribues of a stereographic projection.
-     *
-     *  Note: positions returned by ```geocentricToStereographic``` will be in the same unit as ```earthRadius```.
      */
-    static computeStereographicProjection(centre: LatLong, earthRadius: number): StereographicProjection {
+    static computeStereographicProjection(centre: LatLong, earthRadius: Length): StereographicProjection {
         const geoCentre = CoordinateSystems.latLongToGeocentric(centre)
 
         const sinPcLat = Angle.sin(centre.latitude())
@@ -95,7 +95,7 @@ export class CoordinateSystems {
             dr[1].x(), dr[1].y(), dr[1].z(),
             dr[2].x(), dr[2].y(), dr[2].z())
 
-        return new StereographicProjection(geoCentre, earthRadius, dr, drGl, ir)
+        return new StereographicProjection(geoCentre, earthRadius.metres(), dr, drGl, ir)
     }
 
     static geocentricToStereographic(nv: Vector3d, sp: StereographicProjection): Vector2d {
@@ -126,15 +126,14 @@ export class CoordinateSystems {
      *** Stereographic <=> Canvas (pixels) ***
      *****************************************/
 
-    /**
-     *
-     * Note: range must be in the same unit as earthRadius of ```sp```.
-     */
-    static computeCanvasAffineTransform(centre: LatLong, hrange: number, rotation: Angle,
+    static computeCanvasAffineTransform(centre: LatLong, hrange: Length, rotation: Angle,
         canvas: CanvasDimension, sp: StereographicProjection): CanvasAffineTransform {
         const gc = CoordinateSystems.latLongToGeocentric(centre)
+        const east = Angle.ofDegrees(90.0)
+        const halfRange = hrange.scale(0.5)
+        const er = Length.ofMetres(sp.earthRadius())
         const left = CoordinateSystems.geocentricToStereographic(
-            Geodetics.destination(gc, Angle.ofDegrees(90.0), hrange / 2.0, sp.earthRadius()), sp)
+            Geodetics.destination(gc, east, halfRange, er), sp)
         const ratio = canvas.height() / canvas.width()
         const sc = CoordinateSystems.geocentricToStereographic(gc, sp)
         const width = 2 * Math.abs(left.x() - sc.x())
@@ -263,6 +262,7 @@ export class StereographicProjection {
 
     /* projection centre in geocentric coordinate system. */
     private readonly _centre: Vector3d
+    /** earth radius in metres. */
     private readonly _earthRadius: number
     /* n-vector to system rotation matrix (direct projection). */
     private readonly _dr: Array<Vector3d>

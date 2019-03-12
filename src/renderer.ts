@@ -275,11 +275,13 @@ export class Renderer {
         const canvasToClipspace = CoordinateSystems.canvasToClipspace(this.gl.canvas.clientWidth, this.gl.canvas.clientHeight)
 
         const drawings = scene.drawings()
+        /* stereographic projection expect earth radius in metres. */
+        const earthRadiusMetres = sp.earthRadius()
         for (const d of drawings) {
             this.gl.useProgram(d.context().program())
 
             const earthRadiusUniformLocation = this.gl.getUniformLocation(d.context().program(), "u_earth_radius")
-            this.gl.uniform1f(earthRadiusUniformLocation, sp.earthRadius())
+            this.gl.uniform1f(earthRadiusUniformLocation, earthRadiusMetres)
 
             const geoCentreUniformLocation = this.gl.getUniformLocation(d.context().program(), "u_geo_centre")
             this.gl.uniform3fv(geoCentreUniformLocation, geoCentre)

@@ -22,4 +22,16 @@ export class Length {
         return this._metres
     }
 
+    kilometres(): number {
+        return this._metres / 1000.0
+    }
+
+    nauticalMiles(): number {
+        return this._metres / 1852.0
+    }
+
+    scale(n: number): Length {
+        return new Length(this._metres * n)
+    }
+
 }

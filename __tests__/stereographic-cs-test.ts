@@ -1,4 +1,5 @@
 import { LatLong } from "../src/latlong"
+import { Length } from "../src/length"
 import { Vector2d } from "../src/space2d"
 import { CoordinateSystems } from "../src/coordinate-systems"
 
@@ -7,7 +8,7 @@ import { assertV2Equals, assertV3Equals } from "./util"
 describe("stereographic coordinate system", () => {
 
     const c = LatLong.ofDegrees(-45.8788, 170.5028)
-    const r = 1000
+    const r = Length.ofMetres(1000)
     const sp = CoordinateSystems.computeStereographicProjection(c, r)
 
     test("geocentric to stereographic at projection centre", () => {
@@ -23,7 +24,7 @@ describe("stereographic coordinate system", () => {
 
     test("geocentric to stereographic", () => {
         const c2 = LatLong.ofDegrees(-27.0, 138.0)
-        const r2 = 6371008.8 // IUGG mean earth radius
+        const r2 = Length.ofMetres(6371008.8)
         const sp2 = CoordinateSystems.computeStereographicProjection(c2, r2)
         const p = LatLong.ofDegrees(-37.8136, 144.9631)
         const actual = CoordinateSystems.geocentricToStereographic(

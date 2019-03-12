@@ -1,6 +1,7 @@
 import { CoordinateSystems } from "./coordinate-systems"
 import { Colour } from "./colour"
 import { Geodetics } from "./geodetics"
+import { Length } from "./length"
 import * as S from "./shape"
 import { Triangle, Triangulator } from "./triangles"
 import { Vector2d } from "./space2d"
@@ -51,10 +52,7 @@ export class MeshGenerator {
 
     private constructor() { }
 
-    /**
-     * @param earthRadius radius of earth (assuming spherical model) in metres
-     */
-    static mesh(s: S.Shape, earthRadius: number): Array<GeoMesh> {
+    static mesh(s: S.Shape, earthRadius: Length): Array<GeoMesh> {
         switch (s.type) {
             case S.ShapeType.GeoCircle: return MeshGenerator.fromGeoCircle(s, earthRadius)
             case S.ShapeType.GeoPolygon: return MeshGenerator.fromGeoPolygon(s)
@@ -64,8 +62,8 @@ export class MeshGenerator {
         }
     }
 
-    private static fromGeoCircle(c: S.GeoCircle, earthRadius: number): Array<GeoMesh> {
-        const gs = Geodetics.discretiseCircle(c.centre(), c.radius().metres(), earthRadius, 100)
+    private static fromGeoCircle(c: S.GeoCircle, earthRadius: Length): Array<GeoMesh> {
+        const gs = Geodetics.discretiseCircle(c.centre(), c.radius(), earthRadius, 100)
         const paint = c.painting()
         const stroke = paint.stroke()
         const fill = paint.fill()

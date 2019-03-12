@@ -84,8 +84,8 @@ export class Demo {
         const rl = new S.GeoRelativePolyline(norrkoping,
             [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(50, 150)], Colour.NAVY)
 
-        this.world.putGraphic(new Graphic("sak", [p, c2, c3, c4, c5, l1, l2]))
-        this.world.putGraphic(new Graphic("andra", [rp, rl]))
+        this.world.insert(new Graphic("sak", [p, c2, c3, c4, c5, l1, l2]))
+        this.world.insert(new Graphic("andra", [rp, rl]))
         Demo.parseCoastlines(this.world)
 
         this.simulateTrack(CoordinateSystems.latLongToGeocentric(stockholm),
@@ -100,7 +100,7 @@ export class Demo {
         if (delta !== undefined) {
             this.world.pan(delta[0], delta[1])
         } else if (factor !== undefined) {
-            this.world.setRange(this.world.range() * factor)
+            this.world.setRange(this.world.range().scale(factor))
         } else {
             return
         }
@@ -115,7 +115,7 @@ export class Demo {
             + (lat < 0 ? 'S' : 'N')
             + ' ' + Math.abs(lon).toFixed(4)
             + (lon < 0 ? 'W' : 'E')
-        const r = (this.world.range() / 1000).toFixed(0) + " km"
+        const r = (this.world.range().kilometres()).toFixed(0) + " km"
         this.l(ll, r)
     }
 
@@ -126,7 +126,7 @@ export class Demo {
             const p = Demo.position(p0, b, ms, elapsedSecs)
             const ll = CoordinateSystems.geocentricToLatLong(p)
             const c = [new S.GeoCircle(ll, Length.ofKilometres(5), S.Painting.strokedAndFilled(Colour.DEEPPINK, Colour.LIGHTPINK))]
-            this.world.putGraphic(new Graphic("Track", c))
+            this.world.insert(new Graphic("Track", c))
             setTimeout(h, 1000)
         }
         setTimeout(h, 1000)
@@ -152,7 +152,7 @@ export class Demo {
                         shapes.push(new S.GeoPolyline(positions, Colour.DIMGRAY))
                     }
                 }
-                world.putGraphic(new Graphic("coastlines", shapes))
+                world.insert(new Graphic("coastlines", shapes))
             },
             (_: any) => {
                 /* damn. */
@@ -179,7 +179,7 @@ export class Demo {
 
     private static position(p0: Vector3d, b: Angle, ms: number, sec: number): Vector3d {
         const c = Demo.course(p0, b)
-        const a = ms / World.EARTH_RADIUS * sec
+        const a = ms / World.EARTH_RADIUS.metres() * sec
         return Math3d.add(Math3d.scale(p0, Math.cos(a)), Math3d.scale(c, Math.sin(a)))
     }
 

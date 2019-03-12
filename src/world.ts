@@ -72,10 +72,10 @@ export class WorldDefinition {
 export class World {
 
     // earth radius in metres: WGS-84 ellipsoid, mean radius of semi-axis (R1). */
-    static readonly EARTH_RADIUS = 6_371_008.7714
+    static readonly EARTH_RADIUS = Length.ofMetres(6_371_008.7714)
 
     private _centre: LatLong
-    private _range: number
+    private _range: Length
     private _rotation: Angle
     private bgColour: Colour
     private cd: CanvasDimension
@@ -90,7 +90,7 @@ export class World {
 
     constructor(gl: WebGL2RenderingContext, def: WorldDefinition, fps: number) {
         this._centre = def.centre()
-        this._range = def.range().metres()
+        this._range = def.range()
         this._rotation = def.rotation()
         this.bgColour = def.bgColour()
         this.cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight)
@@ -116,7 +116,7 @@ export class World {
         this.bgColour = colour
     }
 
-    putGraphic(graphic: Graphic) {
+    insert(graphic: Graphic) {
         const name = graphic.name()
         const shapes = graphic.shapes()
         let meshes = new Array<GeoMesh>()
@@ -149,9 +149,8 @@ export class World {
             this._range, this._rotation, this.cd, this.sp)
     }
 
-    // FIXME range is Length
-    setRange(range: number) {
-        if (range <= 0) {
+    setRange(range: Length) {
+        if (range.metres() <= 0) {
             return
         }
         this._range = range
@@ -160,8 +159,7 @@ export class World {
             this._centre, this._range, this._rotation, this.cd, this.sp)
     }
 
-    // FIXME range is Length
-    range(): number {
+    range(): Length {
         return this._range
     }
 

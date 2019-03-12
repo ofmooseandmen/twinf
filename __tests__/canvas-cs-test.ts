@@ -1,5 +1,6 @@
 import { Angle } from "../src/angle"
 import { LatLong } from "../src/latlong"
+import { Length } from "../src/length"
 import { CoordinateSystems, CanvasDimension } from "../src/coordinate-systems"
 import { Vector2d } from "../src/space2d"
 
@@ -8,11 +9,11 @@ import * as U from "./util"
 describe("canvas coordinate system", () => {
 
     const pCentre = LatLong.ofDegrees(-27, 138)
-    const earthRadius = 6371000
+    const earthRadius = Length.ofMetres(6371000)
     const sp = CoordinateSystems.computeStereographicProjection(pCentre, earthRadius)
 
     const cCentre = LatLong.ofDegrees(-37.8136, 144.9631)
-    const range = 1852000
+    const range = Length.ofMetres(1852000)
     const rotation = Angle.ofDegrees(0)
     const cd = new CanvasDimension(1920, 1080)
     const af = CoordinateSystems.computeCanvasAffineTransform(cCentre, range, rotation, cd, sp)

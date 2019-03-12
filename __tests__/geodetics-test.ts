@@ -2,10 +2,13 @@ import { Angle } from "../src/angle"
 import { CoordinateSystems } from "../src/coordinate-systems"
 import { Geodetics } from "../src/geodetics"
 import { LatLong } from "../src/latlong"
+import { Length } from "../src/length"
 
 import * as U from "./util"
 
 describe("Geodetics", () => {
+
+    const earthRadius = Length.ofMetres(6371000)
 
     describe("insideSurface", () => {
 
@@ -65,14 +68,13 @@ describe("Geodetics", () => {
 
     test("discretiseCircle returns the list of n-vectors representing the circle",
         () => {
-            const er = 6371000
-            const r = 2000
+            const r = Length.ofMetres(2000)
             const centre = LatLong.ofDegrees(55.6050, 13.0038)
             const vc = CoordinateSystems.latLongToGeocentric(centre)
-            const distances = Geodetics.discretiseCircle(centre, r, er, 10)
-                .map(v => Geodetics.surfaceDistance(vc, v, er))
+            const distances = Geodetics.discretiseCircle(centre, r, earthRadius, 10)
+                .map(v => Geodetics.surfaceDistance(vc, v, earthRadius))
             /* assert distance up to 0.001 metres. */
-            distances.forEach(d => expect(d).toBeCloseTo(r, 3))
+            distances.forEach(d => expect(d.metres()).toBeCloseTo(r.metres(), 3))
         })
 
     describe("destination", () => {
@@ -80,12 +82,12 @@ describe("Geodetics", () => {
         test("destination with distance = 0 returns p", () => {
             const p = CoordinateSystems.latLongToGeocentric(
                 LatLong.ofDegrees(55.6050, 13.0038))
-            expect(Geodetics.destination(p, Angle.ofDegrees(96.0217), 0, 6371000)).toBe(p)
+            expect(Geodetics.destination(p, Angle.ofDegrees(96.0217), Length.ofMetres(0), earthRadius)).toBe(p)
         })
 
         test("destination return the position along great-circle at distance and bearing", () => {
             const p = CoordinateSystems.latLongToGeocentric(LatLong.ofDegrees(53.32055556, -1.72972222))
-            const d = Geodetics.destination(p, Angle.ofDegrees(96.0217), 124800, 6371000)
+            const d = Geodetics.destination(p, Angle.ofDegrees(96.0217), Length.ofMetres(124800), earthRadius)
             const e = LatLong.ofDegrees(53.18826890646428, 0.133276808381204)
             U.assertLLEquals(e, CoordinateSystems.geocentricToLatLong(d))
         })

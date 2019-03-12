@@ -1,5 +1,6 @@
 import { Angle } from "./angle"
 import { LatLong } from "./latlong"
+import { Length } from "./length"
 import { Vector3d, Math3d } from "./space3d"
 
 /**
@@ -23,10 +24,10 @@ export class Geodetics {
      * Computes the destination position from given positio having
      * travelled the given distance on the given initial bearing (compass angle) (bearing will normally vary
      * before destination is reached) and using the given earth radius.
-     *
-     * Note: distance ```d``` and earth radius ```r``` must be in the same unit.
      */
-    static destination(p: Vector3d, b: Angle, d: number, r: number) {
+    static destination(p: Vector3d, b: Angle, distance: Length, earthRadius: Length) {
+        const d = distance.metres()
+        const r = earthRadius.metres()
         if (d === 0.0) {
             return p
         }
@@ -87,13 +88,12 @@ export class Geodetics {
     /**
      * Computes the positions (n-vectors) that represent the circle defined
      * by the given centre and radius according to the given earth radius.
-     *
-     * Note: ```radius``` and ```earthRadius``` must be of the same unit.
      */
-    static discretiseCircle(centre: LatLong, radius: number,
-        earthRadius: number, nbPositions: number): Array<Vector3d> {
-
-        const z = Math.sqrt(earthRadius * earthRadius - radius * radius)
+    static discretiseCircle(centre: LatLong, radius: Length,
+        earthRadius: Length, nbPositions: number): Array<Vector3d> {
+        const rm = radius.metres()
+        const erm = earthRadius.metres()
+        const z = Math.sqrt(erm * erm - rm * rm)
 
         const rya = (Math.PI / 2.0) - centre.latitude().radians()
         const cy = Math.cos(rya)
@@ -116,7 +116,7 @@ export class Geodetics {
         return Array.from(new Array(nbPositions), (_, i) => i)
             .map(i => 2 * i * Math.PI / nbPositions)
             /* circle at north pole */
-            .map(a => new Vector3d(radius * Math.cos(a), radius * Math.sin(a), z))
+            .map(a => new Vector3d(rm * Math.cos(a), rm * Math.sin(a), z))
             /* rotate each point to circle centre */
             .map(v => Math3d.multmv(rz, Math3d.multmv(ry, v)))
             /* unit. */
@@ -125,11 +125,10 @@ export class Geodetics {
 
     /**
      * Computes the surface distance (length of geodesic) between the given positions.
-     *
-     * Note: returned distance is in the unit as ```earthRadius```.
      */
-    static surfaceDistance(p1: Vector3d, p2: Vector3d, earthRadius: number): number {
-        return Geodetics.signedAngleBetween(p1, p2, undefined) * earthRadius
+    static surfaceDistance(p1: Vector3d, p2: Vector3d, earthRadius: Length): Length {
+        const m = Geodetics.signedAngleBetween(p1, p2, undefined) * earthRadius.metres()
+        return Length.ofMetres(m)
     }
 
     /**
