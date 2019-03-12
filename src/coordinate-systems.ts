@@ -74,6 +74,8 @@ export class CoordinateSystems {
 
     /**
      * Computes the attribues of a stereographic projection.
+     *
+     *  Note: positions returned by ```geocentricToStereographic``` will be in the same unit as ```earthRadius```.
      */
     static computeStereographicProjection(centre: LatLong, earthRadius: number): StereographicProjection {
         const geoCentre = CoordinateSystems.latLongToGeocentric(centre)
@@ -124,6 +126,10 @@ export class CoordinateSystems {
      *** Stereographic <=> Canvas (pixels) ***
      *****************************************/
 
+    /**
+     *
+     * Note: range must be in the same unit as earthRadius of ```sp```.
+     */
     static computeCanvasAffineTransform(centre: LatLong, hrange: number, rotation: Angle,
         canvas: CanvasDimension, sp: StereographicProjection): CanvasAffineTransform {
         const gc = CoordinateSystems.latLongToGeocentric(centre)

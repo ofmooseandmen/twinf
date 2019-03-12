@@ -1,5 +1,6 @@
 import { Colour } from "./colour"
 import { LatLong } from "./latlong"
+import { Length } from "./length"
 import { Vector2d } from "./space2d"
 
 export class Painting {
@@ -49,10 +50,10 @@ export class GeoCircle {
 
     readonly type: ShapeType.GeoCircle = ShapeType.GeoCircle;
     private readonly _centre: LatLong
-    private readonly _radius: number // FIXME Length
+    private readonly _radius: Length
     private readonly _painting: Painting
 
-    constructor(centre: LatLong, radius: number, painting: Painting) {
+    constructor(centre: LatLong, radius: Length, painting: Painting) {
         this._centre = centre
         this._radius = radius
         this._painting = painting
@@ -62,7 +63,7 @@ export class GeoCircle {
         return this._centre
     }
 
-    radius(): number {
+    radius(): Length {
         return this._radius
     }
 

@@ -23,6 +23,8 @@ export class Geodetics {
      * Computes the destination position from given positio having
      * travelled the given distance on the given initial bearing (compass angle) (bearing will normally vary
      * before destination is reached) and using the given earth radius.
+     *
+     * Note: distance ```d``` and earth radius ```r``` must be in the same unit.
      */
     static destination(p: Vector3d, b: Angle, d: number, r: number) {
         if (d === 0.0) {
@@ -85,6 +87,8 @@ export class Geodetics {
     /**
      * Computes the positions (n-vectors) that represent the circle defined
      * by the given centre and radius according to the given earth radius.
+     *
+     * Note: ```radius``` and ```earthRadius``` must be of the same unit.
      */
     static discretiseCircle(centre: LatLong, radius: number,
         earthRadius: number, nbPositions: number): Array<Vector3d> {
@@ -121,6 +125,8 @@ export class Geodetics {
 
     /**
      * Computes the surface distance (length of geodesic) between the given positions.
+     *
+     * Note: returned distance is in the unit as ```earthRadius```.
      */
     static surfaceDistance(p1: Vector3d, p2: Vector3d, earthRadius: number): number {
         return Geodetics.signedAngleBetween(p1, p2, undefined) * earthRadius

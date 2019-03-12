@@ -154,6 +154,42 @@ export class Animator {
 }
 
 /**
+ * A scene contains all the drawings and required attributed to render them.
+ */
+export class Scene {
+
+    private readonly _drawings: IterableIterator<Drawing>
+    private readonly _bgColour: Colour
+    private readonly _sp: StereographicProjection
+    private readonly _at: CanvasAffineTransform
+
+    constructor(drawings: IterableIterator<Drawing>, bgColour: Colour,
+        sp: StereographicProjection, at: CanvasAffineTransform) {
+        this._drawings = drawings
+        this._bgColour = bgColour
+        this._sp = sp
+        this._at = at
+    }
+
+    drawings(): IterableIterator<Drawing> {
+        return this._drawings
+    }
+
+    bgColour(): Colour {
+        return this._bgColour
+    }
+
+    sp(): StereographicProjection {
+        return this._sp
+    }
+
+    at(): CanvasAffineTransform {
+        return this._at
+    }
+
+}
+
+/**
  * Shape rendering on WebGL.
  */
 export class Renderer {
@@ -161,19 +197,21 @@ export class Renderer {
     private readonly gl: WebGL2RenderingContext
     private readonly aGeoPos: Attribute
     private readonly aOffset: Attribute
+    private readonly aRgba: Attribute
     private readonly program: WebGLProgram
 
     constructor(gl: WebGL2RenderingContext) {
         this.gl = gl
         this.aGeoPos = new Attribute("a_geo_pos", 3, this.gl.FLOAT, false)
         this.aOffset = new Attribute("a_offset", 2, this.gl.FLOAT, false)
+        this.aRgba = new Attribute("a_rgba", 1, this.gl.UNSIGNED_INT, false)
         const vertexShader = WebGL2.createShader(this.gl, this.gl.VERTEX_SHADER, Renderer.VERTEX_SHADER)
         const fragmentShader = WebGL2.createShader(this.gl, this.gl.FRAGMENT_SHADER, Renderer.FRAGMENT_SHADER)
         this.program = WebGL2.createProgram(this.gl, vertexShader, fragmentShader)
     }
 
     newDrawing(): DrawingContext {
-        return Renderer.newDrawing(this.gl, this.program, [this.aGeoPos, this.aOffset])
+        return Renderer.newDrawing(this.gl, this.program, [this.aGeoPos, this.aOffset, this.aRgba])
     }
 
     deleteDrawing(ctx: DrawingContext) {
@@ -186,47 +224,57 @@ export class Renderer {
         /* first the triangles then the lines. */
         const atvs = new Array<Array<number>>()
         const atos = new Array<Array<number>>()
+        const atcs = new Array<Array<number>>()
         const alvs = new Array<Array<number>>()
         const alos = new Array<Array<number>>()
+        const alcs = new Array<Array<number>>()
         const len = meshes.length
         for (let i = 0; i < len; i++) {
             const m = meshes[i]
             if (m.drawMode() === DrawMode.TRIANGLES) {
                 atvs.push(m.vertices())
                 atos.push(m.offsets())
+                atcs.push(m.colours())
             } else if (m.drawMode() === DrawMode.LINES) {
                 alvs.push(m.vertices())
                 alos.push(m.offsets())
+                alcs.push(m.colours())
             }
         }
         const tvs = Renderer.flatten(atvs)
         const tos = Renderer.flatten(atos)
+        const tcs = Renderer.flatten(atcs)
         const countTriangles = tvs.length / 3
         const lvs = Renderer.flatten(alvs)
         const los = Renderer.flatten(alos)
+        const lcs = Renderer.flatten(alcs)
         const countLines = lvs.length / 3
         this.gl.useProgram(ctx.program())
 
         const gb = ctx.buffers().get(this.aGeoPos.name())
         const ob = ctx.buffers().get(this.aOffset.name())
-        if (gb === undefined || ob === undefined) {
-            throw new Error("Missing buffer for either geocentric position or offset")
+        const cb = ctx.buffers().get(this.aRgba.name())
+        if (gb === undefined || ob === undefined || cb == undefined) {
+            throw new Error("Missing buffer for either geocentric position, offset or rgba")
         }
-        Renderer.setBufferData(gb, tvs.concat(lvs), this.gl)
-        Renderer.setBufferData(ob, tos.concat(los), this.gl)
+        Renderer.setBufferData(gb, new Float32Array(tvs.concat(lvs)), this.gl)
+        Renderer.setBufferData(ob, new Float32Array(tos.concat(los)), this.gl)
+        Renderer.setBufferData(cb, new Uint32Array(tcs.concat(lcs)), this.gl)
         return new Drawing(ctx, countTriangles, countLines)
     }
 
-    draw(drawings: IterableIterator<Drawing>, bgColour: Colour,
-        sp: StereographicProjection, at: CanvasAffineTransform) {
-        this.gl.clearColor(bgColour.red(), bgColour.blue(), bgColour.green(), bgColour.alpha())
+    draw(scene: Scene) {
+        const bgColour = scene.bgColour()
+        this.gl.clearColor(bgColour.red(), bgColour.green(), bgColour.blue(), bgColour.alpha())
         this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight)
         this.gl.clear(this.gl.COLOR_BUFFER_BIT)
 
+        const sp = scene.sp()
         const geoCentre = [sp.centre().x(), sp.centre().y(), sp.centre().z()]
         const geoToSys = sp.directRotationGl()
         const canvasToClipspace = CoordinateSystems.canvasToClipspace(this.gl.canvas.clientWidth, this.gl.canvas.clientHeight)
 
+        const drawings = scene.drawings()
         for (const d of drawings) {
             this.gl.useProgram(d.context().program())
 
@@ -240,7 +288,7 @@ export class Renderer {
             this.gl.uniformMatrix3fv(geoToSysUniformLocation, false, geoToSys)
 
             const stereoToCanvasLocation = this.gl.getUniformLocation(d.context().program(), "u_stereo_to_canvas")
-            this.gl.uniformMatrix3fv(stereoToCanvasLocation, false, at.glMatrix());
+            this.gl.uniformMatrix3fv(stereoToCanvasLocation, false, scene.at().glMatrix());
 
             const canvasToClipspaceLocation = this.gl.getUniformLocation(d.context().program(), "u_canvas_to_clipspace");
             this.gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
@@ -283,17 +331,21 @@ export class Renderer {
             const stride = 0;
             /* start at the beginning of the buffer */
             const offset = 0;
-            gl.vertexAttribPointer(attLocation, a.size(), a.type(), a.normalised(), stride, offset)
+            if (a.type() == gl.UNSIGNED_INT) {
+                gl.vertexAttribIPointer(attLocation, a.size(), a.type(), stride, offset)
+            } else {
+                gl.vertexAttribPointer(attLocation, a.size(), a.type(), a.normalised(), stride, offset)
+            }
             gl.bindBuffer(gl.ARRAY_BUFFER, null)
         }
         gl.bindVertexArray(null);
         return new DrawingContext(program, vao, buffers)
     }
 
-    private static setBufferData(buffer: WebGLBuffer, vs: Array<number>,
+    private static setBufferData(buffer: WebGLBuffer, vs: Uint32Array | Float32Array,
         gl: WebGL2RenderingContext) {
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vs), gl.STATIC_DRAW, 0);
+        gl.bufferData(gl.ARRAY_BUFFER, vs, gl.STATIC_DRAW, 0);
     }
 
     private static flatten(arr: Array<Array<number>>): Array<number> {
@@ -306,6 +358,16 @@ export class Renderer {
 
     private static readonly VERTEX_SHADER =
         `#version 300 es
+
+// rgba uint to vec4
+vec4 rgba_to_colour(uint rgba) {
+    float r = float((rgba >> 24u) & 255u) / 255.0;
+    float g = float((rgba >> 16u) & 255u) / 255.0;
+    float b = float((rgba >> 8u) & 255u) / 255.0;
+    float a = float(rgba & 255u) / 100.0;
+    return vec4(r, g, b, a);
+}
+
 // geocentric to stereographic conversion
 vec2 geocentric_to_stereographic(vec3 geo, float er, vec3 centre, mat3 rotation) {
     // n-vector to system
@@ -344,6 +406,9 @@ in vec3 a_geo_pos;
 // offset in pixels
 in vec2 a_offset;
 
+// colour (rgba)
+in uint a_rgba;
+
 // colour for fragment shader
 out vec4 v_colour;
 
@@ -359,7 +424,7 @@ void main() {
     // u_projection is row major so v * m
     gl_Position = vec4((c_pos * u_canvas_to_clipspace).xy, 0, 1);
 
-    v_colour = vec4(1, 0, 0.5, 1);
+    v_colour = rgba_to_colour(a_rgba);
 }
 `
 
@@ -372,7 +437,7 @@ in vec4 v_colour;
 out vec4 colour;
 
 void main() {
-  colour = vec4(1, 0, 0.5, 1); // return redish-purple
+  colour = v_colour;
 }
 `
 

@@ -2,8 +2,9 @@ import { Angle } from "../src/angle"
 import { CoordinateSystems } from "../src/coordinate-systems"
 import { Colour } from "../src/colour"
 import { LatLong } from "../src/latlong"
+import { Length } from "../src/length"
 import * as S from "../src/shape"
-import { Graphic, World } from "../src/world"
+import { Graphic, World, WorldDefinition } from "../src/world"
 import { Vector2d } from "../src/space2d"
 import { Math3d, Vector3d } from "../src/space3d"
 
@@ -26,8 +27,8 @@ export class Demo {
 
     constructor(gl: WebGL2RenderingContext) {
         const linkoping = LatLong.ofDegrees(58.4108, 15.6214)
-        const range = 2_000_000
-        this.world = new World(gl, linkoping, range, Angle.ofDegrees(0), Colour.ALICEBLUE, 60)
+        const def = new WorldDefinition(linkoping, Length.ofKilometres(2000), Angle.ofDegrees(0), Colour.GAINSBORO)
+        this.world = new World(gl, def, 60)
         this.l = (_c, _r) => { }
     }
 
@@ -63,25 +64,25 @@ export class Demo {
         const sanda = LatLong.ofDegrees(57.4295, 18.2223)
 
         const p = new S.GeoPolygon([ystad, malmo, lund, helsingborg, kristianstad],
-            S.Painting.stroked(Colour.GREENYELLOW))
+            S.Painting.stroked(Colour.LIMEGREEN))
         const paint = S.Painting.filled(Colour.CORAL)
-        const c2 = new S.GeoCircle(goteborg, 10000, paint)
-        const c3 = new S.GeoCircle(jonkoping, 5000, paint)
-        const c4 = new S.GeoCircle(norrkoping, 5000, paint)
-        const c5 = new S.GeoCircle(linkoping, 5000, paint)
-        const l1 = new S.GeoPolyline([jonkoping, linkoping, norrkoping, stockholm, goteborg], Colour.POWDERBLUE)
+        const c2 = new S.GeoCircle(goteborg, Length.ofKilometres(10), paint)
+        const c3 = new S.GeoCircle(jonkoping, Length.ofKilometres(5), paint)
+        const c4 = new S.GeoCircle(norrkoping, Length.ofKilometres(5), paint)
+        const c5 = new S.GeoCircle(linkoping, Length.ofKilometres(5), paint)
+        const l1 = new S.GeoPolyline([jonkoping, linkoping, norrkoping, stockholm, goteborg], Colour.DODGERBLUE)
         const l2 = new S.GeoPolyline(
             [visby, irevik, larbro, blase,
-             farosund, slite, gothem, ljugarn,
-             nar, vamlingbo, sundre, sanda, visby],
-            Colour.POWDERBLUE)
+                farosund, slite, gothem, ljugarn,
+                nar, vamlingbo, sundre, sanda, visby],
+            Colour.DODGERBLUE)
 
         const rp = new S.GeoRelativePolygon(linkoping,
             [new Vector2d(50, 50), new Vector2d(100, 50), new Vector2d(50, 100)],
-            S.Painting.strokedAndFilled(Colour.LIMEGREEN, Colour.SKYBLUE))
+            S.Painting.strokedAndFilled(Colour.SLATEGRAY, Colour.SNOW))
 
         const rl = new S.GeoRelativePolyline(norrkoping,
-            [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(50, 150)], Colour.POWDERBLUE)
+            [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(50, 150)], Colour.NAVY)
 
         this.world.putGraphic(new Graphic("sak", [p, c2, c3, c4, c5, l1, l2]))
         this.world.putGraphic(new Graphic("andra", [rp, rl]))
@@ -124,7 +125,7 @@ export class Demo {
             elapsedSecs = elapsedSecs + 1
             const p = Demo.position(p0, b, ms, elapsedSecs)
             const ll = CoordinateSystems.geocentricToLatLong(p)
-            const c = [new S.GeoCircle(ll, 10000, S.Painting.stroked(Colour.FUCHSIA))]
+            const c = [new S.GeoCircle(ll, Length.ofKilometres(5), S.Painting.strokedAndFilled(Colour.DEEPPINK, Colour.LIGHTPINK))]
             this.world.putGraphic(new Graphic("Track", c))
             setTimeout(h, 1000)
         }
@@ -148,7 +149,7 @@ export class Demo {
                             let point = LatLong.ofDegrees(coord[1], coord[0])
                             positions.push(point)
                         }
-                        shapes.push(new S.GeoPolyline(positions, Colour.LIGHTGREY))
+                        shapes.push(new S.GeoPolyline(positions, Colour.DIMGRAY))
                     }
                 }
                 world.putGraphic(new Graphic("coastlines", shapes))

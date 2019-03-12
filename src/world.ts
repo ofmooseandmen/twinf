@@ -1,14 +1,15 @@
 import { Angle } from "./angle"
 import { Colour } from "./colour"
-import { LatLong } from "./latlong"
 import {
     CoordinateSystems,
     StereographicProjection,
     CanvasDimension,
     CanvasAffineTransform
 } from "./coordinate-systems"
+import { LatLong } from "./latlong"
+import { Length } from "./length"
 import { GeoMesh, MeshGenerator } from "../src/mesh"
-import { Renderer, Drawing, Animator } from "./renderer"
+import { Animator, Drawing, Renderer, Scene } from "./renderer"
 import { Vector2d } from "./space2d"
 import { Shape } from "./shape"
 
@@ -32,6 +33,42 @@ export class Graphic {
 
 }
 
+/**
+ * Initial definition of the world to be rendered.
+ */
+export class WorldDefinition {
+
+    private readonly _centre: LatLong
+    private readonly _range: Length
+    private readonly _rotation: Angle
+    private readonly _bgColour: Colour
+
+    constructor(centre: LatLong, range: Length,
+        rotation: Angle, bgColour: Colour) {
+        this._centre = centre
+        this._range = range
+        this._rotation = rotation
+        this._bgColour = bgColour
+    }
+
+    centre(): LatLong {
+        return this._centre
+    }
+
+    range(): Length {
+        return this._range
+    }
+
+    rotation(): Angle {
+        return this._rotation
+    }
+
+    bgColour(): Colour {
+        return this._bgColour
+    }
+
+}
+
 export class World {
 
     // earth radius in metres: WGS-84 ellipsoid, mean radius of semi-axis (R1). */
@@ -51,21 +88,20 @@ export class World {
     private readonly renderer: Renderer
     private readonly animator: Animator
 
-    // FIXME range is Length
-    // FIXME centre, range, rotation, bgColour, fps as one object
-    constructor(gl: WebGL2RenderingContext, centre: LatLong, range: number,
-        rotation: Angle, bgColour: Colour, fps: number) {
-        this._centre = centre
-        this._range = range
-        this._rotation = rotation
-        this.bgColour = bgColour
+    constructor(gl: WebGL2RenderingContext, def: WorldDefinition, fps: number) {
+        this._centre = def.centre()
+        this._range = def.range().metres()
+        this._rotation = def.rotation()
+        this.bgColour = def.bgColour()
         this.cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight)
         this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS)
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
         this.drawings = new Map<String, Drawing>()
         this.renderer = new Renderer(gl)
-        this.animator = new Animator(() =>
-            this.renderer.draw(this.drawings.values(), this.bgColour, this.sp, this.at), fps)
+        this.animator = new Animator(() => {
+            const scene = new Scene(this.drawings.values(), this.bgColour, this.sp, this.at)
+            this.renderer.draw(scene)
+        }, fps)
     }
 
     startRendering() {

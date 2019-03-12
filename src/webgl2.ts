@@ -9,7 +9,7 @@ export class WebGL2 {
         source: string): WebGLShader {
         const shader = gl.createShader(type);
         if (shader === null) {
-            throw new Error("Invalid shader type " + type)
+            throw new Error("Invalid shader type: " + type)
         }
         gl.shaderSource(shader, source);
         gl.compileShader(shader);
@@ -17,8 +17,9 @@ export class WebGL2 {
         if (success) {
             return shader;
         }
+        const log = gl.getShaderInfoLog(shader)
         gl.deleteShader(shader);
-        throw new Error("Invalid shader (type =" + type + ")")
+        throw new Error("Could not compile shader:" + log)
     }
 
     static createProgram(gl: WebGL2RenderingContext, vertexShader: WebGLShader,
