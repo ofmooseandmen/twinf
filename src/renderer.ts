@@ -59,9 +59,9 @@ export class Attribute {
 export class DrawingContext {
 
     private readonly _vao: WebGLVertexArrayObject
-    private readonly _buffers: Map<String, WebGLBuffer>
+    private readonly _buffers: Map<string, WebGLBuffer>
 
-    constructor(vao: WebGLVertexArrayObject, buffers: Map<String, WebGLBuffer>) {
+    constructor(vao: WebGLVertexArrayObject, buffers: Map<string, WebGLBuffer>) {
         this._vao = vao
         this._buffers = buffers
     }
@@ -70,7 +70,7 @@ export class DrawingContext {
         return this._vao
     }
 
-    buffers(): Map<String, WebGLBuffer> {
+    buffers(): Map<string, WebGLBuffer> {
         return this._buffers
     }
 
@@ -151,12 +151,12 @@ export class Animator {
  */
 export class Scene {
 
-    private readonly _drawings: IterableIterator<Drawing>
+    private readonly _drawings: Array<Drawing>
     private readonly _bgColour: Colour
     private readonly _sp: StereographicProjection
     private readonly _at: CanvasAffineTransform
 
-    constructor(drawings: IterableIterator<Drawing>, bgColour: Colour,
+    constructor(drawings: Array<Drawing>, bgColour: Colour,
         sp: StereographicProjection, at: CanvasAffineTransform) {
         this._drawings = drawings
         this._bgColour = bgColour
@@ -164,7 +164,7 @@ export class Scene {
         this._at = at
     }
 
-    drawings(): IterableIterator<Drawing> {
+    drawings(): Array<Drawing> {
         return this._drawings
     }
 
@@ -215,7 +215,7 @@ export class Renderer {
         }
         gl.bindVertexArray(vao)
 
-        let buffers = new Map<String, WebGLBuffer>()
+        let buffers = new Map<string, WebGLBuffer>()
         for (const a of attributes) {
             const attLocation = gl.getAttribLocation(program, a.name())
             gl.enableVertexAttribArray(attLocation)
@@ -323,7 +323,9 @@ export class Renderer {
         const canvasToClipspaceLocation = gl.getUniformLocation(program, "u_canvas_to_clipspace");
         gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
 
-        for (const d of drawings) {
+        const len = drawings.length
+        for (let i = 0; i < len; i++) {
+            const d = drawings[i]
             gl.bindVertexArray(d.context().vao());
             /* first triangles. */
             if (d.countTriangles() > 0) {

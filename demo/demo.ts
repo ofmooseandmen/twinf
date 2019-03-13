@@ -84,8 +84,8 @@ export class Demo {
         const rl = new S.GeoRelativePolyline(norrkoping,
             [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(50, 150)], Colour.NAVY)
 
-        this.world.insert(new Graphic("sak", [p, c2, c3, c4, c5, l1, l2]))
-        this.world.insert(new Graphic("andra", [rp, rl]))
+        this.world.insert(new Graphic("sak", 0, [p, c2, c3, c4, c5, l1, l2]))
+        this.world.insert(new Graphic("andra", 0, [rp, rl]))
         Demo.parseCoastlines(this.world)
 
         this.simulateTrack(CoordinateSystems.latLongToGeocentric(stockholm),
@@ -126,7 +126,7 @@ export class Demo {
             const p = Demo.position(p0, b, ms, elapsedSecs)
             const ll = CoordinateSystems.geocentricToLatLong(p)
             const c = [new S.GeoCircle(ll, Length.ofKilometres(5), S.Painting.strokedAndFilled(Colour.DEEPPINK, Colour.LIGHTPINK))]
-            this.world.insert(new Graphic("Track", c))
+            this.world.insert(new Graphic("Track", 1, c))
             setTimeout(h, 1000)
         }
         setTimeout(h, 1000)
@@ -152,7 +152,7 @@ export class Demo {
                         shapes.push(new S.GeoPolyline(positions, Colour.DIMGRAY))
                     }
                 }
-                world.insert(new Graphic("coastlines", shapes))
+                world.insert(new Graphic("coastlines", -1, shapes))
             },
             (_: any) => {
                 /* damn. */
