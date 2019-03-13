@@ -21,6 +21,8 @@ Open Chrome at ```http://localhost:8080/demo/index.html```
 
 Use arrow keys to pan and +/- to zoom in/out
 
+![demo](demo.gif)
+
 ## Concepts
 
 TWINF allows to draw shapes defined by latitude and longitude on a canvas using
