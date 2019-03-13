@@ -1,6 +1,6 @@
 import { CanvasAffineTransform, CoordinateSystems, StereographicProjection } from "./coordinate-systems"
 import { Colour } from "./colour"
-import { DrawMode, GeoMesh } from "./mesh"
+import { DrawMode, Mesh } from "./mesh"
 import { WebGL2 } from "./webgl2"
 
 /**
@@ -53,24 +53,17 @@ export class Attribute {
 }
 
 /**
- * Holds reference to the program, vertex array object and
+ * Holds reference to vertex array object and
  * every buffer (one per attribute) used to draw something.
  */
 export class DrawingContext {
 
-    private readonly _program: WebGLProgram
     private readonly _vao: WebGLVertexArrayObject
     private readonly _buffers: Map<String, WebGLBuffer>
 
-    constructor(program: WebGLProgram, vao: WebGLVertexArrayObject,
-        buffers: Map<String, WebGLBuffer>) {
-        this._program = program
+    constructor(vao: WebGLVertexArrayObject, buffers: Map<String, WebGLBuffer>) {
         this._vao = vao
         this._buffers = buffers
-    }
-
-    program(): WebGLProgram {
-        return this._program
     }
 
     vao(): WebGLVertexArrayObject {
@@ -211,104 +204,9 @@ export class Renderer {
     }
 
     newDrawing(): DrawingContext {
-        return Renderer.newDrawing(this.gl, this.program, [this.aGeoPos, this.aOffset, this.aRgba])
-    }
-
-    deleteDrawing(ctx: DrawingContext) {
-        this.gl.useProgram(ctx.program());
-        ctx.buffers().forEach(this.gl.deleteBuffer);
-        this.gl.deleteVertexArray(ctx.vao())
-    }
-
-    setGeometry(ctx: DrawingContext, meshes: Array<GeoMesh>): Drawing {
-        /* first the triangles then the lines. */
-        const atvs = new Array<Array<number>>()
-        const atos = new Array<Array<number>>()
-        const atcs = new Array<Array<number>>()
-        const alvs = new Array<Array<number>>()
-        const alos = new Array<Array<number>>()
-        const alcs = new Array<Array<number>>()
-        const len = meshes.length
-        for (let i = 0; i < len; i++) {
-            const m = meshes[i]
-            if (m.drawMode() === DrawMode.TRIANGLES) {
-                atvs.push(m.vertices())
-                atos.push(m.offsets())
-                atcs.push(m.colours())
-            } else if (m.drawMode() === DrawMode.LINES) {
-                alvs.push(m.vertices())
-                alos.push(m.offsets())
-                alcs.push(m.colours())
-            }
-        }
-        const tvs = Renderer.flatten(atvs)
-        const tos = Renderer.flatten(atos)
-        const tcs = Renderer.flatten(atcs)
-        const countTriangles = tvs.length / 3
-        const lvs = Renderer.flatten(alvs)
-        const los = Renderer.flatten(alos)
-        const lcs = Renderer.flatten(alcs)
-        const countLines = lvs.length / 3
-        this.gl.useProgram(ctx.program())
-
-        const gb = ctx.buffers().get(this.aGeoPos.name())
-        const ob = ctx.buffers().get(this.aOffset.name())
-        const cb = ctx.buffers().get(this.aRgba.name())
-        if (gb === undefined || ob === undefined || cb == undefined) {
-            throw new Error("Missing buffer for either geocentric position, offset or rgba")
-        }
-        Renderer.setBufferData(gb, new Float32Array(tvs.concat(lvs)), this.gl)
-        Renderer.setBufferData(ob, new Float32Array(tos.concat(los)), this.gl)
-        Renderer.setBufferData(cb, new Uint32Array(tcs.concat(lcs)), this.gl)
-        return new Drawing(ctx, countTriangles, countLines)
-    }
-
-    draw(scene: Scene) {
-        const bgColour = scene.bgColour()
-        this.gl.clearColor(bgColour.red(), bgColour.green(), bgColour.blue(), bgColour.alpha())
-        this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight)
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT)
-
-        const sp = scene.sp()
-        const geoCentre = [sp.centre().x(), sp.centre().y(), sp.centre().z()]
-        const geoToSys = sp.directRotationGl()
-        const canvasToClipspace = CoordinateSystems.canvasToClipspace(this.gl.canvas.clientWidth, this.gl.canvas.clientHeight)
-
-        const drawings = scene.drawings()
-        /* stereographic projection expect earth radius in metres. */
-        const earthRadiusMetres = sp.earthRadius()
-        for (const d of drawings) {
-            this.gl.useProgram(d.context().program())
-
-            const earthRadiusUniformLocation = this.gl.getUniformLocation(d.context().program(), "u_earth_radius")
-            this.gl.uniform1f(earthRadiusUniformLocation, earthRadiusMetres)
-
-            const geoCentreUniformLocation = this.gl.getUniformLocation(d.context().program(), "u_geo_centre")
-            this.gl.uniform3fv(geoCentreUniformLocation, geoCentre)
-
-            const geoToSysUniformLocation = this.gl.getUniformLocation(d.context().program(), "u_geo_to_system")
-            this.gl.uniformMatrix3fv(geoToSysUniformLocation, false, geoToSys)
-
-            const stereoToCanvasLocation = this.gl.getUniformLocation(d.context().program(), "u_stereo_to_canvas")
-            this.gl.uniformMatrix3fv(stereoToCanvasLocation, false, scene.at().glMatrix());
-
-            const canvasToClipspaceLocation = this.gl.getUniformLocation(d.context().program(), "u_canvas_to_clipspace");
-            this.gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
-
-            this.gl.bindVertexArray(d.context().vao());
-            /* first triangles. */
-            if (d.countTriangles() > 0) {
-                this.gl.drawArrays(this.gl.TRIANGLES, 0, d.countTriangles());
-            }
-            /* then lines. */
-            if (d.countLines() > 0) {
-                this.gl.drawArrays(this.gl.LINES, d.countTriangles(), d.countLines());
-            }
-        }
-    }
-
-    private static newDrawing(gl: WebGL2RenderingContext, program: WebGLProgram,
-        attributes: Array<Attribute>): DrawingContext {
+        const gl = this.gl
+        const program = this.program
+        const attributes = [this.aGeoPos, this.aOffset, this.aRgba]
         gl.useProgram(program);
 
         const vao = gl.createVertexArray();
@@ -341,7 +239,101 @@ export class Renderer {
             gl.bindBuffer(gl.ARRAY_BUFFER, null)
         }
         gl.bindVertexArray(null);
-        return new DrawingContext(program, vao, buffers)
+        return new DrawingContext(vao, buffers)
+    }
+
+    deleteDrawing(ctx: DrawingContext) {
+        this.gl.useProgram(this.program);
+        ctx.buffers().forEach(this.gl.deleteBuffer);
+        this.gl.deleteVertexArray(ctx.vao())
+    }
+
+    setGeometry(ctx: DrawingContext, meshes: Array<Mesh>): Drawing {
+        /* first the triangles then the lines. */
+        const atgs = new Array<Array<number>>()
+        const atos = new Array<Array<number>>()
+        const atcs = new Array<Array<number>>()
+        const algs = new Array<Array<number>>()
+        const alos = new Array<Array<number>>()
+        const alcs = new Array<Array<number>>()
+        const len = meshes.length
+        for (let i = 0; i < len; i++) {
+            const m = meshes[i]
+            if (m.drawMode() === DrawMode.TRIANGLES) {
+                atgs.push(m.geos())
+                atos.push(m.offsets())
+                atcs.push(m.colours())
+            } else if (m.drawMode() === DrawMode.LINES) {
+                algs.push(m.geos())
+                alos.push(m.offsets())
+                alcs.push(m.colours())
+            }
+        }
+        const tgs = Renderer.flatten(atgs)
+        const tos = Renderer.flatten(atos)
+        const tcs = Renderer.flatten(atcs)
+        const countTriangles = tgs.length / 3
+        const lgs = Renderer.flatten(algs)
+        const los = Renderer.flatten(alos)
+        const lcs = Renderer.flatten(alcs)
+        const countLines = lgs.length / 3
+
+        const gl = this.gl
+        gl.useProgram(this.program)
+
+        const gb = Renderer.buffer(ctx, this.aGeoPos.name())
+        const ob = Renderer.buffer(ctx, this.aOffset.name())
+        const cb = Renderer.buffer(ctx, this.aRgba.name())
+        Renderer.setBufferData(gb, new Float32Array(tgs.concat(lgs)), gl)
+        Renderer.setBufferData(ob, new Float32Array(tos.concat(los)), gl)
+        Renderer.setBufferData(cb, new Uint32Array(tcs.concat(lcs)), gl)
+        return new Drawing(ctx, countTriangles, countLines)
+    }
+
+    draw(scene: Scene) {
+        const bgColour = scene.bgColour()
+        this.gl.clearColor(bgColour.red(), bgColour.green(), bgColour.blue(), bgColour.alpha())
+        this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight)
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT)
+
+        const sp = scene.sp()
+        const geoCentre = [sp.centre().x(), sp.centre().y(), sp.centre().z()]
+        const geoToSys = sp.directRotationGl()
+        const canvasToClipspace = CoordinateSystems.canvasToClipspace(this.gl.canvas.clientWidth, this.gl.canvas.clientHeight)
+
+        const drawings = scene.drawings()
+        const earthRadiusMetres = sp.earthRadius()
+        const gl = this.gl
+        const program = this.program
+        gl.useProgram(program)
+
+        /* uniforms. */
+        const earthRadiusUniformLocation = gl.getUniformLocation(program, "u_earth_radius")
+        gl.uniform1f(earthRadiusUniformLocation, earthRadiusMetres)
+
+        const geoCentreUniformLocation = gl.getUniformLocation(program, "u_geo_centre")
+        gl.uniform3fv(geoCentreUniformLocation, geoCentre)
+
+        const geoToSysUniformLocation = gl.getUniformLocation(program, "u_geo_to_system")
+        gl.uniformMatrix3fv(geoToSysUniformLocation, false, geoToSys)
+
+        const stereoToCanvasLocation = gl.getUniformLocation(program, "u_stereo_to_canvas")
+        gl.uniformMatrix3fv(stereoToCanvasLocation, false, scene.at().glMatrix());
+
+        const canvasToClipspaceLocation = gl.getUniformLocation(program, "u_canvas_to_clipspace");
+        gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
+
+        for (const d of drawings) {
+            gl.bindVertexArray(d.context().vao());
+            /* first triangles. */
+            if (d.countTriangles() > 0) {
+                gl.drawArrays(gl.TRIANGLES, 0, d.countTriangles());
+            }
+            /* then lines. */
+            if (d.countLines() > 0) {
+                gl.drawArrays(gl.LINES, d.countTriangles(), d.countLines());
+            }
+        }
     }
 
     private static setBufferData(buffer: WebGLBuffer, vs: Uint32Array | Float32Array,
@@ -356,6 +348,14 @@ export class Renderer {
             Array.prototype.push.apply(res, a)
         }
         return res
+    }
+
+    private static buffer(ctx: DrawingContext, attName: string): WebGLBuffer {
+        const b = ctx.buffers().get(attName)
+        if (b === undefined) {
+            throw new Error("Missing buffer for attribute " + attName)
+        }
+        return b
     }
 
     private static readonly VERTEX_SHADER =

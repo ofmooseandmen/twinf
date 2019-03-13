@@ -35,11 +35,25 @@ export class Painting {
 
 }
 
+// FIXME: add
+// - GeoArc
+// - GeoText
+// - GeoSymbol
+// - GeoRelativeArc
+// - GeoRelativeCircle (radius is pixels)
+// - GeoRelativeText
+// - GeoRelativeSymbol
+// - CanvasArc
+// - CanvasCircle
+// - CanvasPolygon
+// - CanvasPolyline
+// - CanvasText
+// - CanvasSymbol
 export enum ShapeType {
     GeoCircle,
     GeoPolygon,
-    GeoRelativePolygon,
     GeoPolyline,
+    GeoRelativePolygon,
     GeoRelativePolyline,
 }
 
@@ -98,6 +112,30 @@ export class GeoPolygon {
 }
 
 /**
+ * Polyline whose points are latitude/longitude
+ */
+export class GeoPolyline {
+
+    readonly type: ShapeType.GeoPolyline = ShapeType.GeoPolyline;
+    private readonly _points: Array<LatLong>
+    private readonly _colour: Colour
+
+    constructor(points: Array<LatLong>, colour: Colour) {
+        this._points = points
+        this._colour = colour
+    }
+
+    points(): Array<LatLong> {
+        return this._points
+    }
+
+    colour(): Colour {
+        return this._colour
+    }
+
+}
+
+/**
  * Polygon whose vertices are defined as pixels offsets from a reference
  * latitude/longitude.
  *
@@ -126,30 +164,6 @@ export class GeoRelativePolygon {
 
     painting(): Painting {
         return this._painting
-    }
-
-}
-
-/**
- * Polyline whose points are latitude/longitude
- */
-export class GeoPolyline {
-
-    readonly type: ShapeType.GeoPolyline = ShapeType.GeoPolyline;
-    private readonly _points: Array<LatLong>
-    private readonly _colour: Colour
-
-    constructor(points: Array<LatLong>, colour: Colour) {
-        this._points = points
-        this._colour = colour
-    }
-
-    points(): Array<LatLong> {
-        return this._points
-    }
-
-    colour(): Colour {
-        return this._colour
     }
 
 }
@@ -193,15 +207,15 @@ export class GeoRelativePolyline {
 export type Shape =
     GeoCircle
     | GeoPolygon
-    | GeoRelativePolygon
     | GeoPolyline
+    | GeoRelativePolygon
     | GeoRelativePolyline
 
 export const Shape = {
     ShapeType,
     GeoCircle,
     GeoPolygon,
-    GeoRelativePolygon,
     GeoPolyline,
+    GeoRelativePolygon,
     GeoRelativePolyline
 }

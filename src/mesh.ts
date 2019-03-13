@@ -13,25 +13,28 @@ export enum DrawMode {
 }
 
 /**
- * A mesh defined by vertices in the geocentric coordinate system and offsets.
+ * A mesh is defined by geocentric positions, offsets, colours and a draw mode.
+ *
+ * If a geocentric position is (0, 0, 0) the offset is relative to the top-left
+ * corner of the canvas, otherwise the offset is relative to that geocentric position.
  */
-export class GeoMesh {
+export class Mesh {
 
-    private readonly _vertices: Array<number>
+    private readonly _geos: Array<number>
     private readonly _offsets: Array<number>
     private readonly _colours: Array<number>
     private readonly _drawMode: DrawMode
 
-    constructor(vertices: Array<number>, offsets: Array<number>,
+    constructor(geos: Array<number>, offsets: Array<number>,
         colours: Array<number>, drawMode: DrawMode) {
-        this._vertices = vertices
+        this._geos = geos
         this._offsets = offsets
         this._colours = colours
         this._drawMode = drawMode
     }
 
-    vertices(): Array<number> {
-        return this._vertices
+    geos(): Array<number> {
+        return this._geos
     }
 
     offsets(): Array<number> {
@@ -52,7 +55,7 @@ export class MeshGenerator {
 
     private constructor() { }
 
-    static mesh(s: S.Shape, earthRadius: Length): Array<GeoMesh> {
+    static mesh(s: S.Shape, earthRadius: Length): Array<Mesh> {
         switch (s.type) {
             case S.ShapeType.GeoCircle: return MeshGenerator.fromGeoCircle(s, earthRadius)
             case S.ShapeType.GeoPolygon: return MeshGenerator.fromGeoPolygon(s)
@@ -62,79 +65,79 @@ export class MeshGenerator {
         }
     }
 
-    private static fromGeoCircle(c: S.GeoCircle, earthRadius: Length): Array<GeoMesh> {
+    private static fromGeoCircle(c: S.GeoCircle, earthRadius: Length): Array<Mesh> {
         const gs = Geodetics.discretiseCircle(c.centre(), c.radius(), earthRadius, 100)
         const paint = c.painting()
         const stroke = paint.stroke()
         const fill = paint.fill()
-        let res = new Array<GeoMesh>()
+        let res = new Array<Mesh>()
         if (stroke !== undefined) {
             const vs = MeshGenerator.geoPointsToArray(gs, true)
             const cs = MeshGenerator.colours(stroke, vs, 3)
-            res.push(new GeoMesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.LINES))
+            res.push(new Mesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.LINES))
         }
         if (fill !== undefined) {
             const ts = Triangulator.SPHERICAL.triangulate(gs)
             const vs = MeshGenerator.geoTrianglesToArray(ts)
             const cs = MeshGenerator.colours(fill, vs, 3)
-            res.push(new GeoMesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.TRIANGLES))
+            res.push(new Mesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.TRIANGLES))
         }
         return res
     }
 
-    private static fromGeoPolyline(l: S.GeoPolyline): Array<GeoMesh> {
+    private static fromGeoPolyline(l: S.GeoPolyline): Array<Mesh> {
         const gs = l.points().map(CoordinateSystems.latLongToGeocentric)
         const vs = MeshGenerator.geoPointsToArray(gs, false)
         const cs = MeshGenerator.colours(l.colour(), vs, 3)
-        return [new GeoMesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.LINES)]
+        return [new Mesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.LINES)]
     }
 
-    private static fromGeoPolygon(p: S.GeoPolygon): Array<GeoMesh> {
+    private static fromGeoPolygon(p: S.GeoPolygon): Array<Mesh> {
         const gs = p.vertices().map(CoordinateSystems.latLongToGeocentric)
         const paint = p.painting()
         const stroke = paint.stroke()
         const fill = paint.fill()
-        let res = new Array<GeoMesh>()
+        let res = new Array<Mesh>()
         if (stroke !== undefined) {
             const vs = MeshGenerator.geoPointsToArray(gs, true)
             const cs = MeshGenerator.colours(stroke, vs, 3)
-            res.push(new GeoMesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.LINES))
+            res.push(new Mesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.LINES))
         }
         if (fill !== undefined) {
             const ts = Triangulator.SPHERICAL.triangulate(gs)
             const vs = MeshGenerator.geoTrianglesToArray(ts)
             const cs = MeshGenerator.colours(fill, vs, 3)
-            res.push(new GeoMesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.TRIANGLES))
+            res.push(new Mesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.TRIANGLES))
         }
         return res
     }
 
-    private static fromGeoRelativePoygon(p: S.GeoRelativePolygon): Array<GeoMesh> {
+    private static fromGeoRelativePoygon(p: S.GeoRelativePolygon): Array<Mesh> {
         const paint = p.painting()
         const stroke = paint.stroke()
         const fill = paint.fill()
-        let res = new Array<GeoMesh>()
+        let res = new Array<Mesh>()
         if (stroke !== undefined) {
             const os = MeshGenerator.offsetPointsToArray(p.vertices(), true)
             const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(p.ref()), os)
             const cs = MeshGenerator.colours(stroke, os, 2)
-            res.push(new GeoMesh(vs, os, cs, DrawMode.LINES))
+            res.push(new Mesh(vs, os, cs, DrawMode.LINES))
         }
         if (fill !== undefined) {
             const ts = Triangulator.PLANAR.triangulate(p.vertices())
             const os = MeshGenerator.offsetTrianglesToArray(ts)
             const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(p.ref()), os)
             const cs = MeshGenerator.colours(fill, os, 2)
-            res.push(new GeoMesh(vs, os, cs, DrawMode.TRIANGLES))
+            res.push(new Mesh(vs, os, cs, DrawMode.TRIANGLES))
         }
         return res
     }
 
-    private static fromGeoRelativePoyline(l: S.GeoRelativePolyline): Array<GeoMesh> {
+    private static fromGeoRelativePoyline(l: S.GeoRelativePolyline): Array<Mesh> {
         const os = MeshGenerator.offsetPointsToArray(l.points(), false)
         const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(l.ref()), os)
         const cs = MeshGenerator.colours(l.colour(), os, 2)
-        return [new GeoMesh(vs, os, cs, DrawMode.LINES)]
+        return [new Mesh(vs, os, cs, DrawMode.LINES)]
     }
 
     private static geoTrianglesToArray(ts: Array<Triangle<Vector3d>>): Array<number> {

@@ -8,7 +8,7 @@ import {
 } from "./coordinate-systems"
 import { LatLong } from "./latlong"
 import { Length } from "./length"
-import { GeoMesh, MeshGenerator } from "../src/mesh"
+import { Mesh, MeshGenerator } from "../src/mesh"
 import { Animator, Drawing, Renderer, Scene } from "./renderer"
 import { Vector2d } from "./space2d"
 import { Shape } from "./shape"
@@ -119,13 +119,20 @@ export class World {
     insert(graphic: Graphic) {
         const name = graphic.name()
         const shapes = graphic.shapes()
-        let meshes = new Array<GeoMesh>()
+        let meshes = new Array<Mesh>()
         for (let i = 0; i < shapes.length; i++) {
             meshes = meshes.concat(MeshGenerator.mesh(shapes[i], World.EARTH_RADIUS));
         }
         const drawing = this.drawings.get(name)
         const drawingCtx = drawing === undefined ? this.renderer.newDrawing() : drawing.context()
         this.drawings.set(graphic.name(), this.renderer.setGeometry(drawingCtx, meshes))
+    }
+
+    delete(graphicName: string) {
+        const drawing = this.drawings.get(graphicName)
+        if (drawing !== undefined) {
+            this.renderer.deleteDrawing(drawing.context())
+        }
     }
 
     pan(deltaX: number, deltaY: number) {
