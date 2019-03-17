@@ -9,9 +9,10 @@ import {
 import { LatLong } from "./latlong"
 import { Length } from "./length"
 import { Mesh, MeshGenerator } from "../src/mesh"
-import { Animator, Drawing, DrawingContext, Renderer, Scene } from "./renderer"
-import { Vector2d } from "./space2d"
+import { Animator, Drawing, Renderer, Scene } from "./renderer"
 import { Shape } from "./shape"
+import { Vector2d } from "./space2d"
+import { Stack } from "./stack"
 
 export class Graphic {
 
@@ -93,7 +94,7 @@ export class World {
     private sp: StereographicProjection
     private at: CanvasAffineTransform
 
-    private readonly stack: Stack
+    private readonly stack: Stack<Drawing>
     private readonly renderer: Renderer
     private readonly animator: Animator
 
@@ -108,7 +109,7 @@ export class World {
         this.stack = new Stack()
         this.renderer = new Renderer(gl)
         this.animator = new Animator(() => {
-            const scene = new Scene(this.stack.drawingsInOrder(), this.bgColour, this.sp, this.at)
+            const scene = new Scene(this.stack.all(), this.bgColour, this.sp, this.at)
             this.renderer.draw(scene)
         }, fps)
     }
@@ -133,20 +134,17 @@ export class World {
         for (let i = 0; i < shapes.length; i++) {
             meshes = meshes.concat(MeshGenerator.mesh(shapes[i], World.EARTH_RADIUS));
         }
-
-        let drawingCtx = this.stack.drawingContext(name)
-        if (drawingCtx === undefined) {
-            drawingCtx = this.renderer.newDrawing()
-        }
+        const drawing = this.stack.get(name)
+        const drawingCtx = drawing === undefined ? this.renderer.newDrawing() : drawing.context()
         const d = this.renderer.setGeometry(drawingCtx, meshes)
-        this.stack.add(name, zi, d)
+        this.stack.insert(name, zi, d)
     }
 
     delete(graphicName: string) {
-        let drawingCtx = this.stack.drawingContext(name)
-        if (drawingCtx !== undefined) {
+        let drawing = this.stack.get(name)
+        if (drawing !== undefined) {
             this.stack.delete(graphicName)
-            this.renderer.deleteDrawing(drawingCtx)
+            this.renderer.deleteDrawing(drawing.context())
         }
     }
 
@@ -187,88 +185,6 @@ export class World {
 
     centre(): LatLong {
         return this._centre
-    }
-
-}
-
-/**
- * stack of graphics.
- */
-class Stack {
-
-    /* graphic name to stack order (z-index). */
-    private stackOrder: Map<string, number>
-    private drawings: Map<number, Map<string, Drawing>>
-
-    constructor() {
-        this.stackOrder = new Map<string, number>()
-        this.drawings = new Map<number, Map<string, Drawing>>()
-    }
-
-    drawingContext(graphicName: string): DrawingContext | undefined {
-        const zi = this.stackOrder.get(graphicName)
-        if (zi === undefined) {
-            return undefined
-        }
-        const layer = this.drawings.get(zi)
-        if (layer === undefined) {
-            throw new Error("Unknown z-index: " + zi)
-        }
-        const d = layer.get(graphicName)
-        if (d === undefined) {
-            throw new Error("Unknown graphic: " + graphicName)
-        }
-        return d.context()
-    }
-
-    drawingsInOrder(): Array<Drawing> {
-        const sorted = [...this.drawings.entries()].sort()
-        const len = sorted.length
-        let res = new Array<Drawing>()
-        for (let i = 0; i < len; i++) {
-            const ds = sorted[i][1].values()
-            res = res.concat(res, [...ds])
-        }
-        return res
-    }
-
-    add(graphicName: string, zi: number, drawing: Drawing) {
-        const czi = this.stackOrder.get(graphicName)
-        if (czi === undefined) {
-            /* new graphic */
-            this.stackOrder.set(graphicName, zi)
-        } else if (czi !== zi) {
-            /* change of stack order */
-            this.delete(graphicName)
-            this.stackOrder.set(graphicName, zi)
-        }
-        this._add(graphicName, zi, drawing)
-    }
-
-    delete(graphicName: string) {
-        const zi = this.stackOrder.get(graphicName)
-        if (zi === undefined) {
-            return
-        }
-        const layer = this.drawings.get(zi)
-        if (layer === undefined) {
-            throw new Error("Unknown z-index: " + zi)
-        }
-        this.stackOrder.delete(graphicName)
-        layer.delete(graphicName)
-        if (layer.size === 0) {
-            this.drawings.delete(zi)
-        }
-    }
-
-    private _add(graphicName: string, zi: number, drawing: Drawing) {
-        let layer = this.drawings.get(zi)
-        if (layer === undefined) {
-            /* new layer */
-            layer = new Map<string, Drawing>()
-            this.drawings.set(zi, layer)
-        }
-        layer.set(graphicName, drawing)
     }
 
 }

@@ -139,7 +139,7 @@ export class GeoPolyline {
  * Polygon whose vertices are defined as pixels offsets from a reference
  * latitude/longitude.
  *
- * Offset is in pixels (x axis is down and y axis is right).
+ * Offset is in pixels (x axis is right and y axis is down).
  */
 export class GeoRelativePolygon {
 
@@ -172,7 +172,7 @@ export class GeoRelativePolygon {
  * Polyline whose points are defined as pixels offsets from a reference
  * latitude/longitude.
  *
- * Offset is in pixels (x axis is down and y axis is right).
+ * Offset is in pixels (x axis is right and y axis is down).
  */
 export class GeoRelativePolyline {
 
