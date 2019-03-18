@@ -40,7 +40,6 @@ export class Painting {
 // - GeoText
 // - GeoSymbol
 // - GeoRelativeArc
-// - GeoRelativeCircle (radius is pixels)
 // - GeoRelativeText
 // - GeoRelativeSymbol
 // - CanvasArc
@@ -53,6 +52,7 @@ export enum ShapeType {
     GeoCircle,
     GeoPolygon,
     GeoPolyline,
+    GeoRelativeCircle,
     GeoRelativePolygon,
     GeoRelativePolyline,
 }
@@ -136,6 +136,44 @@ export class GeoPolyline {
 }
 
 /**
+ * Circle whose centre is defined as an offset in pixels from a
+ * reference latitude/longitude and radius is in pixels.
+ */
+export class GeoRelativeCircle {
+
+    readonly type: ShapeType.GeoRelativeCircle = ShapeType.GeoRelativeCircle;
+    private readonly _centreRef: LatLong
+    private readonly _centreOffset: Vector2d
+    private readonly _radius: number
+    private readonly _painting: Painting
+
+    constructor(centreRef: LatLong, centreOffset: Vector2d, radius: number,
+        painting: Painting) {
+        this._centreRef = centreRef
+        this._centreOffset = centreOffset
+        this._radius = radius
+        this._painting = painting
+    }
+
+    centreRef(): LatLong {
+        return this._centreRef
+    }
+
+    centreOffset(): Vector2d {
+        return this._centreOffset
+    }
+
+    radius(): number {
+        return this._radius
+    }
+
+    painting(): Painting {
+        return this._painting
+    }
+
+}
+
+/**
  * Polygon whose vertices are defined as pixels offsets from a reference
  * latitude/longitude.
  *
@@ -208,6 +246,7 @@ export type Shape =
     GeoCircle
     | GeoPolygon
     | GeoPolyline
+    | GeoRelativeCircle
     | GeoRelativePolygon
     | GeoRelativePolyline
 
@@ -216,6 +255,7 @@ export const Shape = {
     GeoCircle,
     GeoPolygon,
     GeoPolyline,
+    GeoRelativeCircle,
     GeoRelativePolygon,
     GeoRelativePolyline
 }

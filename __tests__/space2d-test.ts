@@ -59,4 +59,13 @@ describe("Math2d", () => {
 
     })
 
+    test("discretiseCircle returns the list of 2D points representing the circle",
+        () => {
+            const r = 100
+            const ps = Geometry2d.discretiseCircle(p0, r, 10)
+            const distances = ps.map(
+                p => Math.sqrt((p0.x() - p.x()) * (p0.x() - p.x()) + (p0.y() - p.y()) * (p0.y() - p.y())))
+            distances.forEach(d => expect(d).toBeCloseTo(r, 10))
+        })
+
 })

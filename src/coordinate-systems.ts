@@ -15,7 +15,9 @@ import { Math3d, Vector3d } from "./space3d"
  * stereographic -> canvas (pixels)
  * canvas -> WebGL clipspace
  *
- * Geocentric positions a represented as n-vectors: the normal vector to the sphere.
+ * Transformations done on the CPU:
+ *
+ * Geocentric positions are represented as n-vectors: the normal vector to the sphere.
  * n-vector prientation: z-axis points to the North Pole along the Earth's
  * rotation axis, x-axis points towards the point where latitude = longitude = 0.
  * Note: on a spherical model earth, a n-vector is equivalent to a normalised
@@ -37,7 +39,7 @@ import { Math3d, Vector3d } from "./space3d"
  * Note: this transformation is always done in the GPU. The two last transformations
  * are not merged in order to allow for pixels to be offset in the GPU.
  *
- * Note: all matrices are given in row major order, so in the shader vector * matrix
+ * Notes: all matrices are given in row major order, so in the shader vector * matrix
  * shall be used.
  */
 export class CoordinateSystems {

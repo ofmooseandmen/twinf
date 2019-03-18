@@ -59,4 +59,19 @@ export class Geometry2d {
         return inside;
     }
 
+    /**
+     * Computes the 2D points that represent the circle defined
+     * by the given centre and radius in pixels.
+     */
+    static discretiseCircle(centre: Vector2d, radius: number,
+        nbPositions: number): Array<Vector2d> {
+        return Array.from(new Array(nbPositions), (_, i) => i)
+            .map(i => 2 * i * Math.PI / nbPositions)
+            /* circle at (0, 0), translated to centre */
+            .map(a => new Vector2d(
+                radius * Math.cos(a) + centre.x(),
+                radius * Math.sin(a) + centre.y()
+            ))
+    }
+
 }

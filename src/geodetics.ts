@@ -33,7 +33,7 @@ export class Geodetics {
         }
         /* east direction vector at p */
         const ed = Math3d.unit(Math3d.cross(Geodetics.NORTH_POLE, p))
-        /* north direction vector at */
+        /* north direction vector at p */
         const nd = Math3d.cross(p, ed)
         /* central angle */
         const ta = Angle.central(d, r)

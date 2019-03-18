@@ -1,10 +1,11 @@
 import { CoordinateSystems } from "./coordinate-systems"
 import { Colour } from "./colour"
 import { Geodetics } from "./geodetics"
+import { LatLong } from "./latlong"
 import { Length } from "./length"
 import * as S from "./shape"
 import { Triangle, Triangulator } from "./triangles"
-import { Vector2d } from "./space2d"
+import { Geometry2d, Vector2d } from "./space2d"
 import { Vector3d } from "./space3d"
 
 export enum DrawMode {
@@ -60,6 +61,7 @@ export class MeshGenerator {
             case S.ShapeType.GeoCircle: return MeshGenerator.fromGeoCircle(s, earthRadius)
             case S.ShapeType.GeoPolygon: return MeshGenerator.fromGeoPolygon(s)
             case S.ShapeType.GeoPolyline: return MeshGenerator.fromGeoPolyline(s)
+            case S.ShapeType.GeoRelativeCircle: return MeshGenerator.fromGeoRelativeCircle(s)
             case S.ShapeType.GeoRelativePolygon: return MeshGenerator.fromGeoRelativePoygon(s)
             case S.ShapeType.GeoRelativePolyline: return MeshGenerator.fromGeoRelativePoyline(s)
         }
@@ -68,21 +70,7 @@ export class MeshGenerator {
     private static fromGeoCircle(c: S.GeoCircle, earthRadius: Length): Array<Mesh> {
         const gs = Geodetics.discretiseCircle(c.centre(), c.radius(), earthRadius, 100)
         const paint = c.painting()
-        const stroke = paint.stroke()
-        const fill = paint.fill()
-        let res = new Array<Mesh>()
-        if (stroke !== undefined) {
-            const vs = MeshGenerator.geoPointsToArray(gs, true)
-            const cs = MeshGenerator.colours(stroke, vs, 3)
-            res.push(new Mesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.LINES))
-        }
-        if (fill !== undefined) {
-            const ts = Triangulator.SPHERICAL.triangulate(gs)
-            const vs = MeshGenerator.geoTrianglesToArray(ts)
-            const cs = MeshGenerator.colours(fill, vs, 3)
-            res.push(new Mesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.TRIANGLES))
-        }
-        return res
+        return MeshGenerator._fromGeoPolygon(gs, paint)
     }
 
     private static fromGeoPolyline(l: S.GeoPolyline): Array<Mesh> {
@@ -95,6 +83,10 @@ export class MeshGenerator {
     private static fromGeoPolygon(p: S.GeoPolygon): Array<Mesh> {
         const gs = p.vertices().map(CoordinateSystems.latLongToGeocentric)
         const paint = p.painting()
+        return MeshGenerator._fromGeoPolygon(gs, paint)
+    }
+
+    private static _fromGeoPolygon(gs: Array<Vector3d>, paint: S.Painting): Array<Mesh> {
         const stroke = paint.stroke()
         const fill = paint.fill()
         let res = new Array<Mesh>()
@@ -112,21 +104,34 @@ export class MeshGenerator {
         return res
     }
 
+    private static fromGeoRelativeCircle(c: S.GeoRelativeCircle): Array<Mesh> {
+        const ref = c.centreRef()
+        const ps = Geometry2d.discretiseCircle(c.centreOffset(), c.radius(), 100)
+        const paint = c.painting()
+        return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint)
+    }
+
     private static fromGeoRelativePoygon(p: S.GeoRelativePolygon): Array<Mesh> {
+        const ref = p.ref()
+        const ps = p.vertices()
         const paint = p.painting()
+        return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint)
+    }
+
+    private static _fromGeoRelativePoygon(ref: LatLong, vertices: Array<Vector2d>, paint: S.Painting): Array<Mesh> {
         const stroke = paint.stroke()
         const fill = paint.fill()
         let res = new Array<Mesh>()
         if (stroke !== undefined) {
-            const os = MeshGenerator.offsetPointsToArray(p.vertices(), true)
-            const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(p.ref()), os)
+            const os = MeshGenerator.offsetPointsToArray(vertices, true)
+            const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
             const cs = MeshGenerator.colours(stroke, os, 2)
             res.push(new Mesh(vs, os, cs, DrawMode.LINES))
         }
         if (fill !== undefined) {
-            const ts = Triangulator.PLANAR.triangulate(p.vertices())
+            const ts = Triangulator.PLANAR.triangulate(vertices)
             const os = MeshGenerator.offsetTrianglesToArray(ts)
-            const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(p.ref()), os)
+            const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
             const cs = MeshGenerator.colours(fill, os, 2)
             res.push(new Mesh(vs, os, cs, DrawMode.TRIANGLES))
         }

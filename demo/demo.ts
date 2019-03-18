@@ -125,7 +125,10 @@ export class Demo {
             elapsedSecs = elapsedSecs + 1
             const p = Demo.position(p0, b, ms, elapsedSecs)
             const ll = CoordinateSystems.geocentricToLatLong(p)
-            const c = [new S.GeoCircle(ll, Length.ofKilometres(5), S.Painting.strokedAndFilled(Colour.DEEPPINK, Colour.LIGHTPINK))]
+            const offset = new Vector2d(0, 0)
+            const radius = 12
+            const paint = S.Painting.strokedAndFilled(Colour.DEEPPINK, Colour.LIGHTPINK)
+            const c = [new S.GeoRelativeCircle(ll, offset, radius, paint)]
             this.world.insert(new Graphic("Track", 1, c))
             setTimeout(h, 1000)
         }
