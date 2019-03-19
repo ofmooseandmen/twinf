@@ -1,9 +1,10 @@
-import { Triangle, Triangulator } from "../src/triangles"
+import { Triangle } from "../src/triangle"
+import { Triangulator } from "../src/triangulation"
 import { Vector3d } from "../src/space3d"
 
 import * as U from "./util"
 
-describe("Triangulation", () => {
+describe("Triangulator", () => {
 
     describe("spherical polygons", () => {
 
@@ -92,8 +93,8 @@ describe("Triangulation", () => {
             )
         })
 
-        function assertTrianglesEquals(expected: Array<Array<Vector3d>>
-            , actual: Array<Triangle<Vector3d>>) {
+        function assertTrianglesEquals(expected: Array<Array<Vector3d>>,
+            actual: Array<Triangle<Vector3d>>) {
             expect(actual.length).toEqual(expected.length)
             for (var i = 0; i < expected.length; i++) {
                 expect(actual[i].v1()).toBe(expected[i][0])

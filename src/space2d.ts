@@ -1,3 +1,5 @@
+import { Triangle } from "./triangle"
+
 export class Vector2d {
 
     private readonly _x: number
@@ -15,6 +17,47 @@ export class Vector2d {
         return this._y
     }
 
+}
+
+export class Math2d {
+
+    private constructor() { }
+
+    /**
+     * Adds the 2 given vectors.
+     */
+    static add(v1: Vector2d, v2: Vector2d): Vector2d {
+        return new Vector2d(v1.x() + v2.x(), v1.y() + v2.y())
+    }
+
+    /**
+     * Subtracts the 2 given vectors.
+     */
+    static sub(v1: Vector2d, v2: Vector2d): Vector2d {
+        return new Vector2d(v1.x() - v2.x(), v1.y() - v2.y())
+    }
+
+    /**
+     * Computes the norm of the given vector.
+     */
+    static norm(v: Vector2d): number {
+        return Math.sqrt(v.x() * v.x() + v.y() * v.y())
+    }
+
+    /**
+     * Multiplies each component of the given vector by the given number.
+     */
+    static scale(v: Vector2d, s: number): Vector2d {
+        return new Vector2d(s * v.x(), s * v.y())
+    }
+
+    /**
+     * Normalises the given vector (norm of return vector is 1).
+     */
+    static unit(v: Vector2d): Vector2d {
+        const s = 1.0 / Math2d.norm(v)
+        return s == 1.0 ? v : Math2d.scale(v, s)
+    }
 }
 
 export class Geometry2d {
@@ -72,6 +115,44 @@ export class Geometry2d {
                 radius * Math.cos(a) + centre.x(),
                 radius * Math.sin(a) + centre.y()
             ))
+    }
+
+    static extrude(points: Array<Vector2d>, width: number): Array<Triangle<Vector2d>> {
+        const len = points.length
+        let ts = new Array<Triangle<Vector2d>>()
+        if (len < 2) {
+            return ts
+        }
+        const halfWidth = width / 2.0
+        const uds = new Array<Vector2d>()
+        for (let i = 0; i < len - 1; i++) {
+            const pt = points[i]
+            const next = points[i + 1]
+            const normal = Geometry2d.normal(Geometry2d.direction(pt, next))
+            const up = Math2d.add(pt, Math2d.scale(normal, halfWidth))
+            const down = Math2d.sub(pt, Math2d.scale(normal, halfWidth))
+            uds.push(up)
+            uds.push(down)
+        }
+        const last = points[len - 1]
+        const prev = points[len - 2]
+        const normal = Geometry2d.normal(Geometry2d.direction(last, prev))
+        const up = Math2d.sub(last, Math2d.scale(normal, halfWidth))
+        const down = Math2d.add(last, Math2d.scale(normal, halfWidth))
+        uds.push(up)
+        uds.push(down)
+        for (let i = 0; i < uds.length - 2; i++) {
+            ts.push(new Triangle<Vector2d>(uds[i], uds[i + 1], uds[i + 2]));
+        }
+        return ts
+    }
+
+    private static normal(direction: Vector2d) {
+        return new Vector2d(-direction.y(), direction.x())
+    }
+
+    private static direction(a: Vector2d, b: Vector2d) {
+        return Math2d.unit(Math2d.sub(a, b))
     }
 
 }

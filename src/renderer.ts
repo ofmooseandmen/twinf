@@ -13,7 +13,6 @@ export class Attribute {
     private readonly _type: GLenum
     private readonly _normalised: GLboolean
 
-
     constructor(name: string, size: GLint, type: GLenum, normalised: GLboolean) {
         this._name = name
         this._size = size
@@ -248,6 +247,8 @@ export class Renderer {
         this.gl.deleteVertexArray(ctx.vao())
     }
 
+    // FIXME: don't change order of the meshes, fix when introducing shader for
+    // geo polylines
     setGeometry(ctx: DrawingContext, meshes: Array<Mesh>): Drawing {
         /* first the triangles then the lines. */
         const atgs = new Array<Array<number>>()
@@ -322,7 +323,7 @@ export class Renderer {
 
         const canvasToClipspaceLocation = gl.getUniformLocation(program, "u_canvas_to_clipspace");
         gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
-        
+
         const len = drawings.length
         for (let i = 0; i < len; i++) {
             const d = drawings[i]

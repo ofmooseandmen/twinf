@@ -11,7 +11,7 @@ import { Length } from "./length"
 import { Mesh, MeshGenerator } from "../src/mesh"
 import { Animator, Drawing, Renderer, Scene } from "./renderer"
 import { Shape } from "./shape"
-import { Vector2d } from "./space2d"
+import { Math2d, Vector2d } from "./space2d"
 import { Stack } from "./stack"
 
 export class Graphic {
@@ -153,7 +153,7 @@ export class World {
         const cd = CoordinateSystems.canvasOffsetToStereographic(new Vector2d(deltaX, deltaY), this.at)
 
         // new canvas centre in stereographic
-        const newCentreStereo = new Vector2d(this.at.centre().x() + cd.x(), this.at.centre().y() + cd.y())
+        const newCentreStereo = Math2d.add(this.at.centre(), cd)
 
         // stereographic to geocentric
         const newCentreGeo = CoordinateSystems.stereographicToGeocentric(newCentreStereo, this.sp)

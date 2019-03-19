@@ -3,17 +3,36 @@ import { LatLong } from "./latlong"
 import { Length } from "./length"
 import { Vector2d } from "./space2d"
 
+export class Stroke {
+
+    private readonly _colour: Colour
+    private readonly _width: number
+
+    constructor(colour: Colour, width: number) {
+        this._colour = colour
+        this._width = width
+    }
+
+    colour(): Colour {
+        return this._colour
+    }
+
+    width(): number {
+        return this._width
+    }
+}
+
 export class Paint {
 
-    private readonly _stroke: Colour | undefined
+    private readonly _stroke: Stroke | undefined
     private readonly _fill: Colour | undefined
 
-    private constructor(stroke: Colour | undefined, fill: Colour | undefined) {
+    private constructor(stroke: Stroke | undefined, fill: Colour | undefined) {
         this._stroke = stroke
         this._fill = fill
     }
 
-    static stroke(stroke: Colour) {
+    static stroke(stroke: Stroke) {
         return new Paint(stroke, undefined)
     }
 
@@ -22,14 +41,13 @@ export class Paint {
     }
 
     /**
-     * Paint with both a fill and stroke. Fill shape will be drawn first
-     * so that stroke shape appears on top.
+     * Paint with both a fill and stroke.
      */
-    static complete(stroke: Colour, fill: Colour) {
+    static complete(stroke: Stroke, fill: Colour) {
         return new Paint(stroke, fill)
     }
 
-    stroke(): Colour | undefined {
+    stroke(): Stroke | undefined {
         return this._stroke
     }
 
@@ -122,19 +140,19 @@ export class GeoPolyline {
 
     readonly type: ShapeType.GeoPolyline = ShapeType.GeoPolyline;
     private readonly _points: Array<LatLong>
-    private readonly _colour: Colour
+    private readonly _stroke: Stroke
 
-    constructor(points: Array<LatLong>, colour: Colour) {
+    constructor(points: Array<LatLong>, stroke: Stroke) {
         this._points = points
-        this._colour = colour
+        this._stroke = stroke
     }
 
     points(): Array<LatLong> {
         return this._points
     }
 
-    colour(): Colour {
-        return this._colour
+    stroke(): Stroke {
+        return this._stroke
     }
 
 }
@@ -221,12 +239,12 @@ export class GeoRelativePolyline {
     readonly type: ShapeType.GeoRelativePolyline = ShapeType.GeoRelativePolyline;
     private readonly _ref: LatLong
     private readonly _points: Array<Vector2d>
-    private readonly _colour: Colour
+    private readonly _stroke: Stroke
 
-    constructor(ref: LatLong, points: Array<Vector2d>, colour: Colour) {
+    constructor(ref: LatLong, points: Array<Vector2d>, stroke: Stroke) {
         this._ref = ref
         this._points = points
-        this._colour = colour
+        this._stroke = stroke
     }
 
     ref(): LatLong {
@@ -237,8 +255,8 @@ export class GeoRelativePolyline {
         return this._points
     }
 
-    colour(): Colour {
-        return this._colour
+    stroke(): Stroke {
+        return this._stroke
     }
 
 }

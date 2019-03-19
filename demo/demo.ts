@@ -64,25 +64,29 @@ export class Demo {
         const sanda = LatLong.ofDegrees(57.4295, 18.2223)
 
         const p = new S.GeoPolygon([ystad, malmo, lund, helsingborg, kristianstad],
-            S.Paint.stroke(Colour.LIMEGREEN))
+            S.Paint.stroke(new S.Stroke(Colour.LIMEGREEN, 1)))
         const paint = S.Paint.fill(Colour.CORAL)
         const c2 = new S.GeoCircle(goteborg, Length.ofKilometres(10), paint)
         const c3 = new S.GeoCircle(jonkoping, Length.ofKilometres(5), paint)
         const c4 = new S.GeoCircle(norrkoping, Length.ofKilometres(5), paint)
         const c5 = new S.GeoCircle(linkoping, Length.ofKilometres(5), paint)
-        const l1 = new S.GeoPolyline([jonkoping, linkoping, norrkoping, stockholm, goteborg], Colour.DODGERBLUE)
+        const l1 = new S.GeoPolyline(
+            [jonkoping, linkoping, norrkoping, stockholm, goteborg],
+            new S.Stroke(Colour.DODGERBLUE, 1))
         const l2 = new S.GeoPolyline(
             [visby, irevik, larbro, blase,
                 farosund, slite, gothem, ljugarn,
                 nar, vamlingbo, sundre, sanda, visby],
-            Colour.DODGERBLUE)
+            new S.Stroke(Colour.DODGERBLUE, 1))
 
         const rp = new S.GeoRelativePolygon(linkoping,
             [new Vector2d(50, 50), new Vector2d(100, 50), new Vector2d(50, 100)],
-            S.Paint.complete(Colour.SLATEGRAY, Colour.SNOW))
+            S.Paint.complete(new S.Stroke(Colour.SLATEGRAY, 1), Colour.SNOW))
 
-        const rl = new S.GeoRelativePolyline(norrkoping,
-            [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(50, 150)], Colour.NAVY)
+        const rl = new S.GeoRelativePolyline(
+            norrkoping,
+            [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(75, 150)],
+            new S.Stroke(Colour.NAVY, 3))
 
         this.world.insert(new Graphic("sak", 0, [p, c2, c3, c4, c5, l1, l2]))
         this.world.insert(new Graphic("andra", 0, [rp, rl]))
@@ -126,8 +130,8 @@ export class Demo {
             const p = Demo.position(p0, b, ms, elapsedSecs)
             const ll = CoordinateSystems.geocentricToLatLong(p)
             const offset = new Vector2d(0, 0)
-            const radius = 12
-            const paint = S.Paint.complete(Colour.DEEPPINK, Colour.LIGHTPINK)
+            const radius = 16
+            const paint = S.Paint.complete(new S.Stroke(Colour.DEEPPINK, 12), Colour.LIGHTPINK)
             const c = [new S.GeoRelativeCircle(ll, offset, radius, paint)]
             this.world.insert(new Graphic("Track", 1, c))
             setTimeout(h, 1000)
@@ -152,7 +156,7 @@ export class Demo {
                             let point = LatLong.ofDegrees(coord[1], coord[0])
                             positions.push(point)
                         }
-                        shapes.push(new S.GeoPolyline(positions, Colour.DIMGRAY))
+                        shapes.push(new S.GeoPolyline(positions, new S.Stroke(Colour.DIMGRAY, 1)))
                     }
                 }
                 world.insert(new Graphic("coastlines", -1, shapes))

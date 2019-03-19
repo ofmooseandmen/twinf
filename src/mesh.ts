@@ -4,7 +4,8 @@ import { Geodetics } from "./geodetics"
 import { LatLong } from "./latlong"
 import { Length } from "./length"
 import * as S from "./shape"
-import { Triangle, Triangulator } from "./triangles"
+import { Triangle } from "./triangle"
+import { Triangulator } from "./triangulation"
 import { Geometry2d, Vector2d } from "./space2d"
 import { Vector3d } from "./space3d"
 
@@ -76,7 +77,7 @@ export class MeshGenerator {
     private static fromGeoPolyline(l: S.GeoPolyline): Array<Mesh> {
         const gs = l.points().map(CoordinateSystems.latLongToGeocentric)
         const vs = MeshGenerator.geoPointsToArray(gs, false)
-        const cs = MeshGenerator.colours(l.colour(), vs, 3)
+        const cs = MeshGenerator.colours(l.stroke().colour(), vs, 3)
         return [new Mesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.LINES)]
     }
 
@@ -92,7 +93,7 @@ export class MeshGenerator {
         let res = new Array<Mesh>()
         if (stroke !== undefined) {
             const vs = MeshGenerator.geoPointsToArray(gs, true)
-            const cs = MeshGenerator.colours(stroke, vs, 3)
+            const cs = MeshGenerator.colours(stroke.colour(), vs, 3)
             res.push(new Mesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.LINES))
         }
         if (fill !== undefined) {
@@ -123,10 +124,7 @@ export class MeshGenerator {
         const fill = paint.fill()
         let res = new Array<Mesh>()
         if (stroke !== undefined) {
-            const os = MeshGenerator.offsetPointsToArray(vertices, true)
-            const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
-            const cs = MeshGenerator.colours(stroke, os, 2)
-            res.push(new Mesh(vs, os, cs, DrawMode.LINES))
+            res.push(MeshGenerator._fromGeoRelativePoyline(ref, vertices, stroke, true))
         }
         if (fill !== undefined) {
             const ts = Triangulator.PLANAR.triangulate(vertices)
@@ -139,11 +137,31 @@ export class MeshGenerator {
     }
 
     private static fromGeoRelativePoyline(l: S.GeoRelativePolyline): Array<Mesh> {
-        const os = MeshGenerator.offsetPointsToArray(l.points(), false)
-        const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(l.ref()), os)
-        const cs = MeshGenerator.colours(l.colour(), os, 2)
-        return [new Mesh(vs, os, cs, DrawMode.LINES)]
+        return [MeshGenerator._fromGeoRelativePoyline(l.ref(), l.points(), l.stroke(), false)]
     }
+
+    private static _fromGeoRelativePoyline(ref: LatLong, points: Array<Vector2d>,
+        stroke: S.Stroke, close: boolean): Mesh {
+        if (stroke.width() === 1) {
+            const os = MeshGenerator.offsetPointsToArray(points, close)
+            const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
+            const cs = MeshGenerator.colours(stroke.colour(), os, 2)
+            return new Mesh(vs, os, cs, DrawMode.LINES)
+        }
+        let pts: Array<Vector2d>
+        if (close) {
+            pts = points.slice(0)
+            pts.push(pts[0])
+        } else {
+            pts = points
+        }
+        const ts = Geometry2d.extrude(pts, stroke.width())
+        const os = MeshGenerator.offsetTrianglesToArray(ts)
+        const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
+        const cs = MeshGenerator.colours(stroke.colour(), os, 2)
+        return new Mesh(vs, os, cs, DrawMode.TRIANGLES)
+    }
+
 
     private static geoTrianglesToArray(ts: Array<Triangle<Vector3d>>): Array<number> {
         let res = new Array<number>()
