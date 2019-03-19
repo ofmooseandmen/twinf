@@ -322,7 +322,7 @@ export class Renderer {
 
         const canvasToClipspaceLocation = gl.getUniformLocation(program, "u_canvas_to_clipspace");
         gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
-
+        
         const len = drawings.length
         for (let i = 0; i < len; i++) {
             const d = drawings[i]

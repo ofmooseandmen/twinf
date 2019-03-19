@@ -3,7 +3,7 @@ import { LatLong } from "./latlong"
 import { Length } from "./length"
 import { Vector2d } from "./space2d"
 
-export class Painting {
+export class Paint {
 
     private readonly _stroke: Colour | undefined
     private readonly _fill: Colour | undefined
@@ -13,16 +13,20 @@ export class Painting {
         this._fill = fill
     }
 
-    static stroked(stroke: Colour) {
-        return new Painting(stroke, undefined)
+    static stroke(stroke: Colour) {
+        return new Paint(stroke, undefined)
     }
 
-    static filled(fill: Colour) {
-        return new Painting(undefined, fill)
+    static fill(fill: Colour) {
+        return new Paint(undefined, fill)
     }
 
-    static strokedAndFilled(stroke: Colour, fill: Colour) {
-        return new Painting(stroke, fill)
+    /**
+     * Paint with both a fill and stroke. Fill shape will be drawn first
+     * so that stroke shape appears on top.
+     */
+    static complete(stroke: Colour, fill: Colour) {
+        return new Paint(stroke, fill)
     }
 
     stroke(): Colour | undefined {
@@ -65,12 +69,12 @@ export class GeoCircle {
     readonly type: ShapeType.GeoCircle = ShapeType.GeoCircle;
     private readonly _centre: LatLong
     private readonly _radius: Length
-    private readonly _painting: Painting
+    private readonly _paint: Paint
 
-    constructor(centre: LatLong, radius: Length, painting: Painting) {
+    constructor(centre: LatLong, radius: Length, paint: Paint) {
         this._centre = centre
         this._radius = radius
-        this._painting = painting
+        this._paint = paint
     }
 
     centre(): LatLong {
@@ -81,8 +85,8 @@ export class GeoCircle {
         return this._radius
     }
 
-    painting(): Painting {
-        return this._painting
+    paint(): Paint {
+        return this._paint
     }
 
 }
@@ -94,19 +98,19 @@ export class GeoPolygon {
 
     readonly type: ShapeType.GeoPolygon = ShapeType.GeoPolygon;
     private readonly _vertices: Array<LatLong>
-    private readonly _painting: Painting
+    private readonly _paint: Paint
 
-    constructor(vertices: Array<LatLong>, painting: Painting) {
+    constructor(vertices: Array<LatLong>, paint: Paint) {
         this._vertices = vertices
-        this._painting = painting
+        this._paint = paint
     }
 
     vertices(): Array<LatLong> {
         return this._vertices
     }
 
-    painting(): Painting {
-        return this._painting
+    paint(): Paint {
+        return this._paint
     }
 
 }
@@ -145,14 +149,14 @@ export class GeoRelativeCircle {
     private readonly _centreRef: LatLong
     private readonly _centreOffset: Vector2d
     private readonly _radius: number
-    private readonly _painting: Painting
+    private readonly _paint: Paint
 
     constructor(centreRef: LatLong, centreOffset: Vector2d, radius: number,
-        painting: Painting) {
+        paint: Paint) {
         this._centreRef = centreRef
         this._centreOffset = centreOffset
         this._radius = radius
-        this._painting = painting
+        this._paint = paint
     }
 
     centreRef(): LatLong {
@@ -167,8 +171,8 @@ export class GeoRelativeCircle {
         return this._radius
     }
 
-    painting(): Painting {
-        return this._painting
+    paint(): Paint {
+        return this._paint
     }
 
 }
@@ -184,12 +188,12 @@ export class GeoRelativePolygon {
     readonly type: ShapeType.GeoRelativePolygon = ShapeType.GeoRelativePolygon;
     private readonly _ref: LatLong
     private readonly _vertices: Array<Vector2d>
-    private readonly _painting: Painting
+    private readonly _paint: Paint
 
-    constructor(ref: LatLong, vertices: Array<Vector2d>, painting: Painting) {
+    constructor(ref: LatLong, vertices: Array<Vector2d>, paint: Paint) {
         this._ref = ref
         this._vertices = vertices
-        this._painting = painting
+        this._paint = paint
     }
 
     ref(): LatLong {
@@ -200,8 +204,8 @@ export class GeoRelativePolygon {
         return this._vertices
     }
 
-    painting(): Painting {
-        return this._painting
+    paint(): Paint {
+        return this._paint
     }
 
 }

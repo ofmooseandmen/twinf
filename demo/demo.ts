@@ -64,8 +64,8 @@ export class Demo {
         const sanda = LatLong.ofDegrees(57.4295, 18.2223)
 
         const p = new S.GeoPolygon([ystad, malmo, lund, helsingborg, kristianstad],
-            S.Painting.stroked(Colour.LIMEGREEN))
-        const paint = S.Painting.filled(Colour.CORAL)
+            S.Paint.stroke(Colour.LIMEGREEN))
+        const paint = S.Paint.fill(Colour.CORAL)
         const c2 = new S.GeoCircle(goteborg, Length.ofKilometres(10), paint)
         const c3 = new S.GeoCircle(jonkoping, Length.ofKilometres(5), paint)
         const c4 = new S.GeoCircle(norrkoping, Length.ofKilometres(5), paint)
@@ -79,7 +79,7 @@ export class Demo {
 
         const rp = new S.GeoRelativePolygon(linkoping,
             [new Vector2d(50, 50), new Vector2d(100, 50), new Vector2d(50, 100)],
-            S.Painting.strokedAndFilled(Colour.SLATEGRAY, Colour.SNOW))
+            S.Paint.complete(Colour.SLATEGRAY, Colour.SNOW))
 
         const rl = new S.GeoRelativePolyline(norrkoping,
             [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(50, 150)], Colour.NAVY)
@@ -127,7 +127,7 @@ export class Demo {
             const ll = CoordinateSystems.geocentricToLatLong(p)
             const offset = new Vector2d(0, 0)
             const radius = 12
-            const paint = S.Painting.strokedAndFilled(Colour.DEEPPINK, Colour.LIGHTPINK)
+            const paint = S.Paint.complete(Colour.DEEPPINK, Colour.LIGHTPINK)
             const c = [new S.GeoRelativeCircle(ll, offset, radius, paint)]
             this.world.insert(new Graphic("Track", 1, c))
             setTimeout(h, 1000)

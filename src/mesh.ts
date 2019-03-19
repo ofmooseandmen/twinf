@@ -69,7 +69,7 @@ export class MeshGenerator {
 
     private static fromGeoCircle(c: S.GeoCircle, earthRadius: Length): Array<Mesh> {
         const gs = Geodetics.discretiseCircle(c.centre(), c.radius(), earthRadius, 100)
-        const paint = c.painting()
+        const paint = c.paint()
         return MeshGenerator._fromGeoPolygon(gs, paint)
     }
 
@@ -82,11 +82,11 @@ export class MeshGenerator {
 
     private static fromGeoPolygon(p: S.GeoPolygon): Array<Mesh> {
         const gs = p.vertices().map(CoordinateSystems.latLongToGeocentric)
-        const paint = p.painting()
+        const paint = p.paint()
         return MeshGenerator._fromGeoPolygon(gs, paint)
     }
 
-    private static _fromGeoPolygon(gs: Array<Vector3d>, paint: S.Painting): Array<Mesh> {
+    private static _fromGeoPolygon(gs: Array<Vector3d>, paint: S.Paint): Array<Mesh> {
         const stroke = paint.stroke()
         const fill = paint.fill()
         let res = new Array<Mesh>()
@@ -107,18 +107,18 @@ export class MeshGenerator {
     private static fromGeoRelativeCircle(c: S.GeoRelativeCircle): Array<Mesh> {
         const ref = c.centreRef()
         const ps = Geometry2d.discretiseCircle(c.centreOffset(), c.radius(), 100)
-        const paint = c.painting()
+        const paint = c.paint()
         return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint)
     }
 
     private static fromGeoRelativePoygon(p: S.GeoRelativePolygon): Array<Mesh> {
         const ref = p.ref()
         const ps = p.vertices()
-        const paint = p.painting()
+        const paint = p.paint()
         return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint)
     }
 
-    private static _fromGeoRelativePoygon(ref: LatLong, vertices: Array<Vector2d>, paint: S.Painting): Array<Mesh> {
+    private static _fromGeoRelativePoygon(ref: LatLong, vertices: Array<Vector2d>, paint: S.Paint): Array<Mesh> {
         const stroke = paint.stroke()
         const fill = paint.fill()
         let res = new Array<Mesh>()
