@@ -88,7 +88,7 @@ export class Demo {
             [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(75, 150)],
             new S.Stroke(Colour.NAVY, 3))
 
-        this.world.insert(new Graphic("sak", 0, [p, c2, c3, c4, c5, l1, l2]))
+        this.world.insert(new Graphic("sak", 0, [p, c2, c3, l1, c4, c5, l2]))
         this.world.insert(new Graphic("andra", 0, [rp, rl]))
         Demo.parseCoastlines(this.world)
 

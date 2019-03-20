@@ -134,17 +134,19 @@ export class World {
         for (let i = 0; i < shapes.length; i++) {
             meshes = meshes.concat(MeshGenerator.mesh(shapes[i], World.EARTH_RADIUS));
         }
-        const drawing = this.stack.get(name)
-        const drawingCtx = drawing === undefined ? this.renderer.newDrawing() : drawing.context()
-        const d = this.renderer.setGeometry(drawingCtx, meshes)
-        this.stack.insert(name, zi, d)
+        let drawing = this.stack.get(name)
+        if (drawing !== undefined) {
+            this.renderer.deleteDrawing(drawing)
+        }
+        drawing = this.renderer.createDrawing(meshes)
+        this.stack.insert(name, zi, drawing)
     }
 
     delete(graphicName: string) {
         let drawing = this.stack.get(name)
         if (drawing !== undefined) {
             this.stack.delete(graphicName)
-            this.renderer.deleteDrawing(drawing.context())
+            this.renderer.deleteDrawing(drawing)
         }
     }
 

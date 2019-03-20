@@ -16,9 +16,6 @@ export enum DrawMode {
 
 /**
  * A mesh is defined by geocentric positions, offsets, colours and a draw mode.
- *
- * If a geocentric position is (0, 0, 0) the offset is relative to the top-left
- * corner of the canvas, otherwise the offset is relative to that geocentric position.
  */
 export class Mesh {
 
@@ -35,14 +32,27 @@ export class Mesh {
         this._drawMode = drawMode
     }
 
+    /**
+     * Array of geocentric vertices (3 components each) or empty. If not empty
+     * this determines the number of indices to be rendered. If empty the VBO must
+     * be disabled.
+     */
     geos(): Array<number> {
         return this._geos
     }
 
+    /**
+     * Array of offsets vertices (2 components each) or empty. If geos is empty
+     * this determines the number of indices to be rendered. If empty the VBO must
+     * be disabled.
+     */
     offsets(): Array<number> {
         return this._offsets
     }
 
+    /**
+     * Array of colours (1 component each), never empty.
+     */
     colours(): Array<number> {
         return this._colours
     }
@@ -78,7 +88,7 @@ export class MeshGenerator {
         const gs = l.points().map(CoordinateSystems.latLongToGeocentric)
         const vs = MeshGenerator.geoPointsToArray(gs, false)
         const cs = MeshGenerator.colours(l.stroke().colour(), vs, 3)
-        return [new Mesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.LINES)]
+        return [new Mesh(vs, [], cs, DrawMode.LINES)]
     }
 
     private static fromGeoPolygon(p: S.GeoPolygon): Array<Mesh> {
@@ -91,16 +101,16 @@ export class MeshGenerator {
         const stroke = paint.stroke()
         const fill = paint.fill()
         let res = new Array<Mesh>()
-        if (stroke !== undefined) {
-            const vs = MeshGenerator.geoPointsToArray(gs, true)
-            const cs = MeshGenerator.colours(stroke.colour(), vs, 3)
-            res.push(new Mesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.LINES))
-        }
         if (fill !== undefined) {
             const ts = Triangulator.SPHERICAL.triangulate(gs)
             const vs = MeshGenerator.geoTrianglesToArray(ts)
             const cs = MeshGenerator.colours(fill, vs, 3)
-            res.push(new Mesh(vs, MeshGenerator.noOffsets(vs), cs, DrawMode.TRIANGLES))
+            res.push(new Mesh(vs, [], cs, DrawMode.TRIANGLES))
+        }
+        if (stroke !== undefined) {
+            const vs = MeshGenerator.geoPointsToArray(gs, true)
+            const cs = MeshGenerator.colours(stroke.colour(), vs, 3)
+            res.push(new Mesh(vs, [], cs, DrawMode.LINES))
         }
         return res
     }
@@ -123,15 +133,15 @@ export class MeshGenerator {
         const stroke = paint.stroke()
         const fill = paint.fill()
         let res = new Array<Mesh>()
-        if (stroke !== undefined) {
-            res.push(MeshGenerator._fromGeoRelativePoyline(ref, vertices, stroke, true))
-        }
         if (fill !== undefined) {
             const ts = Triangulator.PLANAR.triangulate(vertices)
             const os = MeshGenerator.offsetTrianglesToArray(ts)
             const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
             const cs = MeshGenerator.colours(fill, os, 2)
             res.push(new Mesh(vs, os, cs, DrawMode.TRIANGLES))
+        }
+        if (stroke !== undefined) {
+            res.push(MeshGenerator._fromGeoRelativePoyline(ref, vertices, stroke, true))
         }
         return res
     }
@@ -231,13 +241,6 @@ export class MeshGenerator {
             res.push(ps[0].x(), ps[0].y())
         }
         return res
-    }
-
-    /** vs is array of geocentric vertices. */
-    private static noOffsets(vs: Array<number>): Array<number> {
-        // vertices have 3 components each, offsets only 2
-        const len = (vs.length / 3) * 2
-        return new Array(len).fill(0)
     }
 
     /** vs is array of vertices, n is number of component per vertex. */

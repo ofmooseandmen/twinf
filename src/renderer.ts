@@ -3,104 +3,17 @@ import { Colour } from "./colour"
 import { DrawMode, Mesh } from "./mesh"
 import { WebGL2 } from "./webgl2"
 
-/**
- * Characteristics of a WebGL attibute.
- */
-export class Attribute {
-
-    private readonly _name: string
-    private readonly _size: GLint
-    private readonly _type: GLenum
-    private readonly _normalised: GLboolean
-
-    constructor(name: string, size: GLint, type: GLenum, normalised: GLboolean) {
-        this._name = name
-        this._size = size
-        this._type = type
-        this._normalised = normalised
-    }
-
-    /**
-     * Name of the attribute.
-     */
-    name(): string {
-        return this._name
-    }
-
-    /**
-     * Number of components per vertex attribute.
-     */
-    size(): GLint {
-        return this._size
-    }
-
-    /**
-     * Data type of each component in the array.
-     */
-    type(): GLenum {
-        return this._type
-    }
-
-    /**
-     * Whether integer data values should be normalized into a certain range when being casted to a float.
-     * Note: for types gl.FLOAT and gl.HALF_FLOAT, this has no effect.
-     */
-    normalised(): GLboolean {
-        return this._normalised
-    }
-
-}
-
-/**
- * Holds reference to vertex array object and
- * every buffer (one per attribute) used to draw something.
- */
-export class DrawingContext {
-
-    private readonly _vao: WebGLVertexArrayObject
-    private readonly _buffers: Map<string, WebGLBuffer>
-
-    constructor(vao: WebGLVertexArrayObject, buffers: Map<string, WebGLBuffer>) {
-        this._vao = vao
-        this._buffers = buffers
-    }
-
-    vao(): WebGLVertexArrayObject {
-        return this._vao
-    }
-
-    buffers(): Map<string, WebGLBuffer> {
-        return this._buffers
-    }
-
-}
-
 export class Drawing {
 
-    private readonly _context: DrawingContext
-    private readonly _countTriangles: number
-    private readonly _countLines: number
+    private readonly _batches: Array<GlArrays>
 
-    constructor(context: DrawingContext, countTriangles: number, countLines: number) {
-        this._context = context
-        this._countTriangles = countTriangles
-        this._countLines = countLines
+    constructor(batches: Array<GlArrays>) {
+        this._batches = batches
     }
 
-    context(): DrawingContext {
-        return this._context
+    batches(): Array<GlArrays> {
+        return this._batches
     }
-
-    /** number of indices to be rendered with LINES. */
-    countTriangles(): number {
-        return this._countTriangles
-    }
-
-    /** number of indices to be rendered with LINES. */
-    countLines(): number {
-        return this._countLines
-    }
-
 }
 
 export class Animator {
@@ -182,7 +95,7 @@ export class Scene {
 }
 
 /**
- * Shape rendering on WebGL.
+ * WebGL renderer.
  */
 export class Renderer {
 
@@ -202,93 +115,37 @@ export class Renderer {
         this.program = WebGL2.createProgram(this.gl, vertexShader, fragmentShader)
     }
 
-    newDrawing(): DrawingContext {
-        const gl = this.gl
-        const program = this.program
-        const attributes = [this.aGeoPos, this.aOffset, this.aRgba]
-        gl.useProgram(program);
-
-        const vao = gl.createVertexArray();
-        if (vao === null) {
-            throw new Error("Could not create vertex array")
-        }
-        gl.bindVertexArray(vao)
-
-        let buffers = new Map<string, WebGLBuffer>()
-        for (const a of attributes) {
-            const attLocation = gl.getAttribLocation(program, a.name())
-            gl.enableVertexAttribArray(attLocation)
-
-            const attBuff = gl.createBuffer()
-            if (attBuff === null) {
-                throw new Error("Could not create buffer for attribute: " + a.name())
-            }
-            buffers.set(a.name(), attBuff)
-            gl.bindBuffer(gl.ARRAY_BUFFER, attBuff)
-
-            /* 0 = move forward size * sizeof(type) each iteration to get the next position */
-            const stride = 0;
-            /* start at the beginning of the buffer */
-            const offset = 0;
-            if (a.type() == gl.UNSIGNED_INT) {
-                gl.vertexAttribIPointer(attLocation, a.size(), a.type(), stride, offset)
-            } else {
-                gl.vertexAttribPointer(attLocation, a.size(), a.type(), a.normalised(), stride, offset)
-            }
-            gl.bindBuffer(gl.ARRAY_BUFFER, null)
-        }
-        gl.bindVertexArray(null);
-        return new DrawingContext(vao, buffers)
-    }
-
-    deleteDrawing(ctx: DrawingContext) {
-        this.gl.useProgram(this.program);
-        ctx.buffers().forEach(this.gl.deleteBuffer);
-        this.gl.deleteVertexArray(ctx.vao())
-    }
-
-    // FIXME: don't change order of the meshes, fix when introducing shader for
-    // geo polylines
-    setGeometry(ctx: DrawingContext, meshes: Array<Mesh>): Drawing {
-        /* first the triangles then the lines. */
-        const atgs = new Array<Array<number>>()
-        const atos = new Array<Array<number>>()
-        const atcs = new Array<Array<number>>()
-        const algs = new Array<Array<number>>()
-        const alos = new Array<Array<number>>()
-        const alcs = new Array<Array<number>>()
+    createDrawing(meshes: Array<Mesh>): Drawing {
         const len = meshes.length
-        for (let i = 0; i < len; i++) {
-            const m = meshes[i]
-            if (m.drawMode() === DrawMode.TRIANGLES) {
-                atgs.push(m.geos())
-                atos.push(m.offsets())
-                atcs.push(m.colours())
-            } else if (m.drawMode() === DrawMode.LINES) {
-                algs.push(m.geos())
-                alos.push(m.offsets())
-                alcs.push(m.colours())
-            }
+        if (len === 0) {
+            return new Drawing([])
         }
-        const tgs = Renderer.flatten(atgs)
-        const tos = Renderer.flatten(atos)
-        const tcs = Renderer.flatten(atcs)
-        const countTriangles = tgs.length / 3
-        const lgs = Renderer.flatten(algs)
-        const los = Renderer.flatten(alos)
-        const lcs = Renderer.flatten(alcs)
-        const countLines = lgs.length / 3
+        const attributes = [this.aGeoPos, this.aOffset, this.aRgba]
+        let batches = new Array<Batch>()
 
-        const gl = this.gl
-        gl.useProgram(this.program)
+        let mesh = meshes[0]
+        const state = new State(mesh, this.gl)
+        let batch = this.createBatch(state, attributes)
+        batches.push(batch)
 
-        const gb = Renderer.buffer(ctx, this.aGeoPos.name())
-        const ob = Renderer.buffer(ctx, this.aOffset.name())
-        const cb = Renderer.buffer(ctx, this.aRgba.name())
-        Renderer.setBufferData(gb, new Float32Array(tgs.concat(lgs)), gl)
-        Renderer.setBufferData(ob, new Float32Array(tos.concat(los)), gl)
-        Renderer.setBufferData(cb, new Uint32Array(tcs.concat(lcs)), gl)
-        return new Drawing(ctx, countTriangles, countLines)
+        this.fillBatch(batch, state, mesh)
+
+        for (let i = 1; i < len; i++) {
+            mesh = meshes[i]
+            // new batch if different drawing mode or any array changes from empty/non empty
+            const newBatch = state.update(mesh, this.gl)
+            if (newBatch) {
+                batch = this.createBatch(state, attributes)
+                batches.push(batch)
+            }
+            this.fillBatch(batch, state, mesh)
+        }
+        return new Drawing(batches.map(b => b.createGlArrays(this.gl, this.program)))
+    }
+
+    deleteDrawing(drawing: Drawing) {
+        this.gl.useProgram(this.program)
+        drawing.batches().forEach(b => b.delete(this.gl))
     }
 
     draw(scene: Scene) {
@@ -324,41 +181,24 @@ export class Renderer {
         const canvasToClipspaceLocation = gl.getUniformLocation(program, "u_canvas_to_clipspace");
         gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
 
-        const len = drawings.length
-        for (let i = 0; i < len; i++) {
-            const d = drawings[i]
-            gl.bindVertexArray(d.context().vao());
-            /* first triangles. */
-            if (d.countTriangles() > 0) {
-                gl.drawArrays(gl.TRIANGLES, 0, d.countTriangles());
-            }
-            /* then lines. */
-            if (d.countLines() > 0) {
-                gl.drawArrays(gl.LINES, d.countTriangles(), d.countLines());
+        for (let i = 0; i < drawings.length; i++) {
+            const bs = drawings[i].batches()
+            for (let j = 0; j < bs.length; j++) {
+                bs[j].draw(this.gl)
             }
         }
     }
 
-    private static setBufferData(buffer: WebGLBuffer, vs: Uint32Array | Float32Array,
-        gl: WebGL2RenderingContext) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, vs, gl.STATIC_DRAW, 0);
+    private createBatch(state: State, attributes: Array<Attribute>): Batch {
+        /* count is driven by geos if not empty, offsets otherwise. */
+        const attCount = state.emptyGeos ? this.aOffset : this.aGeoPos
+        return new Batch(state.drawMode, attributes, attCount)
     }
 
-    private static flatten(arr: Array<Array<number>>): Array<number> {
-        let res = new Array<number>()
-        for (const a of arr) {
-            Array.prototype.push.apply(res, a)
-        }
-        return res
-    }
-
-    private static buffer(ctx: DrawingContext, attName: string): WebGLBuffer {
-        const b = ctx.buffers().get(attName)
-        if (b === undefined) {
-            throw new Error("Missing buffer for attribute " + attName)
-        }
-        return b
+    private fillBatch(batch: Batch, state: State, mesh: Mesh) {
+        if (!state.emptyGeos) { batch.addToArray(this.aGeoPos, mesh.geos()) }
+        if (!state.emptyOffsets) { batch.addToArray(this.aOffset, mesh.offsets()) }
+        batch.addToArray(this.aRgba, mesh.colours())
     }
 
     private static readonly VERTEX_SHADER =
@@ -445,5 +285,202 @@ void main() {
   colour = v_colour;
 }
 `
+
+}
+
+/**
+ * Characteristics of a WebGL attibute.
+ */
+class Attribute {
+
+    private readonly _name: string
+    private readonly _size: GLint
+    private readonly _type: GLenum
+    private readonly _normalised: GLboolean
+
+    constructor(name: string, size: GLint, type: GLenum, normalised: GLboolean) {
+        this._name = name
+        this._size = size
+        this._type = type
+        this._normalised = normalised
+    }
+
+    /**
+     * Name of the attribute.
+     */
+    name(): string {
+        return this._name
+    }
+
+    /**
+     * Number of components per vertex attribute.
+     */
+    size(): GLint {
+        return this._size
+    }
+
+    /**
+     * Data type of each component in the array.
+     */
+    type(): GLenum {
+        return this._type
+    }
+
+    /**
+     * Whether integer data values should be normalized into a certain range when being casted to a float.
+     * Note: for types gl.FLOAT and gl.HALF_FLOAT, this has no effect.
+     */
+    normalised(): GLboolean {
+        return this._normalised
+    }
+
+}
+
+/**
+ * VAO, VBOs and constant attributes to be rendered by one draw call.
+ */
+class GlArrays {
+
+    private readonly drawMode: GLenum
+    private readonly vao: WebGLVertexArrayObject
+    private readonly buffers: Array<WebGLBuffer>
+    private readonly constants: Array<number>
+    private readonly count: number
+
+    constructor(drawMode: GLenum, vao: WebGLVertexArrayObject,
+        buffers: Array<WebGLBuffer>, constants: Array<number>,
+        count: number) {
+        this.drawMode = drawMode
+        this.vao = vao
+        this.buffers = buffers
+        this.constants = constants
+        this.count = count
+    }
+
+    draw(gl: WebGL2RenderingContext) {
+        gl.bindVertexArray(this.vao)
+        this.constants.forEach(c => gl.disableVertexAttribArray(c))
+        gl.drawArrays(this.drawMode, 0, this.count)
+    }
+
+    delete(gl: WebGL2RenderingContext) {
+        this.buffers.forEach(b => gl.deleteBuffer(b))
+        gl.deleteVertexArray(this.vao)
+    }
+
+}
+
+/**
+ * Batch of meshes to be rendered with the same draw mode and enables VBOs.
+ */
+class Batch {
+
+    private readonly drawMode: GLenum
+    private readonly attributes: Array<Attribute>
+    private readonly attributeCount: Attribute
+    private readonly arrays: Map<String, Array<number>>
+
+    constructor(drawMode: GLenum, attributes: Array<Attribute>, attributeCount: Attribute) {
+        this.drawMode = drawMode
+        this.attributes = attributes
+        this.attributeCount = attributeCount
+        this.arrays = new Map<String, Array<number>>()
+    }
+
+    addToArray(attribute: Attribute, data: Array<number>) {
+        let arr = this.arrays.get(attribute.name())
+        if (arr === undefined) {
+            arr = new Array<number>()
+            this.arrays.set(attribute.name(), arr)
+        }
+        Array.prototype.push.apply(arr, data)
+    }
+
+    createGlArrays(gl: WebGL2RenderingContext, program: WebGLProgram): GlArrays {
+        gl.useProgram(program);
+
+        const vao = gl.createVertexArray();
+        if (vao === null) {
+            throw new Error("Could not create vertex array")
+        }
+        gl.bindVertexArray(vao)
+
+        let buffers = new Array<WebGLBuffer>()
+        let constants = new Array<number>()
+        for (const a of this.attributes) {
+            const attName = a.name()
+            const attLocation = gl.getAttribLocation(program, attName)
+            const arr = this.arrays.get(attName)
+            if (arr === undefined) {
+                gl.disableVertexAttribArray(attLocation)
+                constants.push(attLocation)
+            } else {
+                gl.enableVertexAttribArray(attLocation)
+
+                const attBuff = gl.createBuffer()
+                if (attBuff === null) {
+                    throw new Error("Could not create buffer for attribute: " + attName)
+                }
+                buffers.push(attBuff)
+                gl.bindBuffer(gl.ARRAY_BUFFER, attBuff)
+
+                /* 0 = move forward size * sizeof(type) each iteration to get the next position */
+                const stride = 0;
+                /* start at the beginning of the buffer */
+                const offset = 0;
+                if (a.type() == gl.UNSIGNED_INT) {
+                    gl.vertexAttribIPointer(attLocation, a.size(), a.type(), stride, offset)
+                    gl.bufferData(gl.ARRAY_BUFFER, new Uint32Array(arr), gl.STATIC_DRAW, 0);
+                } else {
+                    gl.vertexAttribPointer(attLocation, a.size(), a.type(), a.normalised(), stride, offset)
+                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arr), gl.STATIC_DRAW, 0);
+                }
+            }
+        }
+        gl.bindVertexArray(null);
+        const refArray = this.arrays.get(this.attributeCount.name())
+        if (refArray === undefined) {
+            throw new Error("No array for attribute: " + this.attributeCount.name())
+        }
+        const count = refArray.length / this.attributeCount.size()
+        return new GlArrays(this.drawMode, vao, buffers, constants, count)
+    }
+
+}
+
+class State {
+
+    drawMode: GLenum
+    emptyGeos: boolean
+    emptyOffsets: boolean
+
+    constructor(m: Mesh, gl: WebGLRenderingContext) {
+        this.drawMode = State.drawMode(m, gl)
+        this.emptyGeos = State.isEmpty(m.geos())
+        this.emptyOffsets = State.isEmpty(m.offsets())
+    }
+
+    update(m: Mesh, gl: WebGLRenderingContext): boolean {
+        const drawMode = State.drawMode(m, gl)
+        const emptyGeos = State.isEmpty(m.geos())
+        const emptyOffsets = State.isEmpty(m.offsets())
+        const changed = this.drawMode !== drawMode
+            || this.emptyGeos != emptyGeos
+            || this.emptyOffsets != emptyOffsets
+        if (changed) {
+            this.drawMode = drawMode
+            this.emptyGeos = emptyGeos
+            this.emptyOffsets = emptyOffsets
+        }
+        return changed
+    }
+
+    private static drawMode(m: Mesh, gl: WebGLRenderingContext): GLenum {
+        return m.drawMode() == DrawMode.LINES ? gl.LINES : gl.TRIANGLES
+    }
+
+    private static isEmpty(a: Array<number>): boolean {
+        return a.length === 0
+    }
 
 }
