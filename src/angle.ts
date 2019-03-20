@@ -1,3 +1,4 @@
+// FIXME resolution (see jord) ?
 export class Angle {
 
     private readonly degs: number

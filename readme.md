@@ -28,7 +28,7 @@ Use arrow keys to pan and +/- to zoom in/out
 TWINF allows to draw shapes defined by latitude and longitude on a canvas using
 the WebGL2 context.
 
-The following transformation are applied to shapes:
+The following transformations are applied to shapes:
 
 - In the CPU: [conversion](https://en.wikipedia.org/wiki/Geographic_coordinate_conversion) from latitude/longitude coordinate system to [geocentric coordinate system](https://en.wikipedia.org/wiki/ECEF) assuming a spherical earth model
 - In the CPU: triangulation of spherical and planar polygons

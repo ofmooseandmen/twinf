@@ -117,6 +117,9 @@ export class Geometry2d {
             ))
     }
 
+    /**
+     * Extrudes the given polyline to a triangle strip of the given width.
+     */
     static extrude(points: Array<Vector2d>, width: number): Array<Triangle<Vector2d>> {
         const len = points.length
         let ts = new Array<Triangle<Vector2d>>()

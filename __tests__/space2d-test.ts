@@ -103,15 +103,13 @@ describe("Geometry2d", () => {
             expect(Geometry2d.extrude([new Vector2d(50, 50)], 1).length).toBe(0)
         })
 
-        test("extrude triangulates a 2D polyline into a stroke of given width",
+        test("triangulates a 2D polyline into a stroke of given width",
             () => {
                 const w = 10
                 const ps = [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(75, 150)]
                 const ts = Geometry2d.extrude(ps, w)
 
                 expect(ts.length).toBe(4)
-
-                // FIXME use Util.assertV2Equals (numDigits is 10)
 
                 const t0 = ts[0]
                 expect(t0.v1().x()).toBe(55)

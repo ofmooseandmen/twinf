@@ -1,3 +1,4 @@
+// FIXME resolution (see jord) ?
 export class Length {
 
     private readonly _metres: number
