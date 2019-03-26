@@ -101,15 +101,21 @@ export class Renderer {
 
     private readonly gl: WebGL2RenderingContext
     private readonly aGeoPos: Attribute
+    private readonly aPrevGeoPos: Attribute
+    private readonly aNextGeoPos: Attribute
+    private readonly aHalfWidth: Attribute
     private readonly aOffset: Attribute
     private readonly aRgba: Attribute
     private readonly program: WebGLProgram
 
     constructor(gl: WebGL2RenderingContext) {
         this.gl = gl
-        this.aGeoPos = new Attribute("a_geo_pos", 3, this.gl.FLOAT, false)
-        this.aOffset = new Attribute("a_offset", 2, this.gl.FLOAT, false)
-        this.aRgba = new Attribute("a_rgba", 1, this.gl.UNSIGNED_INT, false)
+        this.aGeoPos = new Attribute("a_geo_pos", 3, this.gl.FLOAT)
+        this.aPrevGeoPos = new Attribute("a_prev_geo_pos", 3, this.gl.FLOAT)
+        this.aNextGeoPos = new Attribute("a_next_geo_pos", 3, this.gl.FLOAT)
+        this.aHalfWidth = new Attribute("a_half_width", 1, this.gl.FLOAT)
+        this.aOffset = new Attribute("a_offset", 2, this.gl.FLOAT)
+        this.aRgba = new Attribute("a_rgba", 1, this.gl.UNSIGNED_INT)
         const vertexShader = WebGL2.createShader(this.gl, this.gl.VERTEX_SHADER, Renderer.VERTEX_SHADER)
         const fragmentShader = WebGL2.createShader(this.gl, this.gl.FRAGMENT_SHADER, Renderer.FRAGMENT_SHADER)
         this.program = WebGL2.createProgram(this.gl, vertexShader, fragmentShader)
@@ -120,7 +126,14 @@ export class Renderer {
         if (len === 0) {
             return new Drawing([])
         }
-        const attributes = [this.aGeoPos, this.aOffset, this.aRgba]
+        const attributes = [
+            this.aGeoPos,
+            this.aPrevGeoPos,
+            this.aNextGeoPos,
+            this.aHalfWidth,
+            this.aOffset,
+            this.aRgba
+        ]
         let batches = new Array<Batch>()
 
         let mesh = meshes[0]
@@ -196,8 +209,18 @@ export class Renderer {
     }
 
     private fillBatch(batch: Batch, state: State, mesh: Mesh) {
-        if (!state.emptyGeos) { batch.addToArray(this.aGeoPos, mesh.geos()) }
-        if (!state.emptyOffsets) { batch.addToArray(this.aOffset, mesh.offsets()) }
+        if (!state.emptyGeos) {
+            batch.addToArray(this.aGeoPos, mesh.geos())
+        }
+        const extrusion = mesh.extrusion()
+        if (extrusion !== undefined) {
+            batch.addToArray(this.aPrevGeoPos, extrusion.prevGeos())
+            batch.addToArray(this.aNextGeoPos, extrusion.nextGeos())
+            batch.addToArray(this.aHalfWidth, extrusion.halfWidths())
+        }
+        if (!state.emptyOffsets) {
+            batch.addToArray(this.aOffset, mesh.offsets())
+        }
         batch.addToArray(this.aRgba, mesh.colours())
     }
 
@@ -213,6 +236,34 @@ vec4 rgba_to_colour(uint rgba) {
     return vec4(r, g, b, a);
 }
 
+// normal to given direction
+vec2 normal(vec2 d) {
+    return vec2(-d.y, d.x);
+}
+
+// direction from a to b
+vec2 direction(vec2 a, vec2 b) {
+    return normalize(a - b);
+}
+
+// extrudes given pos by given signed amount towards the miter at position.
+vec2 extrude_using_adjs(vec2 pos, vec2 prev, vec2 next, float amount) {
+    // line from prev to pt.
+    vec2 line_to = direction(pos, prev);
+    // line from pt to next.
+    vec2 line_from = direction(next, pos);
+    // miter.
+    vec2 tangent = normalize(line_to + line_from);
+    vec2 miter = normal(tangent);
+    float miter_length = amount / dot(miter, normal(line_to));
+    return pos + miter * miter_length;
+}
+
+// extrudes given pos by given signed amount towards the normal at position.
+vec2 extrude_using_adj(vec2 pos, vec2 adj, float amount) {
+    return pos + (normal(direction(adj, pos)) * amount);
+}
+
 // geocentric to stereographic conversion
 vec2 geocentric_to_stereographic(vec3 geo, float er, vec3 centre, mat3 rotation) {
     // n-vector to system
@@ -222,6 +273,16 @@ vec2 geocentric_to_stereographic(vec3 geo, float er, vec3 centre, mat3 rotation)
     float k = (2.0 * er) / (2.0 * er + system.z);
     return (system * k).xy;
 }
+
+// geocentric to canvas
+vec2 geocentric_to_canvas(vec3 geo, float er, vec3 centre, mat3 rotation, mat3 stereo_to_canvas, vec2 offset) {
+    // geocentric to stereographic
+    vec2 stereo = geocentric_to_stereographic(geo, er, centre, rotation);
+    // stereographic to canvas
+    vec3 c_pos = (vec3(stereo, 1) * stereo_to_canvas) + (vec3(offset, 0));
+    return c_pos.xy;
+}
+
 // -------------------------- //
 //  stereographic projection  //
 // -------------------------- //
@@ -245,10 +306,21 @@ uniform mat3 u_stereo_to_canvas;
 // 3x3 projection matrix (row major): canvas pixels to clipspace
 uniform mat3 u_canvas_to_clipspace;
 
-// geocentric position
+// geocentric position, (0, 0, 0) if none.
 in vec3 a_geo_pos;
 
-// offset in pixels
+// previous geocentric position or (0, 0, 0) if none.
+in vec3 a_prev_geo_pos;
+
+// next geocentric position or (0, 0, 0) if none.
+in vec3 a_next_geo_pos;
+
+// half width for extrusion, when 0 no extrusion is to be done.
+// if different from 0 at least one of a_prev_geo_pos or a_next_geo_pos
+// is not (0, 0, 0).
+in float a_half_width;
+
+// offset in pixels, (0, 0) if none.
 in vec2 a_offset;
 
 // colour (rgba)
@@ -258,16 +330,47 @@ in uint a_rgba;
 out vec4 v_colour;
 
 void main() {
-    // geocentric to stereographic
-    vec2 stereo_pos = geocentric_to_stereographic(a_geo_pos, u_earth_radius, u_geo_centre, u_geo_to_system);
+    vec2 c_pos;
+    if (a_half_width == 0.0) {
+        // geocentric to canvas
+        c_pos = geocentric_to_canvas(a_geo_pos, u_earth_radius, u_geo_centre,
+                                     u_geo_to_system, u_stereo_to_canvas, a_offset);
+    } else {
+        // a_geo_pos: geocentric to canvas
+        vec2 c_c_pos =
+            geocentric_to_canvas(a_geo_pos, u_earth_radius, u_geo_centre,
+                                 u_geo_to_system, u_stereo_to_canvas, a_offset);
 
-    // convert stereographic position to canvas pixels and add offset
-    // u_stereo_to_canvas is row major so v * m
-    vec3 c_pos = (vec3(stereo_pos, 1) * u_stereo_to_canvas) + (vec3(a_offset, 0));
+        if (length(a_prev_geo_pos) == 0.0) {
+            // next: geocentric to canvas
+            vec2 c_n_pos =
+                geocentric_to_canvas(a_next_geo_pos, u_earth_radius, u_geo_centre,
+                                     u_geo_to_system, u_stereo_to_canvas, a_offset);
+            // extrude c_c_pos by signed half width
+            c_pos = extrude_using_adj(c_c_pos, c_n_pos, a_half_width);
+        } else if (length(a_next_geo_pos) == 0.0) {
+            // prev: geocentric to canvas
+            vec2 c_p_pos =
+                geocentric_to_canvas(a_prev_geo_pos, u_earth_radius, u_geo_centre,
+                                     u_geo_to_system, u_stereo_to_canvas, a_offset);
+            // extrude c_c_pos by signed half width
+            c_pos = extrude_using_adj(c_c_pos, c_p_pos, a_half_width);
+        } else {
+          // prev: geocentric to canvas
+          vec2 c_p_pos =
+              geocentric_to_canvas(a_prev_geo_pos, u_earth_radius, u_geo_centre,
+                                   u_geo_to_system, u_stereo_to_canvas, a_offset);
+          // next: geocentric to canvas
+          vec2 c_n_pos =
+              geocentric_to_canvas(a_next_geo_pos, u_earth_radius, u_geo_centre,
+                                   u_geo_to_system, u_stereo_to_canvas, a_offset);
+          c_pos = extrude_using_adjs(c_c_pos, c_p_pos, c_n_pos, a_half_width);
+        }
+    }
 
     // canvas pixels to clipspace
     // u_projection is row major so v * m
-    gl_Position = vec4((c_pos * u_canvas_to_clipspace).xy, 0, 1);
+    gl_Position = vec4((vec3(c_pos, 1) * u_canvas_to_clipspace).xy, 0, 1);
 
     v_colour = rgba_to_colour(a_rgba);
 }
@@ -296,13 +399,11 @@ class Attribute {
     private readonly _name: string
     private readonly _size: GLint
     private readonly _type: GLenum
-    private readonly _normalised: GLboolean
 
-    constructor(name: string, size: GLint, type: GLenum, normalised: GLboolean) {
+    constructor(name: string, size: GLint, type: GLenum) {
         this._name = name
         this._size = size
         this._type = type
-        this._normalised = normalised
     }
 
     /**
@@ -324,14 +425,6 @@ class Attribute {
      */
     type(): GLenum {
         return this._type
-    }
-
-    /**
-     * Whether integer data values should be normalized into a certain range when being casted to a float.
-     * Note: for types gl.FLOAT and gl.HALF_FLOAT, this has no effect.
-     */
-    normalised(): GLboolean {
-        return this._normalised
     }
 
 }
@@ -359,6 +452,10 @@ class GlArrays {
 
     draw(gl: WebGL2RenderingContext) {
         gl.bindVertexArray(this.vao)
+        /*
+         * disable the vertex array, the attribute will have
+         * the default value which the shader can handle.
+         */
         this.constants.forEach(c => gl.disableVertexAttribArray(c))
         gl.drawArrays(this.drawMode, 0, this.count)
     }
@@ -393,7 +490,10 @@ class Batch {
             arr = new Array<number>()
             this.arrays.set(attribute.name(), arr)
         }
-        Array.prototype.push.apply(arr, data)
+        const len = data.length
+        for (let i = 0; i < len; i++) {
+            arr.push(data[i])
+        }
     }
 
     createGlArrays(gl: WebGL2RenderingContext, program: WebGLProgram): GlArrays {
@@ -432,7 +532,7 @@ class Batch {
                     gl.vertexAttribIPointer(attLocation, a.size(), a.type(), stride, offset)
                     gl.bufferData(gl.ARRAY_BUFFER, new Uint32Array(arr), gl.STATIC_DRAW, 0);
                 } else {
-                    gl.vertexAttribPointer(attLocation, a.size(), a.type(), a.normalised(), stride, offset)
+                    gl.vertexAttribPointer(attLocation, a.size(), a.type(), false, stride, offset)
                     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arr), gl.STATIC_DRAW, 0);
                 }
             }
@@ -448,28 +548,36 @@ class Batch {
 
 }
 
+/**
+ * Capture the state of the drawing to create batches.
+ */
 class State {
 
     drawMode: GLenum
     emptyGeos: boolean
+    private emptyExtrusion: boolean
     emptyOffsets: boolean
 
     constructor(m: Mesh, gl: WebGLRenderingContext) {
         this.drawMode = State.drawMode(m, gl)
         this.emptyGeos = State.isEmpty(m.geos())
+        this.emptyExtrusion = m.extrusion() === undefined
         this.emptyOffsets = State.isEmpty(m.offsets())
     }
 
     update(m: Mesh, gl: WebGLRenderingContext): boolean {
         const drawMode = State.drawMode(m, gl)
         const emptyGeos = State.isEmpty(m.geos())
+        const emptyExtrusion = m.extrusion() === undefined
         const emptyOffsets = State.isEmpty(m.offsets())
         const changed = this.drawMode !== drawMode
-            || this.emptyGeos != emptyGeos
-            || this.emptyOffsets != emptyOffsets
+            || this.emptyGeos !== emptyGeos
+            || this.emptyExtrusion !== emptyExtrusion
+            || this.emptyOffsets !== emptyOffsets
         if (changed) {
             this.drawMode = drawMode
             this.emptyGeos = emptyGeos
+            this.emptyExtrusion = emptyExtrusion
             this.emptyOffsets = emptyOffsets
         }
         return changed

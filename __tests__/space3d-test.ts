@@ -26,7 +26,7 @@ describe("Math3d", () => {
         expect(Math3d.dot(v1, v2)).toEqual(52)
     })
 
-    test('norm vector', () => {
+    test('Norm of vector', () => {
         expect(Math3d.norm(new Vector3d(2, 6, 5))).toBeCloseTo(8.06)
     })
 

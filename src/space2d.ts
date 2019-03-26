@@ -38,6 +38,13 @@ export class Math2d {
     }
 
     /**
+     * Computes the dot product of 2 vectors.
+     */
+    static dot(v1: Vector2d, v2: Vector2d): number {
+        return v1.x() * v2.x() + v1.y() * v2.y()
+    }
+
+    /**
      * Computes the norm of the given vector.
      */
     static norm(v: Vector2d): number {
@@ -76,7 +83,7 @@ export class Geometry2d {
      * the given list of positions.
      *
      * Notes:
-     * - the polygon can be closed or opened, i.e. first and last given positions
+     * - the polygon can be closedd or opened, i.e. first and last given positions
      *   can be equal.
      * - this method always returns false if the list contains less than 3 positions.
      */
@@ -120,34 +127,58 @@ export class Geometry2d {
     /**
      * Extrudes the given polyline to a triangle strip of the given width.
      */
-    static extrude(points: Array<Vector2d>, width: number): Array<Triangle<Vector2d>> {
+    static extrude(points: Array<Vector2d>, width: number, closed: boolean): Array<Triangle<Vector2d>> {
         const len = points.length
         let ts = new Array<Triangle<Vector2d>>()
         if (len < 2) {
             return ts
         }
         const halfWidth = width / 2.0
-        const uds = new Array<Vector2d>()
-        for (let i = 0; i < len - 1; i++) {
-            const pt = points[i]
-            const next = points[i + 1]
-            const normal = Geometry2d.normal(Geometry2d.direction(pt, next))
-            const up = Math2d.add(pt, Math2d.scale(normal, halfWidth))
-            const down = Math2d.sub(pt, Math2d.scale(normal, halfWidth))
-            uds.push(up)
-            uds.push(down)
+        const extruded = new Array<Vector2d>()
+        if (closed) {
+            Geometry2d.extrudeUsingAdjs(points[0], points[len - 1], points[1], halfWidth, extruded)
+        } else {
+            Geometry2d.extrudeUsingAdj(points[0], points[1], halfWidth, extruded)
         }
-        const last = points[len - 1]
-        const prev = points[len - 2]
-        const normal = Geometry2d.normal(Geometry2d.direction(last, prev))
-        const up = Math2d.sub(last, Math2d.scale(normal, halfWidth))
-        const down = Math2d.add(last, Math2d.scale(normal, halfWidth))
-        uds.push(up)
-        uds.push(down)
-        for (let i = 0; i < uds.length - 2; i++) {
-            ts.push(new Triangle<Vector2d>(uds[i], uds[i + 1], uds[i + 2]));
+        for (let i = 1; i < len - 1; i++) {
+            Geometry2d.extrudeUsingAdjs(points[i], points[i - 1], points[i + 1], halfWidth, extruded)
+        }
+        if (closed) {
+            Geometry2d.extrudeUsingAdjs(points[len - 1], points[len - 2], points[0], halfWidth, extruded)
+        } else {
+            Geometry2d.extrudeUsingAdj(points[len - 1], points[len - 2], -halfWidth, extruded)
+        }
+        const el = extruded.length
+        for (let i = 0; i < el - 2; i++) {
+            ts.push(new Triangle<Vector2d>(extruded[i], extruded[i + 1], extruded[i + 2]));
+        }
+        if (closed) {
+            ts.push(new Triangle<Vector2d>(extruded[el - 2], extruded[el - 1], extruded[0]));
+            ts.push(new Triangle<Vector2d>(extruded[el - 1], extruded[0], extruded[1]));
         }
         return ts
+    }
+
+    private static extrudeUsingAdjs(pt: Vector2d, prev: Vector2d, next: Vector2d,
+        halfWidth: number, res: Array<Vector2d>) {
+        /* line from prev to pt. */
+        const lineTo = Geometry2d.direction(pt, prev)
+        const normal = Geometry2d.normal(lineTo)
+        /* line from pt to next. */
+        const lineFrom = Geometry2d.direction(next, pt)
+        /* miter. */
+        const tangent = Math2d.unit(Math2d.add(lineTo, lineFrom))
+        const miter = Geometry2d.normal(tangent)
+        const miterLength = halfWidth / Math2d.dot(miter, normal)
+        res.push(Math2d.add(pt, Math2d.scale(miter, miterLength)))
+        res.push(Math2d.add(pt, Math2d.scale(miter, -miterLength)))
+    }
+
+    private static extrudeUsingAdj(pt: Vector2d, adj: Vector2d,
+        halfWidth: number, res: Array<Vector2d>) {
+        const normal = Geometry2d.normal(Geometry2d.direction(adj, pt))
+        res.push(Math2d.add(pt, Math2d.scale(normal, halfWidth)))
+        res.push(Math2d.add(pt, Math2d.scale(normal, -halfWidth)))
     }
 
     private static normal(direction: Vector2d) {

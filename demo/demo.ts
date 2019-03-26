@@ -64,7 +64,7 @@ export class Demo {
         const sanda = LatLong.ofDegrees(57.4295, 18.2223)
 
         const p = new S.GeoPolygon([ystad, malmo, lund, helsingborg, kristianstad],
-            S.Paint.stroke(new S.Stroke(Colour.LIMEGREEN, 1)))
+            S.Paint.stroke(new S.Stroke(Colour.LIMEGREEN, 5)))
         const paint = S.Paint.fill(Colour.CORAL)
         const c2 = new S.GeoCircle(goteborg, Length.ofKilometres(10), paint)
         const c3 = new S.GeoCircle(jonkoping, Length.ofKilometres(5), paint)
@@ -77,11 +77,12 @@ export class Demo {
             [visby, irevik, larbro, blase,
                 farosund, slite, gothem, ljugarn,
                 nar, vamlingbo, sundre, sanda, visby],
-            new S.Stroke(Colour.DODGERBLUE, 1))
+            new S.Stroke(Colour.DODGERBLUE, 5))
 
         const rp = new S.GeoRelativePolygon(linkoping,
-            [new Vector2d(50, 50), new Vector2d(100, 50), new Vector2d(50, 100)],
-            S.Paint.complete(new S.Stroke(Colour.SLATEGRAY, 1), Colour.SNOW))
+            [new Vector2d(50, 50), new Vector2d(50, 200), new Vector2d(70, 160),
+            new Vector2d(90, 200), new Vector2d(110, 50)],
+            S.Paint.complete(new S.Stroke(Colour.SLATEGRAY, 5), Colour.SNOW))
 
         const rl = new S.GeoRelativePolyline(
             norrkoping,
@@ -142,18 +143,18 @@ export class Demo {
     private static parseCoastlines(world: World) {
         Demo.load("./coastline.json",
             (data: any) => {
-                let length = data.features.length
-                let shapes = new Array<S.Shape>()
+                const length = data.features.length
+                const shapes = new Array<S.Shape>()
                 for (let i = 0; i < length; i++) {
-                    let feature = data.features[i]
+                    const feature = data.features[i]
                     if (feature.properties.featurecla == "Coastline") {
-                        let coordinates = feature.geometry.coordinates
-                        let nb_coordinates = coordinates.length
-                        let positions = new Array<LatLong>()
+                        const coordinates = feature.geometry.coordinates
+                        const nb_coordinates = coordinates.length
+                        const positions = new Array<LatLong>()
                         for (let j = 0; j < nb_coordinates; j++) {
-                            let coord = coordinates[j]
+                            const coord = coordinates[j]
                             // Be careful : longitude first, then latitude in geoJSON files
-                            let point = LatLong.ofDegrees(coord[1], coord[0])
+                            const point = LatLong.ofDegrees(coord[1], coord[0])
                             positions.push(point)
                         }
                         shapes.push(new S.GeoPolyline(positions, new S.Stroke(Colour.DIMGRAY, 1)))
@@ -167,14 +168,14 @@ export class Demo {
     }
 
     private static load = (url: string, success: (data: any) => void, error: (error: any) => void) => {
-        let xhr = new XMLHttpRequest()
+        const xhr = new XMLHttpRequest()
         xhr.open('get', url, true)
         xhr.onreadystatechange = () => {
-            // https://xhr.spec.whatwg.org/#dom-xmlhttprequest-readystate
-            if (xhr.readyState == 4) { // `DONE`
-                let status = xhr.status
+            if (xhr.readyState == 4) {
+                // done
+                const status = xhr.status
                 if (status == 200) {
-                    let data = JSON.parse(xhr.responseText)
+                    const data = JSON.parse(xhr.responseText)
                     success(data)
                 } else {
                     error(status)

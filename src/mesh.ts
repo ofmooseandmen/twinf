@@ -15,18 +15,52 @@ export enum DrawMode {
 }
 
 /**
- * A mesh is defined by geocentric positions, offsets, colours and a draw mode.
+ * Provides previous positions, next positions and signed half-width
+ * to be used by the vertex shader to extrude geocentric positions when
+ * drawing wide lines.
+ */
+export class Extrusion {
+
+    private readonly _prevGeos: Array<number>
+    private readonly _nextGeos: Array<number>
+    private readonly _halfWidths: Array<number>
+
+    constructor(prevGeos: Array<number>, nextGeos: Array<number>,
+        halfWidths: Array<number>) {
+        this._prevGeos = prevGeos
+        this._nextGeos = nextGeos
+        this._halfWidths = halfWidths
+    }
+
+    prevGeos(): Array<number> {
+        return this._prevGeos
+    }
+
+    nextGeos(): Array<number> {
+        return this._nextGeos
+    }
+
+    halfWidths(): Array<number> {
+        return this._halfWidths
+    }
+
+}
+
+/**
+ * A mesh is defined by geocentric positions, extrusion, offsets, colours and a draw mode.
  */
 export class Mesh {
 
     private readonly _geos: Array<number>
+    private readonly _extrusion: Extrusion | undefined
     private readonly _offsets: Array<number>
     private readonly _colours: Array<number>
     private readonly _drawMode: DrawMode
 
-    constructor(geos: Array<number>, offsets: Array<number>,
-        colours: Array<number>, drawMode: DrawMode) {
+    constructor(geos: Array<number>, extrusion: Extrusion | undefined,
+        offsets: Array<number>, colours: Array<number>, drawMode: DrawMode) {
         this._geos = geos
+        this._extrusion = extrusion
         this._offsets = offsets
         this._colours = colours
         this._drawMode = drawMode
@@ -39,6 +73,13 @@ export class Mesh {
      */
     geos(): Array<number> {
         return this._geos
+    }
+
+    /**
+     * Extrusion data to be used when drawing wide lines or undefined
+     */
+    extrusion(): Extrusion | undefined {
+        return this._extrusion
     }
 
     /**
@@ -86,9 +127,7 @@ export class MeshGenerator {
 
     private static fromGeoPolyline(l: S.GeoPolyline): Array<Mesh> {
         const gs = l.points().map(CoordinateSystems.latLongToGeocentric)
-        const vs = MeshGenerator.geoPointsToArray(gs, false)
-        const cs = MeshGenerator.colours(l.stroke().colour(), vs, 3)
-        return [new Mesh(vs, [], cs, DrawMode.LINES)]
+        return [MeshGenerator._fromGeoPoyline(gs, l.stroke(), false)]
     }
 
     private static fromGeoPolygon(p: S.GeoPolygon): Array<Mesh> {
@@ -105,14 +144,27 @@ export class MeshGenerator {
             const ts = Triangulator.SPHERICAL.triangulate(gs)
             const vs = MeshGenerator.geoTrianglesToArray(ts)
             const cs = MeshGenerator.colours(fill, vs, 3)
-            res.push(new Mesh(vs, [], cs, DrawMode.TRIANGLES))
+            res.push(new Mesh(vs, undefined, [], cs, DrawMode.TRIANGLES))
         }
         if (stroke !== undefined) {
-            const vs = MeshGenerator.geoPointsToArray(gs, true)
-            const cs = MeshGenerator.colours(stroke.colour(), vs, 3)
-            res.push(new Mesh(vs, [], cs, DrawMode.LINES))
+            res.push(MeshGenerator._fromGeoPoyline(gs, stroke, true))
         }
         return res
+    }
+
+    private static _fromGeoPoyline(points: Array<Vector3d>,
+        stroke: S.Stroke, closed: boolean): Mesh {
+        if (stroke.width() === 1) {
+            const vs = MeshGenerator.geoPointsToArray(points, closed)
+            const cs = MeshGenerator.colours(stroke.colour(), vs, 3)
+            return new Mesh(vs, undefined, [], cs, DrawMode.LINES)
+        }
+        const e = closed
+            ? MeshGenerator.closedExtrusion(points, stroke.width())
+            : MeshGenerator.openedExtrusion(points, stroke.width())
+        const vs = e[0]
+        const cs = MeshGenerator.colours(stroke.colour(), vs, 3)
+        return new Mesh(vs, e[1], [], cs, DrawMode.TRIANGLES)
     }
 
     private static fromGeoRelativeCircle(c: S.GeoRelativeCircle): Array<Mesh> {
@@ -138,7 +190,7 @@ export class MeshGenerator {
             const os = MeshGenerator.offsetTrianglesToArray(ts)
             const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
             const cs = MeshGenerator.colours(fill, os, 2)
-            res.push(new Mesh(vs, os, cs, DrawMode.TRIANGLES))
+            res.push(new Mesh(vs, undefined, os, cs, DrawMode.TRIANGLES))
         }
         if (stroke !== undefined) {
             res.push(MeshGenerator._fromGeoRelativePoyline(ref, vertices, stroke, true))
@@ -151,27 +203,19 @@ export class MeshGenerator {
     }
 
     private static _fromGeoRelativePoyline(ref: LatLong, points: Array<Vector2d>,
-        stroke: S.Stroke, close: boolean): Mesh {
+        stroke: S.Stroke, closed: boolean): Mesh {
         if (stroke.width() === 1) {
-            const os = MeshGenerator.offsetPointsToArray(points, close)
+            const os = MeshGenerator.offsetPointsToArray(points, closed)
             const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
             const cs = MeshGenerator.colours(stroke.colour(), os, 2)
-            return new Mesh(vs, os, cs, DrawMode.LINES)
+            return new Mesh(vs, undefined, os, cs, DrawMode.LINES)
         }
-        let pts: Array<Vector2d>
-        if (close) {
-            pts = points.slice(0)
-            pts.push(pts[0])
-        } else {
-            pts = points
-        }
-        const ts = Geometry2d.extrude(pts, stroke.width())
+        const ts = Geometry2d.extrude(points, stroke.width(), closed)
         const os = MeshGenerator.offsetTrianglesToArray(ts)
         const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
         const cs = MeshGenerator.colours(stroke.colour(), os, 2)
-        return new Mesh(vs, os, cs, DrawMode.TRIANGLES)
+        return new Mesh(vs, undefined, os, cs, DrawMode.TRIANGLES)
     }
-
 
     private static geoTrianglesToArray(ts: Array<Triangle<Vector3d>>): Array<number> {
         let res = new Array<number>()
@@ -197,7 +241,7 @@ export class MeshGenerator {
         return res
     }
 
-    private static geoPointsToArray(ps: Array<Vector3d>, close: boolean): Array<number> {
+    private static geoPointsToArray(ps: Array<Vector3d>, closed: boolean): Array<number> {
         /*
          * since we draw with LINES we need to repeat each intermediate point.
          * drawing with LINE_STRIP would not require this but would not allow
@@ -213,14 +257,14 @@ export class MeshGenerator {
                 res.push(p.x(), p.y(), p.z())
             }
         }
-        if (close) {
+        if (closed) {
             res.push(ps[last].x(), ps[last].y(), ps[last].z())
             res.push(ps[0].x(), ps[0].y(), ps[0].z())
         }
         return res
     }
 
-    private static offsetPointsToArray(ps: Array<Vector2d>, close: boolean): Array<number> {
+    private static offsetPointsToArray(ps: Array<Vector2d>, closed: boolean): Array<number> {
         /*
          * since we draw with LINES we need to repeat each intermediate point.
          * drawing with LINE_STRIP would not require this but would not allow
@@ -236,11 +280,164 @@ export class MeshGenerator {
                 res.push(p.x(), p.y())
             }
         }
-        if (close) {
+        if (closed) {
             res.push(ps[last].x(), ps[last].y())
             res.push(ps[0].x(), ps[0].y())
         }
         return res
+    }
+
+    private static closedExtrusion(vs: Array<Vector3d>, width: number): [Array<number>, Extrusion] {
+        const halfWidth = width / 2.0
+        const len = vs.length
+
+        const curs = new Array()
+        const prevs = new Array()
+        const nexts = new Array()
+        const halfWidths = new Array()
+
+        for (let i = 0; i < len; i++) {
+            const start = vs[i]
+            const ei = i === len - 1 ? 0 : i + 1
+            const end = vs[ei]
+            const pi = i === 0 ? len - 1 : i - 1
+            const prev = vs[pi]
+            const ni = ei === len - 1 ? 0 : ei + 1
+            const next = vs[ni]
+
+            /* first triangle. */
+            MeshGenerator.pushV3(start, curs)
+            MeshGenerator.pushV3(start, curs)
+            MeshGenerator.pushV3(end, curs)
+
+            MeshGenerator.pushV3(prev, prevs)
+            MeshGenerator.pushV3(prev, prevs)
+            MeshGenerator.pushV3(start, prevs)
+
+            MeshGenerator.pushV3(end, nexts)
+            MeshGenerator.pushV3(end, nexts)
+            MeshGenerator.pushV3(next, nexts)
+
+            halfWidths.push(halfWidth)
+            halfWidths.push(-halfWidth)
+            halfWidths.push(halfWidth)
+
+            /* second triangle. */
+            MeshGenerator.pushV3(start, curs)
+            MeshGenerator.pushV3(end, curs)
+            MeshGenerator.pushV3(end, curs)
+
+            MeshGenerator.pushV3(prev, prevs)
+            MeshGenerator.pushV3(start, prevs)
+            MeshGenerator.pushV3(start, prevs)
+
+            MeshGenerator.pushV3(end, nexts)
+            MeshGenerator.pushV3(next, nexts)
+            MeshGenerator.pushV3(next, nexts)
+
+            halfWidths.push(-halfWidth)
+            halfWidths.push(halfWidth)
+            halfWidths.push(-halfWidth)
+        }
+
+        return [curs, new Extrusion(prevs, nexts, halfWidths)]
+    }
+
+    private static openedExtrusion(vs: Array<Vector3d>, width: number): [Array<number>, Extrusion] {
+        const halfWidth = width / 2.0
+        const len = vs.length
+
+        const curs = new Array()
+        const prevs = new Array()
+        const nexts = new Array()
+        const halfWidths = new Array()
+        const zero = new Vector3d(0, 0, 0)
+
+        for (let i = 0; i < len - 1; i++) {
+            const start = vs[i]
+            const end = vs[i + 1]
+            const prev = i === 0 ? zero : vs[i - 1]
+            const next = i + 1 === len - 1 ? zero : vs[i + 2]
+
+            /* first triangle. */
+            MeshGenerator.pushV3(start, curs)
+            MeshGenerator.pushV3(start, curs)
+            MeshGenerator.pushV3(end, curs)
+
+            MeshGenerator.pushV3(prev, prevs)
+            MeshGenerator.pushV3(prev, prevs)
+            MeshGenerator.pushV3(start, prevs)
+
+            MeshGenerator.pushV3(end, nexts)
+            MeshGenerator.pushV3(end, nexts)
+            MeshGenerator.pushV3(next, nexts)
+
+            halfWidths.push(halfWidth)
+            halfWidths.push(-halfWidth)
+            halfWidths.push(halfWidth)
+
+            /* second triangle. */
+            MeshGenerator.pushV3(start, curs)
+            MeshGenerator.pushV3(end, curs)
+            MeshGenerator.pushV3(end, curs)
+
+            MeshGenerator.pushV3(prev, prevs)
+            MeshGenerator.pushV3(start, prevs)
+            MeshGenerator.pushV3(start, prevs)
+
+            MeshGenerator.pushV3(end, nexts)
+            MeshGenerator.pushV3(next, nexts)
+            MeshGenerator.pushV3(next, nexts)
+
+            halfWidths.push(-halfWidth)
+            halfWidths.push(halfWidth)
+            halfWidths.push(-halfWidth)
+        }
+
+        if (len > 2) {
+            /* 2 last triangles. */
+            /* first triangle. */
+            const last = vs[len - 1]
+            const penultimate = vs[len - 2]
+            const prev = vs[len - 3]
+            MeshGenerator.pushV3(penultimate, curs)
+            MeshGenerator.pushV3(penultimate, curs)
+            MeshGenerator.pushV3(last, curs)
+
+            MeshGenerator.pushV3(prev, prevs)
+            MeshGenerator.pushV3(prev, prevs)
+            MeshGenerator.pushV3(penultimate, prevs)
+
+            MeshGenerator.pushV3(last, nexts)
+            MeshGenerator.pushV3(last, nexts)
+            MeshGenerator.pushV3(zero, nexts)
+
+            halfWidths.push(halfWidth)
+            halfWidths.push(-halfWidth)
+            halfWidths.push(-halfWidth)
+
+            /* second triangle. */
+            MeshGenerator.pushV3(penultimate, curs)
+            MeshGenerator.pushV3(last, curs)
+            MeshGenerator.pushV3(last, curs)
+
+            MeshGenerator.pushV3(prev, prevs)
+            MeshGenerator.pushV3(penultimate, prevs)
+            MeshGenerator.pushV3(penultimate, prevs)
+
+            MeshGenerator.pushV3(last, nexts)
+            MeshGenerator.pushV3(zero, nexts)
+            MeshGenerator.pushV3(zero, nexts)
+
+            halfWidths.push(-halfWidth)
+            halfWidths.push(-halfWidth)
+            halfWidths.push(+halfWidth)
+        }
+        return [curs, new Extrusion(prevs, nexts, halfWidths)]
+    }
+
+    private static pushV3(v: Vector3d, vs: Array<number>) {
+        vs.push(v.x(), v.y(), v.z())
     }
 
     /** vs is array of vertices, n is number of component per vertex. */

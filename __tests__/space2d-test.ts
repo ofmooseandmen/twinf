@@ -1,4 +1,7 @@
 import { Geometry2d, Math2d, Vector2d } from "../src/space2d"
+import { Triangle } from "../src/triangle"
+
+import { assertV2Equals } from "./util"
 
 describe("Math2d", () => {
 
@@ -14,7 +17,13 @@ describe("Math2d", () => {
         expect(Math2d.sub(v1, v2)).toEqual(new Vector2d(-2, 0))
     })
 
-    test('norm vector', () => {
+    test('Dot product of 2 vectors', () => {
+        const v1 = new Vector2d(1, 5)
+        const v2 = new Vector2d(2, 6)
+        expect(Math2d.dot(v1, v2)).toEqual(32)
+    })
+
+    test('Norm of vector', () => {
         expect(Math2d.norm(new Vector2d(2, 6))).toBeCloseTo(6.32)
     })
 
@@ -99,51 +108,91 @@ describe("Geometry2d", () => {
     describe("extrude", () => {
 
         test("returns an empty array if not given a polyline", () => {
-            expect(Geometry2d.extrude([], 1).length).toBe(0)
-            expect(Geometry2d.extrude([new Vector2d(50, 50)], 1).length).toBe(0)
+            expect(Geometry2d.extrude([], 1, false).length).toBe(0)
+            expect(Geometry2d.extrude([new Vector2d(50, 50)], 1, false).length).toBe(0)
         })
 
-        test("triangulates a 2D polyline into a stroke of given width",
+        test("triangulate a 2D line into into a stroke of given width", () => {
+            const w = 10
+            const ps = [new Vector2d(50, 50), new Vector2d(50, 100)]
+            const ts = Geometry2d.extrude(ps, w, false)
+            assertTrianglesEquals(
+                [
+                    new Triangle(new Vector2d(45, 50), new Vector2d(55, 50), new Vector2d(45, 100)),
+                    new Triangle(new Vector2d(55, 50), new Vector2d(45, 100), new Vector2d(55, 100))
+                ], ts)
+        })
+
+        test("triangulates an opened 2D polyline into a stroke of given width",
             () => {
                 const w = 10
                 const ps = [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(75, 150)]
-                const ts = Geometry2d.extrude(ps, w)
-
-                expect(ts.length).toBe(4)
-
-                const t0 = ts[0]
-                expect(t0.v1().x()).toBe(55)
-                expect(t0.v1().y()).toBe(50)
-                expect(t0.v2().x()).toBe(45)
-                expect(t0.v2().y()).toBe(50)
-                expect(t0.v3().x()).toBeCloseTo(54.47)
-                expect(t0.v3().y()).toBeCloseTo(97.76)
-
-                const t1 = ts[1]
-                expect(t1.v1().x()).toBe(45)
-                expect(t1.v1().y()).toBe(50)
-                expect(t1.v2().x()).toBeCloseTo(54.47)
-                expect(t1.v2().y()).toBeCloseTo(97.76)
-                expect(t1.v3().x()).toBeCloseTo(45.53)
-                expect(t1.v3().y()).toBeCloseTo(102.24)
-
-                const t2 = ts[2]
-                expect(t2.v1().x()).toBeCloseTo(54.47)
-                expect(t2.v1().y()).toBeCloseTo(97.76)
-                expect(t2.v2().x()).toBeCloseTo(45.53)
-                expect(t2.v2().y()).toBeCloseTo(102.24)
-                expect(t2.v3().x()).toBeCloseTo(79.47)
-                expect(t2.v3().y()).toBeCloseTo(147.76)
-
-                const t3 = ts[3]
-                expect(t3.v1().x()).toBeCloseTo(45.53)
-                expect(t3.v1().y()).toBeCloseTo(102.24)
-                expect(t3.v2().x()).toBeCloseTo(79.47)
-                expect(t3.v2().y()).toBeCloseTo(147.76)
-                expect(t3.v3().x()).toBeCloseTo(70.53)
-                expect(t3.v3().y()).toBeCloseTo(152.24)
-
+                const ts = Geometry2d.extrude(ps, w, false)
+                assertTrianglesEquals(
+                    [
+                        new Triangle(
+                            new Vector2d(45, 50),
+                            new Vector2d(55, 50),
+                            new Vector2d(45, 101.18033988749895)),
+                        new Triangle(
+                            new Vector2d(55, 50),
+                            new Vector2d(45, 101.18033988749895),
+                            new Vector2d(55, 98.81966011250105)),
+                        new Triangle(
+                            new Vector2d(45, 101.18033988749895),
+                            new Vector2d(55, 98.81966011250105),
+                            new Vector2d(70.52786404500043, 152.2360679774998)),
+                        new Triangle(
+                            new Vector2d(55, 98.81966011250105),
+                            new Vector2d(70.52786404500043, 152.2360679774998),
+                            new Vector2d(79.47213595499957, 147.7639320225002))
+                    ], ts)
             })
+
+        test("triangulates a closed 2D polyline into a stroke of given width",
+            () => {
+                const w = 10
+                const ps = [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(75, 150)]
+                const ts = Geometry2d.extrude(ps, w, true)
+                assertTrianglesEquals(
+                    [
+                        new Triangle(
+                            new Vector2d(44.99999999999996, 9.384471871911522),
+                            new Vector2d(55.00000000000004, 90.61552812808847),
+                            new Vector2d(45, 101.18033988749895)),
+                        new Triangle(
+                            new Vector2d(55.00000000000004, 90.61552812808847),
+                            new Vector2d(45, 101.18033988749895),
+                            new Vector2d(55, 98.81966011250105)),
+                        new Triangle(
+                            new Vector2d(45, 101.18033988749895),
+                            new Vector2d(55, 98.81966011250105),
+                            new Vector2d(90.89793400779344, 192.97620790308582)),
+                        new Triangle(
+                            new Vector2d(55, 98.81966011250105),
+                            new Vector2d(90.89793400779344, 192.97620790308582),
+                            new Vector2d(59.10206599220656, 107.02379209691418)),
+                        new Triangle(
+                            new Vector2d(90.89793400779344, 192.97620790308582),
+                            new Vector2d(59.10206599220656, 107.02379209691418),
+                            new Vector2d(44.99999999999996, 9.384471871911522)),
+                        new Triangle(
+                            new Vector2d(59.10206599220656, 107.02379209691418),
+                            new Vector2d(44.99999999999996, 9.384471871911522),
+                            new Vector2d(55.00000000000004, 90.61552812808847))
+                    ], ts)
+            })
+
+
+        function assertTrianglesEquals(expected: Array<Triangle<Vector2d>>,
+            actual: Array<Triangle<Vector2d>>) {
+            expect(actual.length).toEqual(expected.length)
+            for (var i = 0; i < expected.length; i++) {
+                assertV2Equals(expected[i].v1(), actual[i].v1())
+                assertV2Equals(expected[i].v2(), actual[i].v2())
+                assertV2Equals(expected[i].v3(), actual[i].v3())
+            }
+        }
 
     })
 

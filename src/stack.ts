@@ -36,7 +36,10 @@ export class Stack<T> {
         let res = new Array<T>()
         for (let i = 0; i < len; i++) {
             const ds = Array.from(sorted[i][1].values())
-            Array.prototype.push.apply(res, ds)
+            const dsl = ds.length
+            for (let i = 0; i < dsl; i++) {
+                res.push(ds[i])
+            }
         }
         return res
     }
