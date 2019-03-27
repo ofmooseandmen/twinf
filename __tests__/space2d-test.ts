@@ -108,14 +108,14 @@ describe("Geometry2d", () => {
     describe("extrude", () => {
 
         test("returns an empty array if not given a polyline", () => {
-            expect(Geometry2d.extrude([], 1, false).length).toBe(0)
-            expect(Geometry2d.extrude([new Vector2d(50, 50)], 1, false).length).toBe(0)
+            expect(Geometry2d.extrude([], 1, 10, false).length).toBe(0)
+            expect(Geometry2d.extrude([new Vector2d(50, 50)], 1, 10, false).length).toBe(0)
         })
 
         test("triangulate a 2D line into into a stroke of given width", () => {
             const w = 10
             const ps = [new Vector2d(50, 50), new Vector2d(50, 100)]
-            const ts = Geometry2d.extrude(ps, w, false)
+            const ts = Geometry2d.extrude(ps, w, 10, false)
             assertTrianglesEquals(
                 [
                     new Triangle(new Vector2d(45, 50), new Vector2d(55, 50), new Vector2d(45, 100)),
@@ -123,66 +123,88 @@ describe("Geometry2d", () => {
                 ], ts)
         })
 
-        test("triangulates an opened 2D polyline into a stroke of given width",
-            () => {
-                const w = 10
-                const ps = [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(75, 150)]
-                const ts = Geometry2d.extrude(ps, w, false)
-                assertTrianglesEquals(
-                    [
-                        new Triangle(
-                            new Vector2d(45, 50),
-                            new Vector2d(55, 50),
-                            new Vector2d(45, 101.18033988749895)),
-                        new Triangle(
-                            new Vector2d(55, 50),
-                            new Vector2d(45, 101.18033988749895),
-                            new Vector2d(55, 98.81966011250105)),
-                        new Triangle(
-                            new Vector2d(45, 101.18033988749895),
-                            new Vector2d(55, 98.81966011250105),
-                            new Vector2d(70.52786404500043, 152.2360679774998)),
-                        new Triangle(
-                            new Vector2d(55, 98.81966011250105),
-                            new Vector2d(70.52786404500043, 152.2360679774998),
-                            new Vector2d(79.47213595499957, 147.7639320225002))
-                    ], ts)
-            })
+        test("triangulates an opened 2D polyline into a stroke of given width", () => {
+            const w = 10
+            const ps = [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(75, 150)]
+            const ts = Geometry2d.extrude(ps, w, 10, false)
+            assertTrianglesEquals(
+                [
+                    new Triangle(
+                        new Vector2d(45, 50),
+                        new Vector2d(55, 50),
+                        new Vector2d(45, 101.18033988749895)),
+                    new Triangle(
+                        new Vector2d(55, 50),
+                        new Vector2d(45, 101.18033988749895),
+                        new Vector2d(55, 98.81966011250105)),
+                    new Triangle(
+                        new Vector2d(45, 101.18033988749895),
+                        new Vector2d(55, 98.81966011250105),
+                        new Vector2d(70.52786404500043, 152.2360679774998)),
+                    new Triangle(
+                        new Vector2d(55, 98.81966011250105),
+                        new Vector2d(70.52786404500043, 152.2360679774998),
+                        new Vector2d(79.47213595499957, 147.7639320225002))
+                ], ts)
+        })
 
-        test("triangulates a closed 2D polyline into a stroke of given width",
-            () => {
-                const w = 10
-                const ps = [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(75, 150)]
-                const ts = Geometry2d.extrude(ps, w, true)
-                assertTrianglesEquals(
-                    [
-                        new Triangle(
-                            new Vector2d(44.99999999999996, 9.384471871911522),
-                            new Vector2d(55.00000000000004, 90.61552812808847),
-                            new Vector2d(45, 101.18033988749895)),
-                        new Triangle(
-                            new Vector2d(55.00000000000004, 90.61552812808847),
-                            new Vector2d(45, 101.18033988749895),
-                            new Vector2d(55, 98.81966011250105)),
-                        new Triangle(
-                            new Vector2d(45, 101.18033988749895),
-                            new Vector2d(55, 98.81966011250105),
-                            new Vector2d(90.89793400779344, 192.97620790308582)),
-                        new Triangle(
-                            new Vector2d(55, 98.81966011250105),
-                            new Vector2d(90.89793400779344, 192.97620790308582),
-                            new Vector2d(59.10206599220656, 107.02379209691418)),
-                        new Triangle(
-                            new Vector2d(90.89793400779344, 192.97620790308582),
-                            new Vector2d(59.10206599220656, 107.02379209691418),
-                            new Vector2d(44.99999999999996, 9.384471871911522)),
-                        new Triangle(
-                            new Vector2d(59.10206599220656, 107.02379209691418),
-                            new Vector2d(44.99999999999996, 9.384471871911522),
-                            new Vector2d(55.00000000000004, 90.61552812808847))
-                    ], ts)
-            })
+        test("triangulates a closed 2D polyline into a stroke of given width", () => {
+            const w = 10
+            const ps = [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(75, 150)]
+            const ts = Geometry2d.extrude(ps, w, 10, true)
+            assertTrianglesEquals(
+                [
+                    new Triangle(
+                        new Vector2d(44.99999999999996, 9.384471871911522),
+                        new Vector2d(55.00000000000004, 90.61552812808847),
+                        new Vector2d(45, 101.18033988749895)),
+                    new Triangle(
+                        new Vector2d(55.00000000000004, 90.61552812808847),
+                        new Vector2d(45, 101.18033988749895),
+                        new Vector2d(55, 98.81966011250105)),
+                    new Triangle(
+                        new Vector2d(45, 101.18033988749895),
+                        new Vector2d(55, 98.81966011250105),
+                        new Vector2d(90.89793400779344, 192.97620790308582)),
+                    new Triangle(
+                        new Vector2d(55, 98.81966011250105),
+                        new Vector2d(90.89793400779344, 192.97620790308582),
+                        new Vector2d(59.10206599220656, 107.02379209691418)),
+                    new Triangle(
+                        new Vector2d(90.89793400779344, 192.97620790308582),
+                        new Vector2d(59.10206599220656, 107.02379209691418),
+                        new Vector2d(44.99999999999996, 9.384471871911522)),
+                    new Triangle(
+                        new Vector2d(59.10206599220656, 107.02379209691418),
+                        new Vector2d(44.99999999999996, 9.384471871911522),
+                        new Vector2d(55.00000000000004, 90.61552812808847))
+                ], ts)
+        })
 
+        test("Does not use the miter if its length is greater than the limit", () => {
+            const w = 10
+            const ps = [new Vector2d(50, 50), new Vector2d(100, 50), new Vector2d(50, 51)]
+            const ts = Geometry2d.extrude(ps, w, 10, false)
+            assertTrianglesEquals(
+                [
+                    new Triangle(
+                        new Vector2d(50, 55),
+                        new Vector2d(50, 45),
+                        new Vector2d(100, 55)),
+                    new Triangle(
+                        new Vector2d(50, 45),
+                        new Vector2d(100, 55),
+                        new Vector2d(100, 45)),
+                    new Triangle(
+                        new Vector2d(100, 55),
+                        new Vector2d(100, 45),
+                        new Vector2d(49.900019994002, 46.00099970009997)),
+                    new Triangle(
+                        new Vector2d(100, 45),
+                        new Vector2d(49.900019994002, 46.00099970009997),
+                        new Vector2d(50.099980005998, 55.99900029990003))
+                ], ts)
+        })
 
         function assertTrianglesEquals(expected: Array<Triangle<Vector2d>>,
             actual: Array<Triangle<Vector2d>>) {

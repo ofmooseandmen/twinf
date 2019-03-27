@@ -28,7 +28,7 @@ export class Demo {
     constructor(gl: WebGL2RenderingContext) {
         const linkoping = LatLong.ofDegrees(58.4108, 15.6214)
         const def = new WorldDefinition(linkoping, Length.ofKilometres(2000), Angle.ofDegrees(0), Colour.GAINSBORO)
-        this.world = new World(gl, def, 60)
+        this.world = new World(gl, def)
         this.l = (_c, _r) => { }
     }
 

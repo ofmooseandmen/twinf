@@ -3,6 +3,7 @@ import { Colour } from "./colour"
 import { Geodetics } from "./geodetics"
 import { LatLong } from "./latlong"
 import { Length } from "./length"
+import { RenderingOptions } from "./options"
 import * as S from "./shape"
 import { Triangle } from "./triangle"
 import { Triangulator } from "./triangulation"
@@ -108,19 +109,26 @@ export class MeshGenerator {
 
     private constructor() { }
 
-    static mesh(s: S.Shape, earthRadius: Length): Array<Mesh> {
+    static mesh(s: S.Shape, earthRadius: Length, options: RenderingOptions): Array<Mesh> {
         switch (s.type) {
-            case S.ShapeType.GeoCircle: return MeshGenerator.fromGeoCircle(s, earthRadius)
-            case S.ShapeType.GeoPolygon: return MeshGenerator.fromGeoPolygon(s)
-            case S.ShapeType.GeoPolyline: return MeshGenerator.fromGeoPolyline(s)
-            case S.ShapeType.GeoRelativeCircle: return MeshGenerator.fromGeoRelativeCircle(s)
-            case S.ShapeType.GeoRelativePolygon: return MeshGenerator.fromGeoRelativePoygon(s)
-            case S.ShapeType.GeoRelativePolyline: return MeshGenerator.fromGeoRelativePoyline(s)
+            case S.ShapeType.GeoCircle:
+                return MeshGenerator.fromGeoCircle(s, earthRadius, options.circlePositions())
+            case S.ShapeType.GeoPolygon:
+                return MeshGenerator.fromGeoPolygon(s)
+            case S.ShapeType.GeoPolyline:
+                return MeshGenerator.fromGeoPolyline(s)
+            case S.ShapeType.GeoRelativeCircle:
+                return MeshGenerator.fromGeoRelativeCircle(s, options.circlePositions(), options.miterLimit())
+            case S.ShapeType.GeoRelativePolygon:
+                return MeshGenerator.fromGeoRelativePoygon(s, options.miterLimit())
+            case S.ShapeType.GeoRelativePolyline:
+                return MeshGenerator.fromGeoRelativePoyline(s, options.miterLimit())
         }
     }
 
-    private static fromGeoCircle(c: S.GeoCircle, earthRadius: Length): Array<Mesh> {
-        const gs = Geodetics.discretiseCircle(c.centre(), c.radius(), earthRadius, 100)
+    private static fromGeoCircle(c: S.GeoCircle, earthRadius: Length,
+        circlePositions: number): Array<Mesh> {
+        const gs = Geodetics.discretiseCircle(c.centre(), c.radius(), earthRadius, circlePositions)
         const paint = c.paint()
         return MeshGenerator._fromGeoPolygon(gs, paint)
     }
@@ -152,8 +160,8 @@ export class MeshGenerator {
         return res
     }
 
-    private static _fromGeoPoyline(points: Array<Vector3d>,
-        stroke: S.Stroke, closed: boolean): Mesh {
+    private static _fromGeoPoyline(points: Array<Vector3d>, stroke: S.Stroke,
+        closed: boolean): Mesh {
         if (stroke.width() === 1) {
             const vs = MeshGenerator.geoPointsToArray(points, closed)
             const cs = MeshGenerator.colours(stroke.colour(), vs, 3)
@@ -167,21 +175,24 @@ export class MeshGenerator {
         return new Mesh(vs, e[1], [], cs, DrawMode.TRIANGLES)
     }
 
-    private static fromGeoRelativeCircle(c: S.GeoRelativeCircle): Array<Mesh> {
+    private static fromGeoRelativeCircle(c: S.GeoRelativeCircle,
+        circlePositions: number, miterLimit: number): Array<Mesh> {
         const ref = c.centreRef()
-        const ps = Geometry2d.discretiseCircle(c.centreOffset(), c.radius(), 100)
+        const ps = Geometry2d.discretiseCircle(c.centreOffset(), c.radius(), circlePositions)
         const paint = c.paint()
-        return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint)
+        return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint, miterLimit)
     }
 
-    private static fromGeoRelativePoygon(p: S.GeoRelativePolygon): Array<Mesh> {
+    private static fromGeoRelativePoygon(p: S.GeoRelativePolygon,
+        miterLimit: number): Array<Mesh> {
         const ref = p.ref()
         const ps = p.vertices()
         const paint = p.paint()
-        return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint)
+        return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint, miterLimit)
     }
 
-    private static _fromGeoRelativePoygon(ref: LatLong, vertices: Array<Vector2d>, paint: S.Paint): Array<Mesh> {
+    private static _fromGeoRelativePoygon(ref: LatLong, vertices: Array<Vector2d>,
+        paint: S.Paint, miterLimit: number): Array<Mesh> {
         const stroke = paint.stroke()
         const fill = paint.fill()
         let res = new Array<Mesh>()
@@ -193,24 +204,27 @@ export class MeshGenerator {
             res.push(new Mesh(vs, undefined, os, cs, DrawMode.TRIANGLES))
         }
         if (stroke !== undefined) {
-            res.push(MeshGenerator._fromGeoRelativePoyline(ref, vertices, stroke, true))
+            res.push(MeshGenerator._fromGeoRelativePoyline(ref, vertices, stroke, true, miterLimit))
         }
         return res
     }
 
-    private static fromGeoRelativePoyline(l: S.GeoRelativePolyline): Array<Mesh> {
-        return [MeshGenerator._fromGeoRelativePoyline(l.ref(), l.points(), l.stroke(), false)]
+    private static fromGeoRelativePoyline(l: S.GeoRelativePolyline,
+        miterLimit: number): Array<Mesh> {
+        return [
+            MeshGenerator._fromGeoRelativePoyline(l.ref(), l.points(), l.stroke(), false, miterLimit)
+        ]
     }
 
     private static _fromGeoRelativePoyline(ref: LatLong, points: Array<Vector2d>,
-        stroke: S.Stroke, closed: boolean): Mesh {
+        stroke: S.Stroke, closed: boolean, miterLimit: number): Mesh {
         if (stroke.width() === 1) {
             const os = MeshGenerator.offsetPointsToArray(points, closed)
             const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
             const cs = MeshGenerator.colours(stroke.colour(), os, 2)
             return new Mesh(vs, undefined, os, cs, DrawMode.LINES)
         }
-        const ts = Geometry2d.extrude(points, stroke.width(), closed)
+        const ts = Geometry2d.extrude(points, stroke.width(), miterLimit, closed)
         const os = MeshGenerator.offsetTrianglesToArray(ts)
         const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
         const cs = MeshGenerator.colours(stroke.colour(), os, 2)

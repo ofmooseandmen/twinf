@@ -126,8 +126,13 @@ export class Geometry2d {
 
     /**
      * Extrudes the given polyline to a triangle strip of the given width.
+     *
+     * if (miterLength / halfWidth > miterLimit) the normal is used instead of
+     * the miter. No bevel or square joints are produced in this case as it would
+     * not be possible to replicate this in the GPU.
      */
-    static extrude(points: Array<Vector2d>, width: number, closed: boolean): Array<Triangle<Vector2d>> {
+    static extrude(points: Array<Vector2d>, width: number,
+        miterLimit: number, closed: boolean): Array<Triangle<Vector2d>> {
         const len = points.length
         let ts = new Array<Triangle<Vector2d>>()
         if (len < 2) {
@@ -136,15 +141,15 @@ export class Geometry2d {
         const halfWidth = width / 2.0
         const extruded = new Array<Vector2d>()
         if (closed) {
-            Geometry2d.extrudeUsingAdjs(points[0], points[len - 1], points[1], halfWidth, extruded)
+            Geometry2d.extrudeUsingAdjs(points[0], points[len - 1], points[1], halfWidth, miterLimit, extruded)
         } else {
             Geometry2d.extrudeUsingAdj(points[0], points[1], halfWidth, extruded)
         }
         for (let i = 1; i < len - 1; i++) {
-            Geometry2d.extrudeUsingAdjs(points[i], points[i - 1], points[i + 1], halfWidth, extruded)
+            Geometry2d.extrudeUsingAdjs(points[i], points[i - 1], points[i + 1], halfWidth, miterLimit, extruded)
         }
         if (closed) {
-            Geometry2d.extrudeUsingAdjs(points[len - 1], points[len - 2], points[0], halfWidth, extruded)
+            Geometry2d.extrudeUsingAdjs(points[len - 1], points[len - 2], points[0], halfWidth, miterLimit, extruded)
         } else {
             Geometry2d.extrudeUsingAdj(points[len - 1], points[len - 2], -halfWidth, extruded)
         }
@@ -160,7 +165,7 @@ export class Geometry2d {
     }
 
     private static extrudeUsingAdjs(pt: Vector2d, prev: Vector2d, next: Vector2d,
-        halfWidth: number, res: Array<Vector2d>) {
+        halfWidth: number, miterLimit: number, res: Array<Vector2d>) {
         /* line from prev to pt. */
         const lineTo = Geometry2d.direction(pt, prev)
         const normal = Geometry2d.normal(lineTo)
@@ -170,8 +175,13 @@ export class Geometry2d {
         const tangent = Math2d.unit(Math2d.add(lineTo, lineFrom))
         const miter = Geometry2d.normal(tangent)
         const miterLength = halfWidth / Math2d.dot(miter, normal)
-        res.push(Math2d.add(pt, Math2d.scale(miter, miterLength)))
-        res.push(Math2d.add(pt, Math2d.scale(miter, -miterLength)))
+        if (miterLength / halfWidth > miterLimit) {
+            res.push(Math2d.add(pt, Math2d.scale(normal, halfWidth)))
+            res.push(Math2d.add(pt, Math2d.scale(normal, -halfWidth)))
+        } else {
+            res.push(Math2d.add(pt, Math2d.scale(miter, miterLength)))
+            res.push(Math2d.add(pt, Math2d.scale(miter, -miterLength)))
+        }
     }
 
     private static extrudeUsingAdj(pt: Vector2d, adj: Vector2d,

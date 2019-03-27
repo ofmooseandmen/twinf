@@ -100,6 +100,7 @@ export class Scene {
 export class Renderer {
 
     private readonly gl: WebGL2RenderingContext
+    private readonly miterLimit: number
     private readonly aGeoPos: Attribute
     private readonly aPrevGeoPos: Attribute
     private readonly aNextGeoPos: Attribute
@@ -108,8 +109,9 @@ export class Renderer {
     private readonly aRgba: Attribute
     private readonly program: WebGLProgram
 
-    constructor(gl: WebGL2RenderingContext) {
+    constructor(gl: WebGL2RenderingContext, miterLimit: number) {
         this.gl = gl
+        this.miterLimit = miterLimit
         this.aGeoPos = new Attribute("a_geo_pos", 3, this.gl.FLOAT)
         this.aPrevGeoPos = new Attribute("a_prev_geo_pos", 3, this.gl.FLOAT)
         this.aNextGeoPos = new Attribute("a_next_geo_pos", 3, this.gl.FLOAT)
@@ -182,6 +184,9 @@ export class Renderer {
         const earthRadiusUniformLocation = gl.getUniformLocation(program, "u_earth_radius")
         gl.uniform1f(earthRadiusUniformLocation, earthRadiusMetres)
 
+        const miterLimitUniformLocation = gl.getUniformLocation(program, "u_miter_limit")
+        gl.uniform1f(miterLimitUniformLocation, this.miterLimit)
+
         const geoCentreUniformLocation = gl.getUniformLocation(program, "u_geo_centre")
         gl.uniform3fv(geoCentreUniformLocation, geoCentre)
 
@@ -246,22 +251,29 @@ vec2 direction(vec2 a, vec2 b) {
     return normalize(a - b);
 }
 
-// extrudes given pos by given signed amount towards the miter at position.
-vec2 extrude_using_adjs(vec2 pos, vec2 prev, vec2 next, float amount) {
+// extrudes given pos by given signed half width towards the miter at position.
+vec2 extrude_using_adjs(vec2 pos, vec2 prev, vec2 next, float half_width, float miter_limit) {
     // line from prev to pt.
     vec2 line_to = direction(pos, prev);
+    vec2 n = normal(line_to);
     // line from pt to next.
     vec2 line_from = direction(next, pos);
     // miter.
     vec2 tangent = normalize(line_to + line_from);
     vec2 miter = normal(tangent);
-    float miter_length = amount / dot(miter, normal(line_to));
-    return pos + miter * miter_length;
+    float miter_length = half_width / dot(miter, n);
+    vec2 res;
+    if (miter_length / half_width > miter_limit) {
+        res = pos + n * half_width;
+    } else {
+        res = pos + miter * miter_length;
+    }
+    return res;
 }
 
-// extrudes given pos by given signed amount towards the normal at position.
-vec2 extrude_using_adj(vec2 pos, vec2 adj, float amount) {
-    return pos + (normal(direction(adj, pos)) * amount);
+// extrudes given pos by given signed half width towards the normal at position.
+vec2 extrude_using_adj(vec2 pos, vec2 adj, float half_width) {
+    return pos + (normal(direction(adj, pos)) * half_width);
 }
 
 // geocentric to stereographic conversion
@@ -289,6 +301,9 @@ vec2 geocentric_to_canvas(vec3 geo, float er, vec3 centre, mat3 rotation, mat3 s
 
 // earth radius (metres)
 uniform float u_earth_radius;
+
+// miter limit
+uniform float u_miter_limit;
 
 // centre of the stereographic projection
 uniform vec3 u_geo_centre;
@@ -364,7 +379,7 @@ void main() {
           vec2 c_n_pos =
               geocentric_to_canvas(a_next_geo_pos, u_earth_radius, u_geo_centre,
                                    u_geo_to_system, u_stereo_to_canvas, a_offset);
-          c_pos = extrude_using_adjs(c_c_pos, c_p_pos, c_n_pos, a_half_width);
+          c_pos = extrude_using_adjs(c_c_pos, c_p_pos, c_n_pos, a_half_width, u_miter_limit);
         }
     }
 

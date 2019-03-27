@@ -8,7 +8,8 @@ import {
 } from "./coordinate-systems"
 import { LatLong } from "./latlong"
 import { Length } from "./length"
-import { Mesh, MeshGenerator } from "../src/mesh"
+import { Mesh, MeshGenerator } from "./mesh"
+import { RenderingOptions } from "./options"
 import { Animator, Drawing, Renderer, Scene } from "./renderer"
 import { Shape } from "./shape"
 import { Math2d, Vector2d } from "./space2d"
@@ -89,6 +90,8 @@ export class World {
     private _range: Length
     private _rotation: Angle
     private bgColour: Colour
+    private options: RenderingOptions
+
     private cd: CanvasDimension
 
     private sp: StereographicProjection
@@ -98,20 +101,22 @@ export class World {
     private readonly renderer: Renderer
     private readonly animator: Animator
 
-    constructor(gl: WebGL2RenderingContext, def: WorldDefinition, fps: number) {
+    constructor(gl: WebGL2RenderingContext, def: WorldDefinition,
+        options: RenderingOptions = new RenderingOptions(60, 100, 5)) {
         this._centre = def.centre()
         this._range = def.range()
         this._rotation = def.rotation()
         this.bgColour = def.bgColour()
+        this.options = options
         this.cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight)
         this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS)
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
         this.stack = new Stack()
-        this.renderer = new Renderer(gl)
+        this.renderer = new Renderer(gl, options.miterLimit())
         this.animator = new Animator(() => {
             const scene = new Scene(this.stack.all(), this.bgColour, this.sp, this.at)
             this.renderer.draw(scene)
-        }, fps)
+        }, options.fps())
     }
 
     startRendering() {
@@ -132,7 +137,7 @@ export class World {
         const shapes = graphic.shapes()
         let meshes = new Array<Mesh>()
         for (let i = 0; i < shapes.length; i++) {
-            meshes = meshes.concat(MeshGenerator.mesh(shapes[i], World.EARTH_RADIUS));
+            meshes = meshes.concat(MeshGenerator.mesh(shapes[i], World.EARTH_RADIUS, this.options));
         }
         let drawing = this.stack.get(name)
         if (drawing !== undefined) {
