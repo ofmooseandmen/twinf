@@ -12,7 +12,7 @@ npm run test
 
 ## Demo
 
-[>>> demo]()
+[click me!](https://ofmooseandmen.github.io/twinf)
 
 Use arrow keys to pan and +/- to zoom in/out
 

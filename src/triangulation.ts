@@ -32,7 +32,7 @@ export class Triangulator<T>  {
      * Triangulates the given polygon which can be
      * convex or concave, self-intersecting or simple.
      */
-    triangulate(polygon: Array<T>): Array<Triangle<T>> {
+    triangulate(polygon: ReadonlyArray<T>): ReadonlyArray<Triangle<T>> {
         if (polygon.length < 3) {
             throw new RangeError("A polygon must contain at least 3 vertices")
         }
@@ -53,7 +53,7 @@ export class Triangulator<T>  {
      * determination of the self-interection(s) which can be
      * costly.
      */
-    triangulateSimple(vs: Array<T>): Array<Triangle<T>> {
+    triangulateSimple(vs: ReadonlyArray<T>): ReadonlyArray<Triangle<T>> {
         if (vs.length < 3) {
             throw new RangeError("A polygon must contain at least 3 vertices")
         }
@@ -69,12 +69,12 @@ export class Triangulator<T>  {
     /**
      * Splits the given polygon to a list of simple polygon - i.e. not self-intersecting.
      */
-    private simplePolygons(polygon: Array<T>): Array<Array<T>> {
+    private simplePolygons(polygon: ReadonlyArray<T>): ReadonlyArray<ReadonlyArray<T>> {
         // TODO implement
         return [polygon]
     }
 
-    private earClipping(vs: Array<T>): Array<Triangle<T>> {
+    private earClipping(vs: ReadonlyArray<T>): ReadonlyArray<Triangle<T>> {
         const ovs = this.orient(vs)
         let triangles = new Array<Triangle<T>>()
         while (true) {
@@ -97,7 +97,7 @@ export class Triangulator<T>  {
      * Finds the index of the next ear in the given polygon (oriented clockwise).
      * Returns -1 if none found.
      */
-    private findEar(vs: Array<T>): number {
+    private findEar(vs: ReadonlyArray<T>): number {
         const len = vs.length
         const c = this.classify(vs)
         for (let i = 0; i < len; i++) {
@@ -124,7 +124,7 @@ export class Triangulator<T>  {
      * or a convex vertex (false) of the given polygon (oriented clockwise).
      * A reflex is a vertex where the polygon is concave.
      */
-    private classify(vs: Array<T>): Array<boolean> {
+    private classify(vs: ReadonlyArray<T>): ReadonlyArray<boolean> {
         /* a vertex is a reflex if previous vertex is left
          * (assuming a clockwise polygon), otherwise it is a convex
          * vertex. */
@@ -136,7 +136,7 @@ export class Triangulator<T>  {
     /**
      * Orients the given polygon in clockwise order. A new array is returned.
      */
-    private orient(vs: Array<T>): Array<T> {
+    private orient(vs: ReadonlyArray<T>): Array<T> {
         // compute orientation of each vertex
         const len = vs.length
         const vos = vs

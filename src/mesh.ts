@@ -21,26 +21,26 @@ export enum DrawMode {
  */
 export class Extrusion {
 
-    private readonly _prevGeos: Array<number>
-    private readonly _nextGeos: Array<number>
-    private readonly _halfWidths: Array<number>
+    private readonly _prevGeos: ReadonlyArray<number>
+    private readonly _nextGeos: ReadonlyArray<number>
+    private readonly _halfWidths: ReadonlyArray<number>
 
-    constructor(prevGeos: Array<number>, nextGeos: Array<number>,
-        halfWidths: Array<number>) {
+    constructor(prevGeos: ReadonlyArray<number>, nextGeos: ReadonlyArray<number>,
+        halfWidths: ReadonlyArray<number>) {
         this._prevGeos = prevGeos
         this._nextGeos = nextGeos
         this._halfWidths = halfWidths
     }
 
-    prevGeos(): Array<number> {
+    prevGeos(): ReadonlyArray<number> {
         return this._prevGeos
     }
 
-    nextGeos(): Array<number> {
+    nextGeos(): ReadonlyArray<number> {
         return this._nextGeos
     }
 
-    halfWidths(): Array<number> {
+    halfWidths(): ReadonlyArray<number> {
         return this._halfWidths
     }
 
@@ -51,14 +51,14 @@ export class Extrusion {
  */
 export class Mesh {
 
-    private readonly _geos: Array<number>
+    private readonly _geos: ReadonlyArray<number>
     private readonly _extrusion: Extrusion | undefined
-    private readonly _offsets: Array<number>
-    private readonly _colours: Array<number>
+    private readonly _offsets: ReadonlyArray<number>
+    private readonly _colours: ReadonlyArray<number>
     private readonly _drawMode: DrawMode
 
-    constructor(geos: Array<number>, extrusion: Extrusion | undefined,
-        offsets: Array<number>, colours: Array<number>, drawMode: DrawMode) {
+    constructor(geos: ReadonlyArray<number>, extrusion: Extrusion | undefined,
+        offsets: ReadonlyArray<number>, colours: ReadonlyArray<number>, drawMode: DrawMode) {
         this._geos = geos
         this._extrusion = extrusion
         this._offsets = offsets
@@ -71,7 +71,7 @@ export class Mesh {
      * this determines the number of indices to be rendered. If empty the VBO must
      * be disabled.
      */
-    geos(): Array<number> {
+    geos(): ReadonlyArray<number> {
         return this._geos
     }
 
@@ -87,14 +87,14 @@ export class Mesh {
      * this determines the number of indices to be rendered. If empty the VBO must
      * be disabled.
      */
-    offsets(): Array<number> {
+    offsets(): ReadonlyArray<number> {
         return this._offsets
     }
 
     /**
      * Array of colours (1 component each), never empty.
      */
-    colours(): Array<number> {
+    colours(): ReadonlyArray<number> {
         return this._colours
     }
 
@@ -108,7 +108,7 @@ export class MeshGenerator {
 
     private constructor() { }
 
-    static mesh(s: S.Shape, earthRadius: Length, options: RenderingOptions): Array<Mesh> {
+    static mesh(s: S.Shape, earthRadius: Length, options: RenderingOptions): ReadonlyArray<Mesh> {
         switch (s.type) {
             case S.ShapeType.GeoCircle:
                 return MeshGenerator.fromGeoCircle(s, earthRadius, options.circlePositions())
@@ -126,24 +126,24 @@ export class MeshGenerator {
     }
 
     private static fromGeoCircle(c: S.GeoCircle, earthRadius: Length,
-        circlePositions: number): Array<Mesh> {
+        circlePositions: number): ReadonlyArray<Mesh> {
         const gs = Geometry3d.discretiseCircle(c.centre(), c.radius(), earthRadius, circlePositions)
         const paint = c.paint()
         return MeshGenerator._fromGeoPolygon(gs, paint)
     }
 
-    private static fromGeoPolyline(l: S.GeoPolyline): Array<Mesh> {
+    private static fromGeoPolyline(l: S.GeoPolyline): ReadonlyArray<Mesh> {
         const gs = l.points().map(CoordinateSystems.latLongToGeocentric)
         return [MeshGenerator._fromGeoPoyline(gs, l.stroke(), false)]
     }
 
-    private static fromGeoPolygon(p: S.GeoPolygon): Array<Mesh> {
+    private static fromGeoPolygon(p: S.GeoPolygon): ReadonlyArray<Mesh> {
         const gs = p.vertices().map(CoordinateSystems.latLongToGeocentric)
         const paint = p.paint()
         return MeshGenerator._fromGeoPolygon(gs, paint)
     }
 
-    private static _fromGeoPolygon(gs: Array<Vector3d>, paint: S.Paint): Array<Mesh> {
+    private static _fromGeoPolygon(gs: ReadonlyArray<Vector3d>, paint: S.Paint): ReadonlyArray<Mesh> {
         const stroke = paint.stroke()
         const fill = paint.fill()
         let res = new Array<Mesh>()
@@ -159,7 +159,7 @@ export class MeshGenerator {
         return res
     }
 
-    private static _fromGeoPoyline(points: Array<Vector3d>, stroke: S.Stroke,
+    private static _fromGeoPoyline(points: ReadonlyArray<Vector3d>, stroke: S.Stroke,
         closed: boolean): Mesh {
         if (stroke.width() === 1) {
             const vs = MeshGenerator.geoPointsToArray(points, closed)
@@ -175,7 +175,7 @@ export class MeshGenerator {
     }
 
     private static fromGeoRelativeCircle(c: S.GeoRelativeCircle,
-        circlePositions: number, miterLimit: number): Array<Mesh> {
+        circlePositions: number, miterLimit: number): ReadonlyArray<Mesh> {
         const ref = c.centreRef()
         const centre = new Vector2d(c.centreOffset().x(), c.centreOffset().y())
         const ps = Geometry2d.discretiseCircle(centre, c.radius(), circlePositions)
@@ -184,15 +184,15 @@ export class MeshGenerator {
     }
 
     private static fromGeoRelativePoygon(p: S.GeoRelativePolygon,
-        miterLimit: number): Array<Mesh> {
+        miterLimit: number): ReadonlyArray<Mesh> {
         const ref = p.ref()
         const ps = p.vertices().map(v => new Vector2d(v.x(), v.y()))
         const paint = p.paint()
         return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint, miterLimit)
     }
 
-    private static _fromGeoRelativePoygon(ref: LatLong, vertices: Array<Vector2d>,
-        paint: S.Paint, miterLimit: number): Array<Mesh> {
+    private static _fromGeoRelativePoygon(ref: LatLong, vertices: ReadonlyArray<Vector2d>,
+        paint: S.Paint, miterLimit: number): ReadonlyArray<Mesh> {
         const stroke = paint.stroke()
         const fill = paint.fill()
         let res = new Array<Mesh>()
@@ -210,14 +210,14 @@ export class MeshGenerator {
     }
 
     private static fromGeoRelativePoyline(l: S.GeoRelativePolyline,
-        miterLimit: number): Array<Mesh> {
+        miterLimit: number): ReadonlyArray<Mesh> {
         const ps = l.points().map(p => new Vector2d(p.x(), p.y()))
         return [
             MeshGenerator._fromGeoRelativePoyline(l.ref(), ps, l.stroke(), false, miterLimit)
         ]
     }
 
-    private static _fromGeoRelativePoyline(ref: LatLong, points: Array<Vector2d>,
+    private static _fromGeoRelativePoyline(ref: LatLong, points: ReadonlyArray<Vector2d>,
         stroke: S.Stroke, closed: boolean, miterLimit: number): Mesh {
         if (stroke.width() === 1) {
             const os = MeshGenerator.offsetPointsToArray(points, closed)
@@ -232,7 +232,7 @@ export class MeshGenerator {
         return new Mesh(vs, undefined, os, cs, DrawMode.TRIANGLES)
     }
 
-    private static geoTrianglesToArray(ts: Array<Triangle<Vector3d>>): Array<number> {
+    private static geoTrianglesToArray(ts: ReadonlyArray<Triangle<Vector3d>>): ReadonlyArray<number> {
         let res = new Array<number>()
         const len = ts.length
         for (let i = 0; i < len; i++) {
@@ -244,7 +244,7 @@ export class MeshGenerator {
         return res
     }
 
-    private static offsetTrianglesToArray(ts: Array<Triangle<Vector2d>>): Array<number> {
+    private static offsetTrianglesToArray(ts: ReadonlyArray<Triangle<Vector2d>>): ReadonlyArray<number> {
         let res = new Array<number>()
         const len = ts.length
         for (let i = 0; i < len; i++) {
@@ -256,7 +256,7 @@ export class MeshGenerator {
         return res
     }
 
-    private static geoPointsToArray(ps: Array<Vector3d>, closed: boolean): Array<number> {
+    private static geoPointsToArray(ps: ReadonlyArray<Vector3d>, closed: boolean): ReadonlyArray<number> {
         /*
          * since we draw with LINES we need to repeat each intermediate point.
          * drawing with LINE_STRIP would not require this but would not allow
@@ -279,7 +279,8 @@ export class MeshGenerator {
         return res
     }
 
-    private static offsetPointsToArray(ps: Array<Vector2d>, closed: boolean): Array<number> {
+    private static offsetPointsToArray(ps: ReadonlyArray<Vector2d>,
+        closed: boolean): ReadonlyArray<number> {
         /*
          * since we draw with LINES we need to repeat each intermediate point.
          * drawing with LINE_STRIP would not require this but would not allow
@@ -302,7 +303,8 @@ export class MeshGenerator {
         return res
     }
 
-    private static closedExtrusion(vs: Array<Vector3d>, width: number): [Array<number>, Extrusion] {
+    private static closedExtrusion(vs: ReadonlyArray<Vector3d>,
+        width: number): [ReadonlyArray<number>, Extrusion] {
         const halfWidth = width / 2.0
         const len = vs.length
 
@@ -358,7 +360,8 @@ export class MeshGenerator {
         return [curs, new Extrusion(prevs, nexts, halfWidths)]
     }
 
-    private static openedExtrusion(vs: Array<Vector3d>, width: number): [Array<number>, Extrusion] {
+    private static openedExtrusion(vs: ReadonlyArray<Vector3d>,
+        width: number): [ReadonlyArray<number>, Extrusion] {
         const halfWidth = width / 2.0
         const len = vs.length
 
@@ -456,13 +459,13 @@ export class MeshGenerator {
     }
 
     /** vs is array of vertices, n is number of component per vertex. */
-    private static colours(colour: Colour, vs: Array<number>, n: number): Array<number> {
+    private static colours(colour: Colour, vs: ReadonlyArray<number>, n: number): ReadonlyArray<number> {
         const rgba = colour.rgba()
         const len = vs.length / n
         return new Array(len).fill(rgba)
     }
 
-    private static reference(v: Vector3d, offsets: Array<number>): Array<number> {
+    private static reference(v: Vector3d, offsets: ReadonlyArray<number>): ReadonlyArray<number> {
         const n = offsets.length / 2
         let arr = new Array<number>()
         for (let i = 0; i < n; i++) {

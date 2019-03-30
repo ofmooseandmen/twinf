@@ -48,7 +48,7 @@ export class Geodetics {
      *   non-zero.
      * - this method always returns false if the list contains less than 3 positions.
      */
-    static insideSurface(p: LatLong, ps: Array<LatLong>): boolean {
+    static insideSurface(p: LatLong, ps: ReadonlyArray<LatLong>): boolean {
         return Geometry3d.insideSurface(
             CoordinateSystems.latLongToGeocentric(p),
             ps.map(p => CoordinateSystems.latLongToGeocentric(p)))

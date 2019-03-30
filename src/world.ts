@@ -19,9 +19,9 @@ export class Graphic {
 
     private readonly _name: string
     private readonly _zIndex: number
-    private readonly _shapes: Array<Shape>
+    private readonly _shapes: ReadonlyArray<Shape>
 
-    constructor(name: string, zIndex: number, shapes: Array<Shape>) {
+    constructor(name: string, zIndex: number, shapes: ReadonlyArray<Shape>) {
         this._name = name
         this._zIndex = zIndex
         this._shapes = shapes
@@ -39,7 +39,7 @@ export class Graphic {
         return this._zIndex
     }
 
-    shapes(): Array<Shape> {
+    shapes(): ReadonlyArray<Shape> {
         return this._shapes
     }
 

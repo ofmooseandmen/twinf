@@ -115,15 +115,15 @@ export class GeoCircle {
 export class GeoPolygon {
 
     readonly type: ShapeType.GeoPolygon = ShapeType.GeoPolygon;
-    private readonly _vertices: Array<LatLong>
+    private readonly _vertices: ReadonlyArray<LatLong>
     private readonly _paint: Paint
 
-    constructor(vertices: Array<LatLong>, paint: Paint) {
+    constructor(vertices: ReadonlyArray<LatLong>, paint: Paint) {
         this._vertices = vertices
         this._paint = paint
     }
 
-    vertices(): Array<LatLong> {
+    vertices(): ReadonlyArray<LatLong> {
         return this._vertices
     }
 
@@ -139,15 +139,15 @@ export class GeoPolygon {
 export class GeoPolyline {
 
     readonly type: ShapeType.GeoPolyline = ShapeType.GeoPolyline;
-    private readonly _points: Array<LatLong>
+    private readonly _points: ReadonlyArray<LatLong>
     private readonly _stroke: Stroke
 
-    constructor(points: Array<LatLong>, stroke: Stroke) {
+    constructor(points: ReadonlyArray<LatLong>, stroke: Stroke) {
         this._points = points
         this._stroke = stroke
     }
 
-    points(): Array<LatLong> {
+    points(): ReadonlyArray<LatLong> {
         return this._points
     }
 
@@ -203,10 +203,10 @@ export class GeoRelativePolygon {
 
     readonly type: ShapeType.GeoRelativePolygon = ShapeType.GeoRelativePolygon;
     private readonly _ref: LatLong
-    private readonly _vertices: Array<Offset>
+    private readonly _vertices: ReadonlyArray<Offset>
     private readonly _paint: Paint
 
-    constructor(ref: LatLong, vertices: Array<Offset>, paint: Paint) {
+    constructor(ref: LatLong, vertices: ReadonlyArray<Offset>, paint: Paint) {
         this._ref = ref
         this._vertices = vertices
         this._paint = paint
@@ -216,7 +216,7 @@ export class GeoRelativePolygon {
         return this._ref
     }
 
-    vertices(): Array<Offset> {
+    vertices(): ReadonlyArray<Offset> {
         return this._vertices
     }
 
@@ -234,10 +234,10 @@ export class GeoRelativePolyline {
 
     readonly type: ShapeType.GeoRelativePolyline = ShapeType.GeoRelativePolyline;
     private readonly _ref: LatLong
-    private readonly _points: Array<Offset>
+    private readonly _points: ReadonlyArray<Offset>
     private readonly _stroke: Stroke
 
-    constructor(ref: LatLong, points: Array<Offset>, stroke: Stroke) {
+    constructor(ref: LatLong, points: ReadonlyArray<Offset>, stroke: Stroke) {
         this._ref = ref
         this._points = points
         this._stroke = stroke
@@ -247,7 +247,7 @@ export class GeoRelativePolyline {
         return this._ref
     }
 
-    points(): Array<Offset> {
+    points(): ReadonlyArray<Offset> {
         return this._points
     }
 

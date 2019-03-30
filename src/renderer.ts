@@ -5,13 +5,13 @@ import { WebGL2 } from "./webgl2"
 
 export class Drawing {
 
-    private readonly _batches: Array<GlArrays>
+    private readonly _batches: ReadonlyArray<GlArrays>
 
-    constructor(batches: Array<GlArrays>) {
+    constructor(batches: ReadonlyArray<GlArrays>) {
         this._batches = batches
     }
 
-    batches(): Array<GlArrays> {
+    batches(): ReadonlyArray<GlArrays> {
         return this._batches
     }
 }
@@ -63,12 +63,12 @@ export class Animator {
  */
 export class Scene {
 
-    private readonly _drawings: Array<Drawing>
+    private readonly _drawings: ReadonlyArray<Drawing>
     private readonly _bgColour: Colour
     private readonly _sp: StereographicProjection
     private readonly _at: CanvasAffineTransform
 
-    constructor(drawings: Array<Drawing>, bgColour: Colour,
+    constructor(drawings: ReadonlyArray<Drawing>, bgColour: Colour,
         sp: StereographicProjection, at: CanvasAffineTransform) {
         this._drawings = drawings
         this._bgColour = bgColour
@@ -76,7 +76,7 @@ export class Scene {
         this._at = at
     }
 
-    drawings(): Array<Drawing> {
+    drawings(): ReadonlyArray<Drawing> {
         return this._drawings
     }
 
@@ -123,7 +123,7 @@ export class Renderer {
         this.program = WebGL2.createProgram(this.gl, vertexShader, fragmentShader)
     }
 
-    createDrawing(meshes: Array<Mesh>): Drawing {
+    createDrawing(meshes: ReadonlyArray<Mesh>): Drawing {
         const len = meshes.length
         if (len === 0) {
             return new Drawing([])
@@ -488,18 +488,18 @@ class GlArrays {
 class Batch {
 
     private readonly drawMode: GLenum
-    private readonly attributes: Array<Attribute>
+    private readonly attributes: ReadonlyArray<Attribute>
     private readonly attributeCount: Attribute
     private readonly arrays: Map<String, Array<number>>
 
-    constructor(drawMode: GLenum, attributes: Array<Attribute>, attributeCount: Attribute) {
+    constructor(drawMode: GLenum, attributes: ReadonlyArray<Attribute>, attributeCount: Attribute) {
         this.drawMode = drawMode
         this.attributes = attributes
         this.attributeCount = attributeCount
         this.arrays = new Map<String, Array<number>>()
     }
 
-    addToArray(attribute: Attribute, data: Array<number>) {
+    addToArray(attribute: Attribute, data: ReadonlyArray<number>) {
         let arr = this.arrays.get(attribute.name())
         if (arr === undefined) {
             arr = new Array<number>()
@@ -602,7 +602,7 @@ class State {
         return m.drawMode() == DrawMode.LINES ? gl.LINES : gl.TRIANGLES
     }
 
-    private static isEmpty(a: Array<number>): boolean {
+    private static isEmpty(a: ReadonlyArray<number>): boolean {
         return a.length === 0
     }
 

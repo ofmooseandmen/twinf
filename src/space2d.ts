@@ -131,8 +131,8 @@ export class Geometry2d {
      * the miter. No bevel or square joints are produced in this case as it would
      * not be possible to replicate this in the GPU.
      */
-    static extrude(points: Array<Vector2d>, width: number,
-        miterLimit: number, closed: boolean): Array<Triangle<Vector2d>> {
+    static extrude(points: ReadonlyArray<Vector2d>, width: number,
+        miterLimit: number, closed: boolean): ReadonlyArray<Triangle<Vector2d>> {
         const len = points.length
         let ts = new Array<Triangle<Vector2d>>()
         if (len < 2) {

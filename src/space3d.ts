@@ -74,7 +74,7 @@ export class Math3d {
     /**
      * Mutiplies given 3*3 matrix by given vector.
      */
-    static multmv(m: Array<Vector3d>, v: Vector3d): Vector3d {
+    static multmv(m: ReadonlyArray<Vector3d>, v: Vector3d): Vector3d {
         if (m.length != 3) {
             throw new RangeError("Rotation matrix must be 3*3")
         }
@@ -84,7 +84,7 @@ export class Math3d {
     /**
      * Mutiplies given 3*3 matrix by given 3*3 matrix.
      */
-    static multmm(m1: Array<Vector3d>, m2: Array<Vector3d>): Array<Vector3d> {
+    static multmm(m1: ReadonlyArray<Vector3d>, m2: ReadonlyArray<Vector3d>): ReadonlyArray<Vector3d> {
         if (m1.length != 3 || m2.length != 3) {
             throw new RangeError("Rotation matrix must be 3*3")
         }
@@ -114,7 +114,7 @@ export class Math3d {
     /**
      * Transposes given 3*3 matrix.
      */
-    static transpose(m: Array<Vector3d>): Array<Vector3d> {
+    static transpose(m: ReadonlyArray<Vector3d>): ReadonlyArray<Vector3d> {
         const xs = m.map(Math3d.v2a)
         return [
             new Vector3d(xs[0][0], xs[1][0], xs[2][0]),
@@ -190,7 +190,7 @@ export class Geometry3d {
      *   non-zero.
      * - this method always returns false if the list contains less than 3 positions.
      */
-    static insideSurface(p: Vector3d, ps: Array<Vector3d>): boolean {
+    static insideSurface(p: Vector3d, ps: ReadonlyArray<Vector3d>): boolean {
         const len = ps.length;
         if (len == 0) {
             return false;
@@ -225,7 +225,7 @@ export class Geometry3d {
      * by the given centre and radius according to the given earth radius.
      */
     static discretiseCircle(centre: LatLong, radius: Length,
-        earthRadius: Length, nbPositions: number): Array<Vector3d> {
+        earthRadius: Length, nbPositions: number): ReadonlyArray<Vector3d> {
         const rm = radius.metres()
         const erm = earthRadius.metres()
         const z = Math.sqrt(erm * erm - rm * rm)

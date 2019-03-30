@@ -30,7 +30,7 @@ export class Stack<T> {
         return e
     }
 
-    all(): Array<T> {
+    all(): ReadonlyArray<T> {
         const sorted = Array.from(this.elements.entries()).sort()
         const len = sorted.length
         let res = new Array<T>()

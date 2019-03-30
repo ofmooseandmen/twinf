@@ -152,13 +152,14 @@ export class CoordinateSystems {
         const tx = -sx * worldTopLeftX;
         const ty = -sy * worldTopLeftY;
 
+        let m: ReadonlyArray<Vector3d>
         /*
          * translate to centre:
          * [   1    0    tx  ]
          * [   0    1    ty  ]
          * [   0    0    1   ]
          */
-        let m = [
+        m = [
             new Vector3d(1, 0, tx),
             new Vector3d(0, 1, ty),
             new Vector3d(0, 0, 1)
@@ -227,7 +228,7 @@ export class CoordinateSystems {
         )
     }
 
-    private static translate(m: Array<Vector3d>, tx: number, ty: number): Array<Vector3d> {
+    private static translate(m: ReadonlyArray<Vector3d>, tx: number, ty: number): ReadonlyArray<Vector3d> {
         const t = [
             new Vector3d(1, 0, tx),
             new Vector3d(0, 1, ty),
@@ -242,7 +243,7 @@ export class CoordinateSystems {
      * [   0    1    y  ] T  [   sin(a)   cos(a)   0   ] T  [   0    1   -y ]
      * [   0    0    1  ]    [   0          0      1   ]    [   0    0    1 ]
      */
-    private static rotate(m: Array<Vector3d>, alpha: Angle, atX: number, atY: number): Array<Vector3d> {
+    private static rotate(m: ReadonlyArray<Vector3d>, alpha: Angle, atX: number, atY: number): ReadonlyArray<Vector3d> {
         const cosa = Angle.cos(alpha)
         const sina = Angle.sin(alpha)
         const r = [
@@ -266,14 +267,14 @@ export class StereographicProjection {
     /** earth radius in metres. */
     private readonly _earthRadius: number
     /* n-vector to system rotation matrix (direct projection). */
-    private readonly _dr: Array<Vector3d>
+    private readonly _dr: ReadonlyArray<Vector3d>
     /* as above but in WebGl format (row major). */
     private readonly _drGl: Float32Array
     /* system to n-vector rotation matrix (inverse projection). */
-    private readonly _ir: Array<Vector3d>
+    private readonly _ir: ReadonlyArray<Vector3d>
 
-    constructor(centre: Vector3d, earthRadius: number, dr: Array<Vector3d>,
-        drGl: Float32Array, ir: Array<Vector3d>) {
+    constructor(centre: Vector3d, earthRadius: number, dr: ReadonlyArray<Vector3d>,
+        drGl: Float32Array, ir: ReadonlyArray<Vector3d>) {
         this._centre = centre
         this._earthRadius = earthRadius
         this._dr = dr
@@ -289,7 +290,7 @@ export class StereographicProjection {
         return this._earthRadius
     }
 
-    directRotation(): Array<Vector3d> {
+    directRotation(): ReadonlyArray<Vector3d> {
         return this._dr
     }
 
@@ -297,7 +298,7 @@ export class StereographicProjection {
         return this._drGl
     }
 
-    inverseRotation(): Array<Vector3d> {
+    inverseRotation(): ReadonlyArray<Vector3d> {
         return this._ir
     }
 
