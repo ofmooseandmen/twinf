@@ -1,4 +1,9 @@
-import { Math3d, Vector3d } from "../src/space3d"
+import { CoordinateSystems } from "../src/coordinate-systems"
+import { LatLong } from "../src/latlong"
+import { Length } from "../src/length"
+import { Geometry3d, Math3d, Vector3d } from "../src/space3d"
+
+import * as U from "./util"
 
 describe("Math3d", () => {
 
@@ -72,5 +77,30 @@ describe("Math3d", () => {
         const e = [new Vector3d(1, 4, 7), new Vector3d(2, 5, 8), new Vector3d(3, 6, 9)]
         expect(Math3d.transpose(m)).toEqual(e)
     })
+
+})
+
+describe("Geometry3d", () => {
+
+    const earthRadius = Length.ofMetres(6371000)
+
+    test("right returns true if position is right of line, false otherwise",
+        () => {
+            expect(Geometry3d.right(U.ystad, U.helsingborg, U.kristianstad)).toBe(true)
+            expect(Geometry3d.right(U.ystad, U.kristianstad, U.helsingborg)).toBe(false)
+            expect(Geometry3d.right(U.malmo, U.lund, U.helsingborg)).toBe(false)
+            expect(Geometry3d.right(U.malmo, U.helsingborg, U.lund)).toBe(true)
+        })
+
+    test("discretiseCircle returns the list of n-vectors representing the circle",
+        () => {
+            const r = Length.ofMetres(2000)
+            const centre = LatLong.ofDegrees(55.6050, 13.0038)
+            const vc = CoordinateSystems.latLongToGeocentric(centre)
+            const distances = Geometry3d.discretiseCircle(centre, r, earthRadius, 10)
+                .map(v => Geometry3d.surfaceDistance(vc, v, earthRadius))
+            /* assert distance up to 0.001 metres. */
+            distances.forEach(d => expect(d.metres()).toBeCloseTo(r.metres(), 3))
+        })
 
 })

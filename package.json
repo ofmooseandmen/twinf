@@ -1,19 +1,30 @@
 {
   "name": "twinf",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "The World Is Not Flat",
+  "keywords": [
+    "WebGL",
+    "Geodetics",
+    "Kinematics",
+    "World"
+  ],
+  "author": "Cedric Liegeois <ofmooseandmen@yahoo.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ofmooseandmen/twinf"
+  },
+  "main": "build/src/api.js",
+  "type": "build/src/api.d.ts",
   "files": [
     "build/src"
   ],
-  "license": "Apache-2.0",
-  "keywords": [],
   "scripts": {
     "clean": "rm -rf build",
     "test": "jest",
     "compile": "npm run clean && tsc --build tsconfig.json",
     "prepare": "npm run compile",
-    "pretest": "npm run compile",
-    "demo": "cp -p demo/* build/demo"
+    "pretest": "npm run compile"
   },
   "devDependencies": {
     "@babel/core": "^7.3.3",

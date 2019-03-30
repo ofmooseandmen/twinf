@@ -11,7 +11,7 @@ import { Length } from "./length"
 import { Mesh, MeshGenerator } from "./mesh"
 import { RenderingOptions } from "./options"
 import { Animator, Drawing, Renderer, Scene } from "./renderer"
-import { Shape } from "./shape"
+import { Shape } from "./shapes"
 import { Math2d, Vector2d } from "./space2d"
 import { Stack } from "./stack"
 

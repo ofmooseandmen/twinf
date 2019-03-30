@@ -12,16 +12,9 @@ npm run test
 
 ## Demo
 
-```bash
-npm run demo
-(cd build; http-server -e js)
-```
-
-Open Chrome at ```http://localhost:8080/demo/index.html```
+[>>> demo]()
 
 Use arrow keys to pan and +/- to zoom in/out
-
-![demo](demo.gif)
 
 ## Concepts
 

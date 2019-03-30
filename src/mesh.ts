@@ -1,14 +1,13 @@
 import { CoordinateSystems } from "./coordinate-systems"
 import { Colour } from "./colour"
-import { Geodetics } from "./geodetics"
 import { LatLong } from "./latlong"
 import { Length } from "./length"
 import { RenderingOptions } from "./options"
-import * as S from "./shape"
+import * as S from "./shapes"
+import { Geometry2d, Vector2d } from "./space2d"
+import { Geometry3d, Vector3d } from "./space3d"
 import { Triangle } from "./triangle"
 import { Triangulator } from "./triangulation"
-import { Geometry2d, Vector2d } from "./space2d"
-import { Vector3d } from "./space3d"
 
 export enum DrawMode {
     LINES,
@@ -128,7 +127,7 @@ export class MeshGenerator {
 
     private static fromGeoCircle(c: S.GeoCircle, earthRadius: Length,
         circlePositions: number): Array<Mesh> {
-        const gs = Geodetics.discretiseCircle(c.centre(), c.radius(), earthRadius, circlePositions)
+        const gs = Geometry3d.discretiseCircle(c.centre(), c.radius(), earthRadius, circlePositions)
         const paint = c.paint()
         return MeshGenerator._fromGeoPolygon(gs, paint)
     }
@@ -178,7 +177,8 @@ export class MeshGenerator {
     private static fromGeoRelativeCircle(c: S.GeoRelativeCircle,
         circlePositions: number, miterLimit: number): Array<Mesh> {
         const ref = c.centreRef()
-        const ps = Geometry2d.discretiseCircle(c.centreOffset(), c.radius(), circlePositions)
+        const centre = new Vector2d(c.centreOffset().x(), c.centreOffset().y())
+        const ps = Geometry2d.discretiseCircle(centre, c.radius(), circlePositions)
         const paint = c.paint()
         return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint, miterLimit)
     }
@@ -186,7 +186,7 @@ export class MeshGenerator {
     private static fromGeoRelativePoygon(p: S.GeoRelativePolygon,
         miterLimit: number): Array<Mesh> {
         const ref = p.ref()
-        const ps = p.vertices()
+        const ps = p.vertices().map(v => new Vector2d(v.x(), v.y()))
         const paint = p.paint()
         return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint, miterLimit)
     }
@@ -211,8 +211,9 @@ export class MeshGenerator {
 
     private static fromGeoRelativePoyline(l: S.GeoRelativePolyline,
         miterLimit: number): Array<Mesh> {
+        const ps = l.points().map(p => new Vector2d(p.x(), p.y()))
         return [
-            MeshGenerator._fromGeoRelativePoyline(l.ref(), l.points(), l.stroke(), false, miterLimit)
+            MeshGenerator._fromGeoRelativePoyline(l.ref(), ps, l.stroke(), false, miterLimit)
         ]
     }
 

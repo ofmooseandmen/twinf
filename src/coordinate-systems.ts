@@ -1,9 +1,8 @@
 import { Angle } from "./angle"
 import { LatLong } from "./latlong"
 import { Length } from "./length"
-import { Geodetics } from "./geodetics"
 import { Vector2d } from "./space2d"
-import { Math3d, Vector3d } from "./space3d"
+import { Geometry3d, Math3d, Vector3d } from "./space3d"
 
 /**
  * Transformations between positions in different coordinate systems used when rendering shapes
@@ -135,7 +134,7 @@ export class CoordinateSystems {
         const halfRange = hrange.scale(0.5)
         const er = Length.ofMetres(sp.earthRadius())
         const left = CoordinateSystems.geocentricToStereographic(
-            Geodetics.destination(gc, east, halfRange, er), sp)
+            Geometry3d.destination(gc, east, halfRange, er), sp)
         const ratio = canvas.height() / canvas.width()
         const sc = CoordinateSystems.geocentricToStereographic(gc, sp)
         const width = 2 * Math.abs(left.x() - sc.x())

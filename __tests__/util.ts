@@ -22,19 +22,19 @@ export function nv(lat: number, lon: number): Vector3d {
 }
 
 export function assertLLEquals(expected: LatLong, actual: LatLong) {
-    expect(actual.latitude().degrees()).toBeCloseTo(expected.latitude().degrees(), 10)
-    expect(actual.longitude().degrees()).toBeCloseTo(expected.longitude().degrees(), 10)
+    expect(actual.latitude().degrees()).toBeCloseTo(expected.latitude().degrees(), 8)
+    expect(actual.longitude().degrees()).toBeCloseTo(expected.longitude().degrees(), 8)
 }
 
 export function assertV2Equals(expected: Vector2d, actual: Vector2d) {
-    expect(actual.x()).toBeCloseTo(expected.x(), 10)
-    expect(actual.y()).toBeCloseTo(expected.y(), 10)
+    expect(actual.x()).toBeCloseTo(expected.x(), 8)
+    expect(actual.y()).toBeCloseTo(expected.y(), 8)
 }
 
 export function assertV3Equals(expected: Vector3d, actual: Vector3d) {
-    expect(actual.x()).toBeCloseTo(expected.x(), 10)
-    expect(actual.y()).toBeCloseTo(expected.y(), 10)
-    expect(actual.z()).toBeCloseTo(expected.z(), 10)
+    expect(actual.x()).toBeCloseTo(expected.x(), 8)
+    expect(actual.y()).toBeCloseTo(expected.y(), 8)
+    expect(actual.z()).toBeCloseTo(expected.z(), 8)
 }
 
 test("", () => {

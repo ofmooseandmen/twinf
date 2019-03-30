@@ -1,5 +1,4 @@
 import { Angle } from "../src/angle"
-import { CoordinateSystems } from "../src/coordinate-systems"
 import { Geodetics } from "../src/geodetics"
 import { LatLong } from "../src/latlong"
 import { Length } from "../src/length"
@@ -12,11 +11,16 @@ describe("Geodetics", () => {
 
     describe("insideSurface", () => {
 
-        const p1 = U.nv(45, 1)
-        const p2 = U.nv(45, 2)
-        const p3 = U.nv(46, 1)
-        const p4 = U.nv(46, 2)
-        const p5 = U.nv(45.1, 1.1)
+        const p1 = LatLong.ofDegrees(45, 1)
+        const p2 = LatLong.ofDegrees(45, 2)
+        const p3 = LatLong.ofDegrees(46, 1)
+        const p4 = LatLong.ofDegrees(46, 2)
+        const p5 = LatLong.ofDegrees(45.1, 1.1)
+        const ystad = LatLong.ofDegrees(55.4295, 13.82)
+        const malmo = LatLong.ofDegrees(55.6050, 13.0038)
+        const lund = LatLong.ofDegrees(55.7047, 13.1910)
+        const helsingborg = LatLong.ofDegrees(56.0465, 12.6945)
+        const kristianstad = LatLong.ofDegrees(56.0294, 14.1567)
 
         test("returns false if polygon is empty", () => {
             expect(Geodetics.insideSurface(p1, [])).toBe(false)
@@ -36,7 +40,7 @@ describe("Geodetics", () => {
                 Geodetics.insideSurface(Geodetics.antipode(p5), [p1, p2, p4, p3])
             ).toBe(false)
             expect(
-                Geodetics.insideSurface(U.lund, [U.malmo, U.kristianstad, U.ystad])
+                Geodetics.insideSurface(lund, [malmo, kristianstad, ystad])
             ).toBe(false)
         })
 
@@ -49,47 +53,27 @@ describe("Geodetics", () => {
         })
 
         test("handles concave polygons", () => {
-            const polygon = [U.malmo, U.ystad, U.kristianstad, U.helsingborg, U.lund]
-            const hoor = U.nv(55.9295, 13.5297)
-            const hassleholm = U.nv(56.1589, 13.7668)
+            const polygon = [malmo, ystad, kristianstad, helsingborg, lund]
+            const hoor = LatLong.ofDegrees(55.9295, 13.5297)
+            const hassleholm = LatLong.ofDegrees(56.1589, 13.7668)
             expect(Geodetics.insideSurface(hoor, polygon)).toBe(true)
             expect(Geodetics.insideSurface(hassleholm, polygon)).toBe(false)
         })
 
     })
 
-    test("right returns true if position is right of line, false otherwise",
-        () => {
-            expect(Geodetics.right(U.ystad, U.helsingborg, U.kristianstad)).toBe(true)
-            expect(Geodetics.right(U.ystad, U.kristianstad, U.helsingborg)).toBe(false)
-            expect(Geodetics.right(U.malmo, U.lund, U.helsingborg)).toBe(false)
-            expect(Geodetics.right(U.malmo, U.helsingborg, U.lund)).toBe(true)
-        })
-
-    test("discretiseCircle returns the list of n-vectors representing the circle",
-        () => {
-            const r = Length.ofMetres(2000)
-            const centre = LatLong.ofDegrees(55.6050, 13.0038)
-            const vc = CoordinateSystems.latLongToGeocentric(centre)
-            const distances = Geodetics.discretiseCircle(centre, r, earthRadius, 10)
-                .map(v => Geodetics.surfaceDistance(vc, v, earthRadius))
-            /* assert distance up to 0.001 metres. */
-            distances.forEach(d => expect(d.metres()).toBeCloseTo(r.metres(), 3))
-        })
-
     describe("destination", () => {
 
         test("destination with distance = 0 returns p", () => {
-            const p = CoordinateSystems.latLongToGeocentric(
-                LatLong.ofDegrees(55.6050, 13.0038))
+            const p = LatLong.ofDegrees(55.6050, 13.0038)
             expect(Geodetics.destination(p, Angle.ofDegrees(96.0217), Length.ofMetres(0), earthRadius)).toBe(p)
         })
 
         test("destination return the position along great-circle at distance and bearing", () => {
-            const p = CoordinateSystems.latLongToGeocentric(LatLong.ofDegrees(53.32055556, -1.72972222))
+            const p = LatLong.ofDegrees(53.32055556, -1.72972222)
             const d = Geodetics.destination(p, Angle.ofDegrees(96.0217), Length.ofMetres(124800), earthRadius)
-            const e = LatLong.ofDegrees(53.18826890646428, 0.133276808381204)
-            U.assertLLEquals(e, CoordinateSystems.geocentricToLatLong(d))
+            const e = LatLong.ofDegrees(53.18826890646428, 0.133276666666666654)
+            U.assertLLEquals(e, d)
         })
 
     })
