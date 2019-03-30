@@ -1,46 +1,28 @@
 {
-  "name": "twinf",
+  "name": "twinf-demo",
   "version": "0.0.1",
-  "description": "The World Is Not Flat",
-  "keywords": [
-    "WebGL",
-    "Geodetics",
-    "Kinematics",
-    "World"
-  ],
+  "description": "twinf demo app",
   "author": "Cedric Liegeois <ofmooseandmen@yahoo.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/ofmooseandmen/twinf"
   },
-  "main": "build/src/api.js",
-  "type": "build/src/api.d.ts",
-  "files": [
-    "build/src"
-  ],
+  "keywords": [],
   "scripts": {
-    "clean": "rm -rf build",
-    "test": "jest",
+    "clean": "rm -rf index.js && rm -rf index.js.map && rm -rf bundle.js",
     "compile": "npm run clean && tsc --build tsconfig.json",
-    "prepare": "npm run compile",
-    "pretest": "npm run compile"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.3.3",
-    "@babel/plugin-proposal-class-properties": "^7.3.3",
-    "@babel/preset-env": "^7.3.1",
-    "@babel/preset-typescript": "^7.3.3",
-    "@types/jest": "^24.0.5",
-    "babel-jest": "*",
-    "jest": "^24.1.0",
-    "typescript": "~3.1.0"
-  },
-  "jest": {
-    "collectCoverage": true,
-    "coverageDirectory": "build/tests/coverage"
+    "build": "rollup -c",
+    "watch": "rollup -cw"
   },
   "dependencies": {
+    "twinf": "0.0.1",
     "@types/webgl2": "0.0.4"
+  },
+  "devDependencies": {
+    "rollup": "^1.7.4",
+    "rollup-plugin-node-resolve": "^4.0.1",
+    "rollup-plugin-typescript2": "^0.20.1",
+    "typescript": "~3.1.0"
   }
 }

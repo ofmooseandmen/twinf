@@ -2,7 +2,7 @@
   "compilerOptions": {
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
-    "declaration": true,
+    "declaration": false,
     "forceConsistentCasingInFileNames": true,
     "lib": ["es2016", "dom"],
     "module": "es6",
@@ -14,14 +14,13 @@
     "strict": true,
     "target": "es6",
     "rootDir": ".",
-    "outDir": "build",
+    "outDir": ".",
     "moduleResolution": "node"
   },
   "include": [
-    "src/*.ts"
+    "index.ts",
   ],
   "exclude": [
     "node_modules"
   ]
-
 }
