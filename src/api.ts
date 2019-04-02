@@ -1,7 +1,7 @@
 export { Angle } from "./angle"
 export { Colour } from "./colour"
 export { Duration } from "./duration"
-export { Track, Kinematics } from "./kinematics"
+export { Cpa, Track, Kinematics } from "./kinematics"
 export { LatLong } from "./latlong"
 export { Length } from "./length"
 export { Geodetics } from "./geodetics"

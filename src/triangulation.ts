@@ -1,5 +1,5 @@
 import { Geometry2d } from "./space2d"
-import { Geometry3d } from "./space3d"
+import { InternalGeodetics } from "./space3d"
 import { Triangle } from "./triangle"
 
 /**
@@ -21,7 +21,7 @@ export class Triangulator<T>  {
      * Triangulator that handles spherical polygons whose vertices are defined as
      * geocentric positions.
      */
-    static readonly SPHERICAL = new Triangulator(Geometry3d.right, Geometry3d.insideSurface)
+    static readonly SPHERICAL = new Triangulator(InternalGeodetics.right, InternalGeodetics.insideSurface)
 
     /**
      * Triangulator that handles polygons whose vertices are defined as 2D positions.

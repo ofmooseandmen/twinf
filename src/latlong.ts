@@ -22,4 +22,12 @@ export class LatLong {
         return this._longitude
     }
 
+    /**
+     * Determines whether both given lat/long are equals.
+     */
+    static equals(ll1: LatLong, ll2: LatLong): boolean {
+        return ll1.latitude().degrees() === ll2.latitude().degrees()
+            && ll1.longitude().degrees() === ll2.longitude().degrees()
+    }
+
 }

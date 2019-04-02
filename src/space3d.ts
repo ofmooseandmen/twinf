@@ -140,12 +140,13 @@ export class Math3d {
 
 /**
  * Geodetic calculations assuming a spherical earth model.
+ * This implementation is internal to twinf. See Geodetics for the API.
  */
-export class Geometry3d {
+export class InternalGeodetics {
 
     private constructor() { }
 
-    private static readonly NORTH_POLE = new Vector3d(0, 0, 1)
+    static readonly NORTH_POLE: Vector3d = new Vector3d(0, 0, 1)
 
     /**
      * Antipode of given position: the horizontal position on the surface of
@@ -167,7 +168,7 @@ export class Geometry3d {
         }
         const r = earthRadius.metres()
         /* east direction vector at p */
-        const ed = Math3d.unit(Math3d.cross(Geometry3d.NORTH_POLE, p))
+        const ed = Math3d.unit(Math3d.cross(InternalGeodetics.NORTH_POLE, p))
         /* north direction vector at p */
         const nd = Math3d.cross(p, ed)
         /* central angle */
@@ -196,18 +197,18 @@ export class Geometry3d {
             return false;
         }
         if (ps[0] === ps[len - 1]) {
-            return Geometry3d.insideSurface(p, ps.slice(0, len - 1))
+            return InternalGeodetics.insideSurface(p, ps.slice(0, len - 1))
         }
         if (len < 3) {
             return false
         }
 
         /* all vectors from p to each vertex */
-        const edges = Geometry3d.edges(ps.map(pp => Math3d.sub(p, pp)))
+        const edges = InternalGeodetics.edges(ps.map(pp => Math3d.sub(p, pp)))
 
         /* sum subtended angles of each edge (using vector p to determine sign) */
         const sum = edges
-            .map(e => Geometry3d.signedAngleBetween(e[0], e[1], p))
+            .map(e => InternalGeodetics.signedAngleBetween(e[0], e[1], p))
             .reduce((acc, cur) => acc + cur, 0)
 
         return Math.abs(sum) > Math.PI;
@@ -262,7 +263,7 @@ export class Geometry3d {
      * Computes the surface distance (length of geodesic) between the given positions.
      */
     static surfaceDistance(p1: Vector3d, p2: Vector3d, earthRadius: Length): Length {
-        const m = Geometry3d.signedAngleBetween(p1, p2, undefined) * earthRadius.metres()
+        const m = InternalGeodetics.signedAngleBetween(p1, p2, undefined) * earthRadius.metres()
         return Length.ofMetres(m)
     }
 
@@ -272,7 +273,7 @@ export class Geometry3d {
      * otherwise it is signed + if p1 is clockwise looking along n,
      * - in opposite direction.
      */
-    private static signedAngleBetween(p1: Vector3d, p2: Vector3d, n: Vector3d | undefined): number {
+    static signedAngleBetween(p1: Vector3d, p2: Vector3d, n: Vector3d | undefined): number {
         const p1xp2 = Math3d.cross(p1, p2)
         const sign = n === undefined ? 1 : Math.sign(Math3d.dot(p1xp2, n))
         const sinO = sign * Math3d.norm(p1xp2)

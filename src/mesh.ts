@@ -5,7 +5,7 @@ import { Length } from "./length"
 import { RenderingOptions } from "./options"
 import * as S from "./shapes"
 import { Geometry2d, Vector2d } from "./space2d"
-import { Geometry3d, Vector3d } from "./space3d"
+import { InternalGeodetics, Vector3d } from "./space3d"
 import { Triangle } from "./triangle"
 import { Triangulator } from "./triangulation"
 
@@ -127,7 +127,7 @@ export class MeshGenerator {
 
     private static fromGeoCircle(c: S.GeoCircle, earthRadius: Length,
         circlePositions: number): ReadonlyArray<Mesh> {
-        const gs = Geometry3d.discretiseCircle(c.centre(), c.radius(), earthRadius, circlePositions)
+        const gs = InternalGeodetics.discretiseCircle(c.centre(), c.radius(), earthRadius, circlePositions)
         const paint = c.paint()
         return MeshGenerator._fromGeoPolygon(gs, paint)
     }

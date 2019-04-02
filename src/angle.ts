@@ -5,6 +5,12 @@
  */
 export class Angle {
 
+    static readonly ZERO: Angle = Angle.ofDegrees(0)
+
+    static readonly HALF_CIRCLE: Angle = Angle.ofDegrees(180)
+
+    static readonly FULL_CIRCLE: Angle = Angle.ofDegrees(360)
+
     private readonly milliseconds: number
 
     private constructor(milliseconds: number) {
@@ -40,50 +46,20 @@ export class Angle {
         return Angle.ofRadians(Math.atan2(y, x))
     }
 
+    /**
+     * Normalises the given angle to [0, n].
+     */
+    static normalise(a: Angle, n: Angle): Angle {
+        const degs = (a.degrees() + n.degrees()) % 360.0
+        return Angle.ofDegrees(degs)
+    }
+
     degrees(): number {
         return this.milliseconds / 3600000.0
     }
 
     radians(): number {
         return this.degrees() * Math.PI / 180.0
-    }
-
-}
-
-export class Length {
-
-    private readonly _metres: number
-
-    private constructor(metres: number) {
-        this._metres = metres
-    }
-
-    static ofMetres(metres: number) {
-        return new Length(metres)
-    }
-
-    static ofKilometres(kilometres: number) {
-        return Length.ofMetres(kilometres * 1000.0)
-    }
-
-    static ofNauticalMiles(nauticalMiles: number) {
-        return Length.ofMetres(nauticalMiles * 1852.0)
-    }
-
-    metres(): number {
-        return this._metres
-    }
-
-    kilometres(): number {
-        return this._metres / 1000.0
-    }
-
-    nauticalMiles(): number {
-        return this._metres / 1852.0
-    }
-
-    scale(n: number): Length {
-        return new Length(this._metres * n)
     }
 
 }

@@ -14,7 +14,7 @@ describe("canvas coordinate system", () => {
 
     const cCentre = LatLong.ofDegrees(-37.8136, 144.9631)
     const range = Length.ofMetres(1852000)
-    const rotation = Angle.ofDegrees(0)
+    const rotation = Angle.ZERO
     const cd = new CanvasDimension(1920, 1080)
     const af = CoordinateSystems.computeCanvasAffineTransform(cCentre, range, rotation, cd, sp)
 

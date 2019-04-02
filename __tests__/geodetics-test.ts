@@ -8,6 +8,121 @@ import * as U from "./util"
 describe("Geodetics", () => {
 
     const earthRadius = Length.ofMetres(6371000)
+    describe("finalBearing", () => {
+        test("returns Nothing if both point are the same", () => {
+            const p = LatLong.ofDegrees(50, -18)
+            expect(Geodetics.finalBearing(p, p)).toBeUndefined()
+        })
+
+        test("returns 0° if both point have the same longitude (going north)", () => {
+            const p1 = LatLong.ofDegrees(50, -5)
+            const p2 = LatLong.ofDegrees(58, -5)
+            expect(Geodetics.finalBearing(p1, p2)).toEqual(Angle.ZERO)
+        })
+
+        test("returns 180° if both point have the same longitude (going south)", () => {
+            const p1 = LatLong.ofDegrees(58, -5)
+            const p2 = LatLong.ofDegrees(50, -5)
+            expect(Geodetics.finalBearing(p1, p2)).toEqual(Angle.ofDegrees(180))
+        })
+
+        test("returns 90° at the equator going east", () => {
+            const p1 = LatLong.ofDegrees(0, 0)
+            const p2 = LatLong.ofDegrees(0, 1)
+            expect(Geodetics.finalBearing(p1, p2)).toEqual(Angle.ofDegrees(90))
+        })
+
+        test("returns 270° at the equator going west", () => {
+            const p1 = LatLong.ofDegrees(0, 1)
+            const p2 = LatLong.ofDegrees(0, 0)
+            expect(Geodetics.finalBearing(p1, p2)).toEqual(Angle.ofDegrees(270))
+        })
+
+        test("returns the final bearing in compass angle", () => {
+            const p1 = LatLong.ofDegrees(50.06638889, -5.71472222)
+            const p2 = LatLong.ofDegrees(58.64388889, -3.07)
+            expect(Geodetics.finalBearing(p1, p2)).toEqual(Angle.ofDegrees(11.2752013))
+            expect(Geodetics.finalBearing(p2, p1)).toEqual(Angle.ofDegrees(189.1198181))
+        })
+
+        test("returns the final bearing in compass angle", () => {
+            const p1 = LatLong.ofDegrees(-53.99472222, -25.9875)
+            const p2 = LatLong.ofDegrees(54, 154)
+            expect(Geodetics.finalBearing(p1, p2)).toEqual(Angle.ofDegrees(125.6839436))
+        })
+
+    })
+
+    describe("initialBearing", () => {
+        test("returns Nothing if both point are the same", () => {
+            const p = LatLong.ofDegrees(50, -18)
+            expect(Geodetics.initialBearing(p, p)).toBeUndefined()
+        })
+
+        test("returns 0° if both point have the same longitude (going north)", () => {
+            const p1 = LatLong.ofDegrees(50, -5)
+            const p2 = LatLong.ofDegrees(58, -5)
+            expect(Geodetics.initialBearing(p1, p2)).toEqual(Angle.ZERO)
+        })
+
+        test("returns 180° if both point have the same longitude (going south)", () => {
+            const p1 = LatLong.ofDegrees(58, -5)
+            const p2 = LatLong.ofDegrees(50, -5)
+            expect(Geodetics.initialBearing(p1, p2)).toEqual(Angle.ofDegrees(180))
+        })
+
+        test("returns 90° at the equator going east", () => {
+            const p1 = LatLong.ofDegrees(0, 0)
+            const p2 = LatLong.ofDegrees(0, 1)
+            expect(Geodetics.initialBearing(p1, p2)).toEqual(Angle.ofDegrees(90))
+        })
+
+        test("returns 270° at the equator going west", () => {
+            const p1 = LatLong.ofDegrees(0, 1)
+            const p2 = LatLong.ofDegrees(0, 0)
+            expect(Geodetics.initialBearing(p1, p2)).toEqual(Angle.ofDegrees(270))
+        })
+
+        test("returns the initial bearing in compass angle", () => {
+            const p1 = LatLong.ofDegrees(50.06638889, -5.71472222)
+            const p2 = LatLong.ofDegrees(58.64388889, -3.07)
+            expect(Geodetics.initialBearing(p1, p2)).toEqual(Angle.ofDegrees(9.11981810))
+            expect(Geodetics.initialBearing(p2, p1)).toEqual(Angle.ofDegrees(191.2752013))
+        })
+
+    })
+
+    describe("interpolate", () => {
+
+        const p0 = LatLong.ofDegrees(44, 44)
+        const p1 = LatLong.ofDegrees(46, 46)
+
+        test("fails if f < 0.0", () => {
+            expect(() => Geodetics.interpolate(p0, p1, -0.5))
+                .toThrow("fraction must be in range [0..1], was -0.5")
+        })
+
+        test("fails if f > 1.0", () => {
+            expect(() => Geodetics.interpolate(p0, p1, 1.1))
+                .toThrow("fraction must be in range [0..1], was 1.1")
+        })
+
+        test("returns p0 if f == 0", () => {
+            expect(Geodetics.interpolate(p0, p1, 0.0)).toBe(p0)
+        })
+
+        test("returns p1 if f == 1", () => {
+            expect(Geodetics.interpolate(p0, p1, 1.0)).toBe(p1)
+        })
+
+        test("returns the interpolated position", () => {
+            const p2 = LatLong.ofDegrees(53.47944444, -2.24527778)
+            const p3 = LatLong.ofDegrees(55.60583333, 13.03583333)
+            const i = Geodetics.interpolate(p2, p3, 0.5)
+            U.assertLLEquals(LatLong.ofDegrees(54.7835574, 5.1949856), i)
+        })
+
+    })
 
     describe("insideSurface", () => {
 

@@ -3,10 +3,12 @@
  */
 export class Duration {
 
+    static readonly ZERO: Duration = Duration.ofSeconds(0)
+
     private readonly ms: number
 
     private constructor(ms: number) {
-        this.ms = ms
+        this.ms = Math.round(ms)
     }
 
     /**
