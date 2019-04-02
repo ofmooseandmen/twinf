@@ -1,6 +1,30 @@
 var demo = (function (exports) {
     'use strict';
 
+    /*! *****************************************************************************
+    Copyright (c) Microsoft Corporation. All rights reserved.
+    Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+    this file except in compliance with the License. You may obtain a copy of the
+    License at http://www.apache.org/licenses/LICENSE-2.0
+
+    THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+    WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+    MERCHANTABLITY OR NON-INFRINGEMENT.
+
+    See the Apache Version 2.0 License for specific language governing permissions
+    and limitations under the License.
+    ***************************************************************************** */
+
+    function __awaiter(thisArg, _arguments, P, generator) {
+        return new (P || (P = Promise))(function (resolve, reject) {
+            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+            function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+            step((generator = generator.apply(thisArg, _arguments || [])).next());
+        });
+    }
+
     /**
      * An angle with a resolution of a milliseconds of a degree.
      * When used as a latitude/longitude this roughly translate to a precision
@@ -1253,34 +1277,6 @@ var demo = (function (exports) {
     }
 
     /**
-     * A track represents the state of a vehicle by its current position, bearing and speed.
-     */
-    class Track {
-        constructor(pos, bearing, speed) {
-            this._pos = pos;
-            this._bearing = bearing;
-            this._speed = speed;
-        }
-        /**
-         * position of the track.
-         */
-        pos() {
-            return this._pos;
-        }
-        /**
-         * bearing of the track.
-         */
-        bearing() {
-            return this._bearing;
-        }
-        /**
-         * speed of the track.
-         */
-        speed() {
-            return this._speed;
-        }
-    }
-    /**
      * Kinematics calculations assuming a spherical earth model.
      */
     // TODO: add closed point of approach and intercept
@@ -1441,42 +1437,6 @@ var demo = (function (exports) {
         ShapeType[ShapeType["GeoRelativePolyline"] = 5] = "GeoRelativePolyline";
     })(ShapeType || (ShapeType = {}));
     /**
-     * Circle whose centre is defined by latitude/longitude.
-     */
-    class GeoCircle {
-        constructor(centre, radius, paint) {
-            this.type = ShapeType.GeoCircle;
-            this._centre = centre;
-            this._radius = radius;
-            this._paint = paint;
-        }
-        centre() {
-            return this._centre;
-        }
-        radius() {
-            return this._radius;
-        }
-        paint() {
-            return this._paint;
-        }
-    }
-    /**
-     * Polygon whose vertices are latitude/longitude.
-     */
-    class GeoPolygon {
-        constructor(vertices, paint) {
-            this.type = ShapeType.GeoPolygon;
-            this._vertices = vertices;
-            this._paint = paint;
-        }
-        vertices() {
-            return this._vertices;
-        }
-        paint() {
-            return this._paint;
-        }
-    }
-    /**
      * Polyline whose points are latitude/longitude
      */
     class GeoPolyline {
@@ -1515,48 +1475,6 @@ var demo = (function (exports) {
         }
         paint() {
             return this._paint;
-        }
-    }
-    /**
-     * Polygon whose vertices are defined as pixels offsets from a reference
-     * latitude/longitude.
-     */
-    class GeoRelativePolygon {
-        constructor(ref, vertices, paint) {
-            this.type = ShapeType.GeoRelativePolygon;
-            this._ref = ref;
-            this._vertices = vertices;
-            this._paint = paint;
-        }
-        ref() {
-            return this._ref;
-        }
-        vertices() {
-            return this._vertices;
-        }
-        paint() {
-            return this._paint;
-        }
-    }
-    /**
-     * Polyline whose points are defined as pixels offsets from a reference
-     * latitude/longitude.
-     */
-    class GeoRelativePolyline {
-        constructor(ref, points, stroke) {
-            this.type = ShapeType.GeoRelativePolyline;
-            this._ref = ref;
-            this._points = points;
-            this._stroke = stroke;
-        }
-        ref() {
-            return this._ref;
-        }
-        points() {
-            return this._points;
-        }
-        stroke() {
-            return this._stroke;
         }
     }
 
@@ -2887,47 +2805,65 @@ void main() {
             this.fireEvent();
         }
         run() {
-            const ystad = LatLong.ofDegrees(55.4295, 13.82);
-            const malmo = LatLong.ofDegrees(55.6050, 13.0038);
-            const lund = LatLong.ofDegrees(55.7047, 13.1910);
-            const helsingborg = LatLong.ofDegrees(56.0465, 12.6945);
-            const kristianstad = LatLong.ofDegrees(56.0294, 14.1567);
-            const jonkoping = LatLong.ofDegrees(57.7826, 14.1618);
-            const linkoping = LatLong.ofDegrees(58.4108, 15.6214);
-            const norrkoping = LatLong.ofDegrees(58.5877, 16.1924);
-            const goteborg = LatLong.ofDegrees(57.7089, 11.9746);
-            const stockholm = LatLong.ofDegrees(59.3293, 18.0686);
-            // Gotland
-            const visby = LatLong.ofDegrees(57.6349, 18.2948);
-            const irevik = LatLong.ofDegrees(57.8371, 18.5866);
-            const larbro = LatLong.ofDegrees(57.7844, 18.7890);
-            const blase = LatLong.ofDegrees(57.8945, 18.8440);
-            const farosund = LatLong.ofDegrees(57.8613, 19.0540);
-            const slite = LatLong.ofDegrees(57.7182, 18.7923);
-            const gothem = LatLong.ofDegrees(57.5790, 18.7298);
-            const ljugarn = LatLong.ofDegrees(57.3299, 18.7084);
-            const nar = LatLong.ofDegrees(57.2573, 18.6351);
-            const vamlingbo = LatLong.ofDegrees(56.9691, 18.2319);
-            const sundre = LatLong.ofDegrees(56.9364, 18.1834);
-            const sanda = LatLong.ofDegrees(57.4295, 18.2223);
-            const p = new GeoPolygon([ystad, malmo, lund, helsingborg, kristianstad], Paint.stroke(new Stroke(Colour.LIMEGREEN, 5)));
-            const paint = Paint.fill(Colour.CORAL);
-            const c2 = new GeoCircle(goteborg, Length.ofKilometres(10), paint);
-            const c3 = new GeoCircle(jonkoping, Length.ofKilometres(5), paint);
-            const c4 = new GeoCircle(norrkoping, Length.ofKilometres(5), paint);
-            const c5 = new GeoCircle(linkoping, Length.ofKilometres(5), paint);
-            const l1 = new GeoPolyline([jonkoping, linkoping, norrkoping, stockholm, goteborg], new Stroke(Colour.DODGERBLUE, 1));
-            const l2 = new GeoPolyline([visby, irevik, larbro, blase,
-                farosund, slite, gothem, ljugarn,
-                nar, vamlingbo, sundre, sanda, visby], new Stroke(Colour.DODGERBLUE, 5));
-            const rp = new GeoRelativePolygon(linkoping, [new Offset(50, 50), new Offset(50, 200), new Offset(70, 160),
-                new Offset(90, 200), new Offset(110, 50)], Paint.complete(new Stroke(Colour.SLATEGRAY, 5), Colour.SNOW));
-            const rl = new GeoRelativePolyline(norrkoping, [new Offset(50, 50), new Offset(50, 100), new Offset(75, 150)], new Stroke(Colour.NAVY, 3));
-            this.world.insert(new Graphic("sak", 0, [p, c2, c3, l1, c4, c5, l2]));
-            this.world.insert(new Graphic("andra", 0, [rp, rl]));
-            DemoApp.parseCoastlines(this.world);
-            this.simulateTrack(new Track(stockholm, Angle.ofDegrees(135), Speed.ofMetresPerSecond(555.5556)));
+            // const ystad = T.LatLong.ofDegrees(55.4295, 13.82)
+            // const malmo = T.LatLong.ofDegrees(55.6050, 13.0038)
+            // const lund = T.LatLong.ofDegrees(55.7047, 13.1910)
+            // const helsingborg = T.LatLong.ofDegrees(56.0465, 12.6945)
+            // const kristianstad = T.LatLong.ofDegrees(56.0294, 14.1567)
+            // const jonkoping = T.LatLong.ofDegrees(57.7826, 14.1618)
+            // const linkoping = T.LatLong.ofDegrees(58.4108, 15.6214)
+            // const norrkoping = T.LatLong.ofDegrees(58.5877, 16.1924)
+            // const goteborg = T.LatLong.ofDegrees(57.7089, 11.9746)
+            // const stockholm = T.LatLong.ofDegrees(59.3293, 18.0686)
+            //
+            // // Gotland
+            // const visby = T.LatLong.ofDegrees(57.6349, 18.2948)
+            // const irevik = T.LatLong.ofDegrees(57.8371, 18.5866)
+            // const larbro = T.LatLong.ofDegrees(57.7844, 18.7890)
+            // const blase = T.LatLong.ofDegrees(57.8945, 18.8440)
+            // const farosund = T.LatLong.ofDegrees(57.8613, 19.0540)
+            // const slite = T.LatLong.ofDegrees(57.7182, 18.7923)
+            // const gothem = T.LatLong.ofDegrees(57.5790, 18.7298)
+            // const ljugarn = T.LatLong.ofDegrees(57.3299, 18.7084)
+            // const nar = T.LatLong.ofDegrees(57.2573, 18.6351)
+            // const vamlingbo = T.LatLong.ofDegrees(56.9691, 18.2319)
+            // const sundre = T.LatLong.ofDegrees(56.9364, 18.1834)
+            // const sanda = T.LatLong.ofDegrees(57.4295, 18.2223)
+            //
+            // const p = new T.GeoPolygon([ystad, malmo, lund, helsingborg, kristianstad],
+            //     T.Paint.stroke(new T.Stroke(T.Colour.LIMEGREEN, 5)))
+            // const paint = T.Paint.fill(T.Colour.CORAL)
+            // const c2 = new T.GeoCircle(goteborg, T.Length.ofKilometres(10), paint)
+            // const c3 = new T.GeoCircle(jonkoping, T.Length.ofKilometres(5), paint)
+            // const c4 = new T.GeoCircle(norrkoping, T.Length.ofKilometres(5), paint)
+            // const c5 = new T.GeoCircle(linkoping, T.Length.ofKilometres(5), paint)
+            // const l1 = new T.GeoPolyline(
+            //     [jonkoping, linkoping, norrkoping, stockholm, goteborg],
+            //     new T.Stroke(T.Colour.DODGERBLUE, 1))
+            // const l2 = new T.GeoPolyline(
+            //     [visby, irevik, larbro, blase,
+            //         farosund, slite, gothem, ljugarn,
+            //         nar, vamlingbo, sundre, sanda, visby],
+            //     new T.Stroke(T.Colour.DODGERBLUE, 5))
+            //
+            // const rp = new T.GeoRelativePolygon(linkoping,
+            //     [new T.Offset(50, 50), new T.Offset(50, 200), new T.Offset(70, 160),
+            //     new T.Offset(90, 200), new T.Offset(110, 50)],
+            //     T.Paint.complete(new T.Stroke(T.Colour.SLATEGRAY, 5), T.Colour.SNOW))
+            //
+            // const rl = new T.GeoRelativePolyline(
+            //     norrkoping,
+            //     [new T.Offset(50, 50), new T.Offset(50, 100), new T.Offset(75, 150)],
+            //     new T.Stroke(T.Colour.NAVY, 3))
+            //
+            // this.world.insert(new T.Graphic("sak", 0, [p, c2, c3, l1, c4, c5, l2]))
+            // this.world.insert(new T.Graphic("andra", 0, [rp, rl]))
+            //
+            // this.simulateTrack(new T.Track(stockholm, T.Angle.ofDegrees(135), T.Speed.ofMetresPerSecond(555.5556)))
             this.world.startRendering();
+            DemoApp.addCoastline(this.world);
+            // DemoApp.addStateVectors(this.world)
+            this.showTracks();
         }
         handleKeyboardEvent(evt) {
             const delta = DemoApp.DELTA.get(evt.key);
@@ -2954,6 +2890,13 @@ void main() {
             const r = (this.world.range().kilometres()).toFixed(0) + " km";
             this.l(ll, r);
         }
+        showTracks() {
+            const h = () => {
+                DemoApp.addStateVectors(this.world);
+                setTimeout(h, 30000);
+            };
+            setTimeout(h, 100);
+        }
         simulateTrack(track) {
             var elapsedSecs = 0;
             const h = () => {
@@ -2968,8 +2911,10 @@ void main() {
             };
             setTimeout(h, 1000);
         }
-        static parseCoastlines(world) {
-            DemoApp.load("./coastline.json", (data) => {
+        static addCoastline(world) {
+            return __awaiter(this, void 0, void 0, function* () {
+                let response = yield fetch('./coastline.json');
+                let data = yield response.json();
                 const length = data.features.length;
                 const shapes = new Array();
                 for (let i = 0; i < length; i++) {
@@ -2988,8 +2933,46 @@ void main() {
                     }
                 }
                 world.insert(new Graphic("coastlines", -1, shapes));
-            }, (_) => {
-                /* damn. */
+            });
+        }
+        static addStateVectors(world) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const states = yield DemoApp.fetchStateVectors();
+                const len = states.length;
+                const zIndex = 1;
+                const adsbPaint = Paint.complete(new Stroke(Colour.DEEPPINK, 2), Colour.LIGHTPINK);
+                const asterixPaint = Paint.complete(new Stroke(Colour.DEEPSKYBLUE, 2), Colour.SKYBLUE);
+                const mlatPaint = Paint.complete(new Stroke(Colour.LIMEGREEN, 2), Colour.LIGHTGREEN);
+                const paints = [adsbPaint, asterixPaint, mlatPaint];
+                const offset = new Offset(0, 0);
+                for (let i = 0; i < len; i++) {
+                    const state = states[i];
+                    if (state.position !== undefined) {
+                        const paint = paints[state.positionSource];
+                        const c = [new GeoRelativeCircle(state.position, offset, 5, paint)];
+                        world.insert(new Graphic(state.icao24, zIndex, c));
+                    }
+                }
+            });
+        }
+        static fetchStateVectors() {
+            return __awaiter(this, void 0, void 0, function* () {
+                try {
+                    const response = yield fetch('https://opensky-network.org/api/states/all');
+                    const data = yield response.json();
+                    console.log("Fetch states from opensky");
+                    for (const prop in data) {
+                        if (prop === "states") {
+                            const states = data[prop];
+                            return states.map(StateVector.parse);
+                        }
+                    }
+                    return [];
+                }
+                catch (err) {
+                    console.log("Could not fetch states from opensky: " + err);
+                    return [];
+                }
             });
         }
     }
@@ -3003,24 +2986,67 @@ void main() {
         ["+", 0.95],
         ["-", 1.05],
     ]);
-    DemoApp.load = (url, success, error) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('get', url, true);
-        xhr.onreadystatechange = () => {
-            if (xhr.readyState == 4) {
-                // done
-                const status = xhr.status;
-                if (status == 200) {
-                    const data = JSON.parse(xhr.responseText);
-                    success(data);
-                }
-                else {
-                    error(status);
-                }
+    var PositionSource;
+    (function (PositionSource) {
+        PositionSource[PositionSource["ADSB"] = 0] = "ADSB";
+        PositionSource[PositionSource["ASTERIX"] = 1] = "ASTERIX";
+        PositionSource[PositionSource["MLAT"] = 2] = "MLAT";
+    })(PositionSource || (PositionSource = {}));
+    class StateVector {
+        constructor() {
+            this.icao24 = "";
+            this.country = "";
+            this.lastContact = 0;
+            this.onGround = true;
+            this.spi = false;
+            this.positionSource = PositionSource.ADSB;
+        }
+        static parse(arr) {
+            let res = new StateVector();
+            res.icao24 = arr[0];
+            if (arr[1] !== null) {
+                res.callsign = arr[1];
             }
-        };
-        xhr.send();
-    };
+            res.country = arr[2];
+            if (arr[3] !== null) {
+                res.timePosition = parseInt(arr[3]);
+            }
+            res.lastContact = parseInt(arr[4]);
+            if (arr[5] !== null && arr[6] !== null) {
+                res.position = LatLong.ofDegrees(parseFloat(arr[6]), parseFloat(arr[5]));
+            }
+            if (arr[7] !== null) {
+                res.baroAltitude = Length.ofMetres(parseFloat(arr[7]));
+            }
+            res.onGround = (arr[8] === "true") ? true : false;
+            if (arr[9] !== null) {
+                res.velocity = Speed.ofMetresPerSecond(parseFloat(arr[9]));
+            }
+            if (arr[10] !== null) {
+                res.trueBearing = Angle.ofDegrees(parseFloat(arr[10]));
+            }
+            if (arr[11] !== null) {
+                res.verticalRate = Speed.ofMetresPerSecond(parseFloat(arr[11]));
+            }
+            if (arr[13] !== null) {
+                res.geoAltitude = Length.ofMetres(parseFloat(arr[13]));
+            }
+            if (arr[14] !== null) {
+                res.squawk = arr[14];
+            }
+            res.spi = (arr[15] === "true") ? true : false;
+            if (arr[16] === "0") {
+                res.positionSource = PositionSource.ADSB;
+            }
+            else if (arr[16] === "1") {
+                res.positionSource = PositionSource.ASTERIX;
+            }
+            else if (arr[16] === "2") {
+                res.positionSource = PositionSource.MLAT;
+            }
+            return res;
+        }
+    }
 
     exports.DemoApp = DemoApp;
 

@@ -16,7 +16,7 @@
     "watch": "rollup -cw"
   },
   "dependencies": {
-    "twinf": "0.0.1",
+    "twinf": "0.0.2",
     "@types/webgl2": "0.0.4"
   },
   "devDependencies": {
