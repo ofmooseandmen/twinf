@@ -57,6 +57,13 @@ var demo = (function (exports) {
         static atan2(y, x) {
             return Angle.ofRadians(Math.atan2(y, x));
         }
+        /**
+         * Normalises the given angle to [0, n].
+         */
+        static normalise(a, n) {
+            const degs = (a.degrees() + n.degrees()) % 360.0;
+            return Angle.ofDegrees(degs);
+        }
         degrees() {
             return this.milliseconds / 3600000.0;
         }
@@ -64,6 +71,9 @@ var demo = (function (exports) {
             return this.degrees() * Math.PI / 180.0;
         }
     }
+    Angle.ZERO = Angle.ofDegrees(0);
+    Angle.HALF_CIRCLE = Angle.ofDegrees(180);
+    Angle.FULL_CIRCLE = Angle.ofDegrees(360);
 
     /**
      * A colour.
@@ -475,7 +485,7 @@ var demo = (function (exports) {
      */
     class Duration {
         constructor(ms) {
-            this.ms = ms;
+            this.ms = Math.round(ms);
         }
         /**
          * Duration given number of milliseconds.
@@ -514,6 +524,7 @@ var demo = (function (exports) {
             return this.ms / 1000.0;
         }
     }
+    Duration.ZERO = Duration.ofSeconds(0);
 
     class LatLong {
         constructor(latitude, longitude) {
@@ -528,6 +539,13 @@ var demo = (function (exports) {
         }
         longitude() {
             return this._longitude;
+        }
+        /**
+         * Determines whether both given lat/long are equals.
+         */
+        static equals(ll1, ll2) {
+            return ll1.latitude().degrees() === ll2.latitude().degrees()
+                && ll1.longitude().degrees() === ll2.longitude().degrees();
         }
     }
 
@@ -872,8 +890,9 @@ var demo = (function (exports) {
     }
     /**
      * Geodetic calculations assuming a spherical earth model.
+     * This implementation is internal to twinf. See Geodetics for the API.
      */
-    class Geometry3d {
+    class InternalGeodetics {
         constructor() { }
         /**
          * Antipode of given position: the horizontal position on the surface of
@@ -894,7 +913,7 @@ var demo = (function (exports) {
             }
             const r = earthRadius.metres();
             /* east direction vector at p */
-            const ed = Math3d.unit(Math3d.cross(Geometry3d.NORTH_POLE, p));
+            const ed = Math3d.unit(Math3d.cross(InternalGeodetics.NORTH_POLE, p));
             /* north direction vector at p */
             const nd = Math3d.cross(p, ed);
             /* central angle */
@@ -922,16 +941,16 @@ var demo = (function (exports) {
                 return false;
             }
             if (ps[0] === ps[len - 1]) {
-                return Geometry3d.insideSurface(p, ps.slice(0, len - 1));
+                return InternalGeodetics.insideSurface(p, ps.slice(0, len - 1));
             }
             if (len < 3) {
                 return false;
             }
             /* all vectors from p to each vertex */
-            const edges = Geometry3d.edges(ps.map(pp => Math3d.sub(p, pp)));
+            const edges = InternalGeodetics.edges(ps.map(pp => Math3d.sub(p, pp)));
             /* sum subtended angles of each edge (using vector p to determine sign) */
             const sum = edges
-                .map(e => Geometry3d.signedAngleBetween(e[0], e[1], p))
+                .map(e => InternalGeodetics.signedAngleBetween(e[0], e[1], p))
                 .reduce((acc, cur) => acc + cur, 0);
             return Math.abs(sum) > Math.PI;
         }
@@ -978,7 +997,7 @@ var demo = (function (exports) {
          * Computes the surface distance (length of geodesic) between the given positions.
          */
         static surfaceDistance(p1, p2, earthRadius) {
-            const m = Geometry3d.signedAngleBetween(p1, p2, undefined) * earthRadius.metres();
+            const m = InternalGeodetics.signedAngleBetween(p1, p2, undefined) * earthRadius.metres();
             return Length.ofMetres(m);
         }
         /**
@@ -1002,7 +1021,7 @@ var demo = (function (exports) {
             return ps.map((p, i) => [p, xs[i]]);
         }
     }
-    Geometry3d.NORTH_POLE = new Vector3d(0, 0, 1);
+    InternalGeodetics.NORTH_POLE = new Vector3d(0, 0, 1);
 
     /**
      * Transformations between positions in different coordinate systems used when rendering shapes
@@ -1116,7 +1135,7 @@ var demo = (function (exports) {
             const east = Angle.ofDegrees(90.0);
             const halfRange = hrange.scale(0.5);
             const er = Length.ofMetres(sp.earthRadius());
-            const left = CoordinateSystems.geocentricToStereographic(Geometry3d.destination(gc, east, halfRange, er), sp);
+            const left = CoordinateSystems.geocentricToStereographic(InternalGeodetics.destination(gc, east, halfRange, er), sp);
             const ratio = canvas.height() / canvas.width();
             const sc = CoordinateSystems.geocentricToStereographic(gc, sp);
             const width = 2 * Math.abs(left.x() - sc.x());
@@ -1129,13 +1148,14 @@ var demo = (function (exports) {
             const worldTopLeftY = sc.y() + height / 2.0;
             const tx = -sx * worldTopLeftX;
             const ty = -sy * worldTopLeftY;
+            let m;
             /*
              * translate to centre:
              * [   1    0    tx  ]
              * [   0    1    ty  ]
              * [   0    0    1   ]
              */
-            let m = [
+            m = [
                 new Vector3d(1, 0, tx),
                 new Vector3d(0, 1, ty),
                 new Vector3d(0, 0, 1)
@@ -1277,60 +1297,6 @@ var demo = (function (exports) {
     }
 
     /**
-     * Kinematics calculations assuming a spherical earth model.
-     */
-    // TODO: add closed point of approach and intercept
-    class Kinematics {
-        /**
-         * Computes the position of given track after given duration has elapsed and using
-         * the given earth radius.
-         */
-        static position(track, duration, earthRadius) {
-            const c = Kinematics.course(track.pos(), track.bearing());
-            const a = track.speed().metresPerSecond() / earthRadius.metres() * duration.seconds();
-            const p0 = CoordinateSystems.latLongToGeocentric(track.pos());
-            const pt = Math3d.add(Math3d.scale(p0, Math.cos(a)), Math3d.scale(c, Math.sin(a)));
-            return CoordinateSystems.geocentricToLatLong(pt);
-        }
-        static course(p, b) {
-            const lat = p.latitude();
-            const lon = p.longitude();
-            const _rx = Kinematics.rx(b);
-            const _ry = Kinematics.ry(lat);
-            const _rz = Kinematics.rz(Angle.ofDegrees(-lon.degrees()));
-            const r = Math3d.multmm(Math3d.multmm(_rz, _ry), _rx);
-            return new Vector3d(r[0].z(), r[1].z(), r[2].z());
-        }
-        static rx(a) {
-            const c = Angle.cos(a);
-            const s = Angle.sin(a);
-            return [
-                new Vector3d(1, 0, 0),
-                new Vector3d(0, c, s),
-                new Vector3d(0, -s, c)
-            ];
-        }
-        static ry(a) {
-            const c = Angle.cos(a);
-            const s = Angle.sin(a);
-            return [
-                new Vector3d(c, 0, -s),
-                new Vector3d(0, 1, 0),
-                new Vector3d(s, 0, c)
-            ];
-        }
-        static rz(a) {
-            const c = Angle.cos(a);
-            const s = Angle.sin(a);
-            return [
-                new Vector3d(c, s, 0),
-                new Vector3d(-s, c, 0),
-                new Vector3d(0, 0, 1)
-            ];
-        }
-    }
-
-    /**
      * Rendering options.
      */
     class RenderingOptions {
@@ -1453,25 +1419,21 @@ var demo = (function (exports) {
         }
     }
     /**
-     * Circle whose centre is defined as an offset in pixels from a
-     * reference latitude/longitude and radius is in pixels.
+     * Polygon whose vertices are defined as pixels offsets from a reference
+     * latitude/longitude.
      */
-    class GeoRelativeCircle {
-        constructor(centreRef, centreOffset, radius, paint) {
-            this.type = ShapeType.GeoRelativeCircle;
-            this._centreRef = centreRef;
-            this._centreOffset = centreOffset;
-            this._radius = radius;
+    class GeoRelativePolygon {
+        constructor(ref, vertices, paint) {
+            this.type = ShapeType.GeoRelativePolygon;
+            this._ref = ref;
+            this._vertices = vertices;
             this._paint = paint;
         }
-        centreRef() {
-            return this._centreRef;
+        ref() {
+            return this._ref;
         }
-        centreOffset() {
-            return this._centreOffset;
-        }
-        radius() {
-            return this._radius;
+        vertices() {
+            return this._vertices;
         }
         paint() {
             return this._paint;
@@ -1682,7 +1644,7 @@ var demo = (function (exports) {
      * Triangulator that handles spherical polygons whose vertices are defined as
      * geocentric positions.
      */
-    Triangulator.SPHERICAL = new Triangulator(Geometry3d.right, Geometry3d.insideSurface);
+    Triangulator.SPHERICAL = new Triangulator(InternalGeodetics.right, InternalGeodetics.insideSurface);
     /**
      * Triangulator that handles polygons whose vertices are defined as 2D positions.
      */
@@ -1776,7 +1738,7 @@ var demo = (function (exports) {
             }
         }
         static fromGeoCircle(c, earthRadius, circlePositions) {
-            const gs = Geometry3d.discretiseCircle(c.centre(), c.radius(), earthRadius, circlePositions);
+            const gs = InternalGeodetics.discretiseCircle(c.centre(), c.radius(), earthRadius, circlePositions);
             const paint = c.paint();
             return MeshGenerator._fromGeoPolygon(gs, paint);
         }
@@ -2799,71 +2761,23 @@ void main() {
             const def = new WorldDefinition(linkoping, Length.ofKilometres(2000), Angle.ofDegrees(0), Colour.GAINSBORO);
             this.world = new World(gl, def);
             this.l = (_c, _r) => { };
+            this.worker = new Worker('/build/opensky.js');
+            this.worker.onmessage = (e) => {
+                const tracks = e.data;
+                console.log(tracks);
+                for (let i = 0; i < tracks.length; i++) {
+                    this.world.insert(tracks[i]);
+                }
+            };
         }
         setOnChange(l) {
             this.l = l;
             this.fireEvent();
         }
         run() {
-            // const ystad = T.LatLong.ofDegrees(55.4295, 13.82)
-            // const malmo = T.LatLong.ofDegrees(55.6050, 13.0038)
-            // const lund = T.LatLong.ofDegrees(55.7047, 13.1910)
-            // const helsingborg = T.LatLong.ofDegrees(56.0465, 12.6945)
-            // const kristianstad = T.LatLong.ofDegrees(56.0294, 14.1567)
-            // const jonkoping = T.LatLong.ofDegrees(57.7826, 14.1618)
-            // const linkoping = T.LatLong.ofDegrees(58.4108, 15.6214)
-            // const norrkoping = T.LatLong.ofDegrees(58.5877, 16.1924)
-            // const goteborg = T.LatLong.ofDegrees(57.7089, 11.9746)
-            // const stockholm = T.LatLong.ofDegrees(59.3293, 18.0686)
-            //
-            // // Gotland
-            // const visby = T.LatLong.ofDegrees(57.6349, 18.2948)
-            // const irevik = T.LatLong.ofDegrees(57.8371, 18.5866)
-            // const larbro = T.LatLong.ofDegrees(57.7844, 18.7890)
-            // const blase = T.LatLong.ofDegrees(57.8945, 18.8440)
-            // const farosund = T.LatLong.ofDegrees(57.8613, 19.0540)
-            // const slite = T.LatLong.ofDegrees(57.7182, 18.7923)
-            // const gothem = T.LatLong.ofDegrees(57.5790, 18.7298)
-            // const ljugarn = T.LatLong.ofDegrees(57.3299, 18.7084)
-            // const nar = T.LatLong.ofDegrees(57.2573, 18.6351)
-            // const vamlingbo = T.LatLong.ofDegrees(56.9691, 18.2319)
-            // const sundre = T.LatLong.ofDegrees(56.9364, 18.1834)
-            // const sanda = T.LatLong.ofDegrees(57.4295, 18.2223)
-            //
-            // const p = new T.GeoPolygon([ystad, malmo, lund, helsingborg, kristianstad],
-            //     T.Paint.stroke(new T.Stroke(T.Colour.LIMEGREEN, 5)))
-            // const paint = T.Paint.fill(T.Colour.CORAL)
-            // const c2 = new T.GeoCircle(goteborg, T.Length.ofKilometres(10), paint)
-            // const c3 = new T.GeoCircle(jonkoping, T.Length.ofKilometres(5), paint)
-            // const c4 = new T.GeoCircle(norrkoping, T.Length.ofKilometres(5), paint)
-            // const c5 = new T.GeoCircle(linkoping, T.Length.ofKilometres(5), paint)
-            // const l1 = new T.GeoPolyline(
-            //     [jonkoping, linkoping, norrkoping, stockholm, goteborg],
-            //     new T.Stroke(T.Colour.DODGERBLUE, 1))
-            // const l2 = new T.GeoPolyline(
-            //     [visby, irevik, larbro, blase,
-            //         farosund, slite, gothem, ljugarn,
-            //         nar, vamlingbo, sundre, sanda, visby],
-            //     new T.Stroke(T.Colour.DODGERBLUE, 5))
-            //
-            // const rp = new T.GeoRelativePolygon(linkoping,
-            //     [new T.Offset(50, 50), new T.Offset(50, 200), new T.Offset(70, 160),
-            //     new T.Offset(90, 200), new T.Offset(110, 50)],
-            //     T.Paint.complete(new T.Stroke(T.Colour.SLATEGRAY, 5), T.Colour.SNOW))
-            //
-            // const rl = new T.GeoRelativePolyline(
-            //     norrkoping,
-            //     [new T.Offset(50, 50), new T.Offset(50, 100), new T.Offset(75, 150)],
-            //     new T.Stroke(T.Colour.NAVY, 3))
-            //
-            // this.world.insert(new T.Graphic("sak", 0, [p, c2, c3, l1, c4, c5, l2]))
-            // this.world.insert(new T.Graphic("andra", 0, [rp, rl]))
-            //
-            // this.simulateTrack(new T.Track(stockholm, T.Angle.ofDegrees(135), T.Speed.ofMetresPerSecond(555.5556)))
             this.world.startRendering();
             DemoApp.addCoastline(this.world);
-            // DemoApp.addStateVectors(this.world)
-            this.showTracks();
+            this.worker.postMessage("");
         }
         handleKeyboardEvent(evt) {
             const delta = DemoApp.DELTA.get(evt.key);
@@ -2897,23 +2811,9 @@ void main() {
             };
             setTimeout(h, 100);
         }
-        simulateTrack(track) {
-            var elapsedSecs = 0;
-            const h = () => {
-                elapsedSecs = elapsedSecs + 1;
-                const p = Kinematics.position(track, Duration.ofSeconds(elapsedSecs), World.EARTH_RADIUS);
-                const offset = new Offset(0, 0);
-                const radius = 16;
-                const paint = Paint.complete(new Stroke(Colour.DEEPPINK, 12), Colour.LIGHTPINK);
-                const c = [new GeoRelativeCircle(p, offset, radius, paint)];
-                this.world.insert(new Graphic("Track", 1, c));
-                setTimeout(h, 1000);
-            };
-            setTimeout(h, 1000);
-        }
         static addCoastline(world) {
             return __awaiter(this, void 0, void 0, function* () {
-                let response = yield fetch('./coastline.json');
+                let response = yield fetch('/assets/coastline.json');
                 let data = yield response.json();
                 const length = data.features.length;
                 const shapes = new Array();
@@ -2940,16 +2840,16 @@ void main() {
                 const states = yield DemoApp.fetchStateVectors();
                 const len = states.length;
                 const zIndex = 1;
-                const adsbPaint = Paint.complete(new Stroke(Colour.DEEPPINK, 2), Colour.LIGHTPINK);
-                const asterixPaint = Paint.complete(new Stroke(Colour.DEEPSKYBLUE, 2), Colour.SKYBLUE);
-                const mlatPaint = Paint.complete(new Stroke(Colour.LIMEGREEN, 2), Colour.LIGHTGREEN);
+                const adsbPaint = Paint.complete(new Stroke(Colour.DEEPPINK, 1), Colour.LIGHTPINK);
+                const asterixPaint = Paint.complete(new Stroke(Colour.DEEPSKYBLUE, 1), Colour.SKYBLUE);
+                const mlatPaint = Paint.complete(new Stroke(Colour.LIMEGREEN, 1), Colour.LIGHTGREEN);
                 const paints = [adsbPaint, asterixPaint, mlatPaint];
-                const offset = new Offset(0, 0);
+                const offsets = [new Offset(-5, -5), new Offset(-5, 5), new Offset(5, 5), new Offset(5, -5)];
                 for (let i = 0; i < len; i++) {
                     const state = states[i];
                     if (state.position !== undefined) {
                         const paint = paints[state.positionSource];
-                        const c = [new GeoRelativeCircle(state.position, offset, 5, paint)];
+                        const c = [new GeoRelativePolygon(state.position, offsets, paint)];
                         world.insert(new Graphic(state.icao24, zIndex, c));
                     }
                 }
@@ -2958,9 +2858,9 @@ void main() {
         static fetchStateVectors() {
             return __awaiter(this, void 0, void 0, function* () {
                 try {
-                    const response = yield fetch('https://opensky-network.org/api/states/all');
+                    // https://opensky-network.org/api/states/all
+                    const response = yield fetch('../assets/opensky-all.json');
                     const data = yield response.json();
-                    console.log("Fetch states from opensky");
                     for (const prop in data) {
                         if (prop === "states") {
                             const states = data[prop];
@@ -2970,7 +2870,6 @@ void main() {
                     return [];
                 }
                 catch (err) {
-                    console.log("Could not fetch states from opensky: " + err);
                     return [];
                 }
             });

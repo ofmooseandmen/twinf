@@ -16,12 +16,21 @@ export class DemoApp {
 
     private readonly world: T.World
     private l: (c: string, r: string) => void
+    private readonly worker: Worker
 
     constructor(gl: WebGL2RenderingContext) {
         const linkoping = T.LatLong.ofDegrees(58.4108, 15.6214)
         const def = new T.WorldDefinition(linkoping, T.Length.ofKilometres(2000), T.Angle.ofDegrees(0), T.Colour.GAINSBORO)
         this.world = new T.World(gl, def)
         this.l = (_c, _r) => { }
+        this.worker = new Worker('/build/opensky.js')
+        this.worker.onmessage = (e: MessageEvent) => {
+            const tracks = e.data
+            console.log(tracks)
+            for (let i = 0; i < tracks.length; i++) {
+                this.world.insert(tracks[i])
+            }
+        }
     }
 
     setOnChange(l: (c: string, r: string) => void) {
@@ -30,67 +39,9 @@ export class DemoApp {
     }
 
     run() {
-        // const ystad = T.LatLong.ofDegrees(55.4295, 13.82)
-        // const malmo = T.LatLong.ofDegrees(55.6050, 13.0038)
-        // const lund = T.LatLong.ofDegrees(55.7047, 13.1910)
-        // const helsingborg = T.LatLong.ofDegrees(56.0465, 12.6945)
-        // const kristianstad = T.LatLong.ofDegrees(56.0294, 14.1567)
-        // const jonkoping = T.LatLong.ofDegrees(57.7826, 14.1618)
-        // const linkoping = T.LatLong.ofDegrees(58.4108, 15.6214)
-        // const norrkoping = T.LatLong.ofDegrees(58.5877, 16.1924)
-        // const goteborg = T.LatLong.ofDegrees(57.7089, 11.9746)
-        // const stockholm = T.LatLong.ofDegrees(59.3293, 18.0686)
-        //
-        // // Gotland
-        // const visby = T.LatLong.ofDegrees(57.6349, 18.2948)
-        // const irevik = T.LatLong.ofDegrees(57.8371, 18.5866)
-        // const larbro = T.LatLong.ofDegrees(57.7844, 18.7890)
-        // const blase = T.LatLong.ofDegrees(57.8945, 18.8440)
-        // const farosund = T.LatLong.ofDegrees(57.8613, 19.0540)
-        // const slite = T.LatLong.ofDegrees(57.7182, 18.7923)
-        // const gothem = T.LatLong.ofDegrees(57.5790, 18.7298)
-        // const ljugarn = T.LatLong.ofDegrees(57.3299, 18.7084)
-        // const nar = T.LatLong.ofDegrees(57.2573, 18.6351)
-        // const vamlingbo = T.LatLong.ofDegrees(56.9691, 18.2319)
-        // const sundre = T.LatLong.ofDegrees(56.9364, 18.1834)
-        // const sanda = T.LatLong.ofDegrees(57.4295, 18.2223)
-        //
-        // const p = new T.GeoPolygon([ystad, malmo, lund, helsingborg, kristianstad],
-        //     T.Paint.stroke(new T.Stroke(T.Colour.LIMEGREEN, 5)))
-        // const paint = T.Paint.fill(T.Colour.CORAL)
-        // const c2 = new T.GeoCircle(goteborg, T.Length.ofKilometres(10), paint)
-        // const c3 = new T.GeoCircle(jonkoping, T.Length.ofKilometres(5), paint)
-        // const c4 = new T.GeoCircle(norrkoping, T.Length.ofKilometres(5), paint)
-        // const c5 = new T.GeoCircle(linkoping, T.Length.ofKilometres(5), paint)
-        // const l1 = new T.GeoPolyline(
-        //     [jonkoping, linkoping, norrkoping, stockholm, goteborg],
-        //     new T.Stroke(T.Colour.DODGERBLUE, 1))
-        // const l2 = new T.GeoPolyline(
-        //     [visby, irevik, larbro, blase,
-        //         farosund, slite, gothem, ljugarn,
-        //         nar, vamlingbo, sundre, sanda, visby],
-        //     new T.Stroke(T.Colour.DODGERBLUE, 5))
-        //
-        // const rp = new T.GeoRelativePolygon(linkoping,
-        //     [new T.Offset(50, 50), new T.Offset(50, 200), new T.Offset(70, 160),
-        //     new T.Offset(90, 200), new T.Offset(110, 50)],
-        //     T.Paint.complete(new T.Stroke(T.Colour.SLATEGRAY, 5), T.Colour.SNOW))
-        //
-        // const rl = new T.GeoRelativePolyline(
-        //     norrkoping,
-        //     [new T.Offset(50, 50), new T.Offset(50, 100), new T.Offset(75, 150)],
-        //     new T.Stroke(T.Colour.NAVY, 3))
-        //
-        // this.world.insert(new T.Graphic("sak", 0, [p, c2, c3, l1, c4, c5, l2]))
-        // this.world.insert(new T.Graphic("andra", 0, [rp, rl]))
-        //
-        // this.simulateTrack(new T.Track(stockholm, T.Angle.ofDegrees(135), T.Speed.ofMetresPerSecond(555.5556)))
-
         this.world.startRendering()
-
         DemoApp.addCoastline(this.world)
-        // DemoApp.addStateVectors(this.world)
-        this.showTracks()
+        this.worker.postMessage("")
     }
 
     handleKeyboardEvent(evt: KeyboardEvent) {
@@ -126,24 +77,9 @@ export class DemoApp {
         setTimeout(h, 100)
     }
 
-    private simulateTrack(track: T.Track) {
-        var elapsedSecs = 0
-        const h = () => {
-            elapsedSecs = elapsedSecs + 1
-            const p = T.Kinematics.position(track, T.Duration.ofSeconds(elapsedSecs), T.World.EARTH_RADIUS)
-            const offset = new T.Offset(0, 0)
-            const radius = 16
-            const paint = T.Paint.complete(new T.Stroke(T.Colour.DEEPPINK, 12), T.Colour.LIGHTPINK)
-            const c = [new T.GeoRelativeCircle(p, offset, radius, paint)]
-            this.world.insert(new T.Graphic("Track", 1, c))
-            setTimeout(h, 1000)
-        }
-        setTimeout(h, 1000)
-    }
-
     private static async addCoastline(world: T.World) {
 
-        let response = await fetch('./coastline.json');
+        let response = await fetch('/assets/coastline.json');
         let data = await response.json();
 
         const length = data.features.length
@@ -171,18 +107,18 @@ export class DemoApp {
         const len = states.length
         const zIndex = 1
 
-        const adsbPaint = T.Paint.complete(new T.Stroke(T.Colour.DEEPPINK, 2), T.Colour.LIGHTPINK)
-        const asterixPaint = T.Paint.complete(new T.Stroke(T.Colour.DEEPSKYBLUE, 2), T.Colour.SKYBLUE)
-        const mlatPaint = T.Paint.complete(new T.Stroke(T.Colour.LIMEGREEN, 2), T.Colour.LIGHTGREEN)
-        const paints = [ adsbPaint, asterixPaint, mlatPaint]
+        const adsbPaint = T.Paint.complete(new T.Stroke(T.Colour.DEEPPINK, 1), T.Colour.LIGHTPINK)
+        const asterixPaint = T.Paint.complete(new T.Stroke(T.Colour.DEEPSKYBLUE, 1), T.Colour.SKYBLUE)
+        const mlatPaint = T.Paint.complete(new T.Stroke(T.Colour.LIMEGREEN, 1), T.Colour.LIGHTGREEN)
+        const paints = [adsbPaint, asterixPaint, mlatPaint]
 
-        const offset = new T.Offset(0, 0)
+        const offsets = [new T.Offset(-5, -5), new T.Offset(-5, 5), new T.Offset(5, 5), new T.Offset(5, -5)]
 
         for (let i = 0; i < len; i++) {
             const state = states[i]
             if (state.position !== undefined) {
                 const paint = paints[state.positionSource]
-                const c = [new T.GeoRelativeCircle(state.position, offset, 5, paint)]
+                const c = [new T.GeoRelativePolygon(state.position, offsets, paint)]
                 world.insert(new T.Graphic(state.icao24, zIndex, c))
             }
         }
@@ -190,18 +126,17 @@ export class DemoApp {
 
     private static async fetchStateVectors(): Promise<ReadonlyArray<StateVector>> {
         try {
-            const response = await fetch('https://opensky-network.org/api/states/all');
+            // https://opensky-network.org/api/states/all
+            const response = await fetch('../assets/opensky-all.json');
             const data = await response.json();
-            console.log("Fetch states from opensky")
             for (const prop in data) {
                 if (prop === "states") {
-                    const states : Array<Array<string>> = (<any> data)[prop]
+                    const states: Array<Array<string>> = (<any>data)[prop]
                     return states.map(StateVector.parse)
                 }
             }
             return []
-        } catch(err) {
-            console.log("Could not fetch states from opensky: " + err)
+        } catch (err) {
             return []
         }
     }
@@ -217,20 +152,20 @@ enum PositionSource {
 class StateVector {
 
     icao24: string
-    callsign ? :string
-    country :string
-    timePosition ? : number
-    lastContact : number
-    position ? : T.LatLong
-    baroAltitude ? : T.Length
-    onGround : boolean
-    velocity ? : T.Speed
-    trueBearing ? : T.Angle
-    verticalRate ? : T.Speed
-    geoAltitude ? : T.Length
-    squawk ? : string
-    spi  : boolean
-    positionSource :  PositionSource
+    callsign?: string
+    country: string
+    timePosition?: number
+    lastContact: number
+    position?: T.LatLong
+    baroAltitude?: T.Length
+    onGround: boolean
+    velocity?: T.Speed
+    trueBearing?: T.Angle
+    verticalRate?: T.Speed
+    geoAltitude?: T.Length
+    squawk?: string
+    spi: boolean
+    positionSource: PositionSource
 
     private constructor() {
         this.icao24 = ""
@@ -241,7 +176,7 @@ class StateVector {
         this.positionSource = PositionSource.ADSB
     }
 
-    static parse(arr: Array<string>) : StateVector {
+    static parse(arr: Array<string>): StateVector {
         let res = new StateVector()
         res.icao24 = arr[0]
         if (arr[1] !== null) { res.callsign = arr[1] }

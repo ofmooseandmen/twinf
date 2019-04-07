@@ -10,10 +10,10 @@
   },
   "keywords": [],
   "scripts": {
-    "clean": "rm -rf index.js && rm -rf index.js.map && rm -rf bundle.js",
-    "compile": "npm run clean && tsc --build tsconfig.json",
-    "build": "rollup -c",
-    "watch": "rollup -cw"
+    "clean": "rm -rf build",
+    "buildMain": "rollup -c",
+    "buildWorker": "rollup -c rollup.ww.config.js",
+    "build": "npm run clean && npm run buildMain && npm run buildWorker"
   },
   "dependencies": {
     "twinf": "0.0.2",
