@@ -17,20 +17,27 @@ export class Angle {
         this.milliseconds = milliseconds
     }
 
-    static ofDegrees(degs: number) {
+    static ofDegrees(degs: number): Angle {
         const ms = Math.round(degs * 3600000.0)
         return new Angle(ms)
     }
 
-    static ofRadians(rads: number) {
+    static ofRadians(rads: number): Angle {
         const degs = rads / Math.PI * 180.0
         return Angle.ofDegrees(degs)
     }
 
     /**
+     * Angle from object literal.
+     */
+    static fromLiteral(data: any): Angle {
+        return new Angle(data["milliseconds"])
+    }
+
+    /**
      * Computes the central angle from the given arc length and given radius.gle
      */
-    static central(l: number, r: number) {
+    static central(l: number, r: number): Angle {
         return Angle.ofRadians(l / r)
     }
 

@@ -2,7 +2,6 @@ import { CoordinateSystems } from "./coordinate-systems"
 import { Colour } from "./colour"
 import { LatLong } from "./latlong"
 import { Length } from "./length"
-import { RenderingOptions } from "./options"
 import * as S from "./shapes"
 import { Geometry2d, Vector2d } from "./space2d"
 import { InternalGeodetics, Vector3d } from "./space3d"
@@ -30,6 +29,13 @@ export class Extrusion {
         this._prevGeos = prevGeos
         this._nextGeos = nextGeos
         this._halfWidths = halfWidths
+    }
+
+    static fromLiteral(data: any): Extrusion {
+        const prevGeos = data["_prevGeos"]
+        const nextGeos = data["_nextGeos"]
+        const halfWidths = data["__halfWidths"]
+        return new Extrusion(prevGeos, nextGeos, halfWidths)
     }
 
     prevGeos(): ReadonlyArray<number> {
@@ -64,6 +70,17 @@ export class Mesh {
         this._offsets = offsets
         this._colours = colours
         this._drawMode = drawMode
+    }
+
+    static fromLiteral(data: any): Mesh {
+        const geos = data["_geos"]
+        const extrusion = data.hasOwnProperty("_extrusion")
+            ? Extrusion.fromLiteral(data["_extrusion"])
+            : undefined
+        const offsets = data["_offsets"]
+        const colours = data["_colours"]
+        const drawMode = data["_drawMode"]
+        return new Mesh(geos, extrusion, offsets, colours, drawMode)
     }
 
     /**
@@ -104,24 +121,68 @@ export class Mesh {
 
 }
 
+export class MeshingParameters {
+
+    private readonly _earthRadius: Length
+    private readonly _circlePositions: number
+    private readonly _miterLimit: number
+
+    constructor(earthRadius: Length, circlePositions: number, miterLimit: number) {
+        this._earthRadius = earthRadius
+        this._circlePositions = circlePositions
+        this._miterLimit = miterLimit
+    }
+
+    static fromLiteral(data: any): MeshingParameters {
+        const earthRadius = Length.fromLiteral(data["_earthRadius"])
+        const circlePositions = data["_circlePositions"]
+        const miterLimit = data["_miterLimit"]
+        return new MeshingParameters(earthRadius, circlePositions, miterLimit)
+    }
+
+    earthRadius(): Length {
+        return this._earthRadius
+    }
+
+    /**
+     * See RenderingOptions#circlePositions.
+     */
+    circlePositions(): number {
+        return this._circlePositions
+    }
+    /**
+     * See RenderingOptions#miterLimit.
+     */
+    miterLimit(): number {
+        return this._miterLimit
+    }
+
+}
+
 export class MeshGenerator {
 
-    private constructor() { }
+    private readonly params: MeshingParameters
 
-    static mesh(s: S.Shape, earthRadius: Length, options: RenderingOptions): ReadonlyArray<Mesh> {
+    constructor(params: MeshingParameters) {
+        this.params = params
+    }
+
+    mesh(s: S.Shape): ReadonlyArray<Mesh> {
         switch (s.type) {
             case S.ShapeType.GeoCircle:
-                return MeshGenerator.fromGeoCircle(s, earthRadius, options.circlePositions())
+                return MeshGenerator.fromGeoCircle(s,
+                    this.params.earthRadius(), this.params.circlePositions())
             case S.ShapeType.GeoPolygon:
                 return MeshGenerator.fromGeoPolygon(s)
             case S.ShapeType.GeoPolyline:
                 return MeshGenerator.fromGeoPolyline(s)
             case S.ShapeType.GeoRelativeCircle:
-                return MeshGenerator.fromGeoRelativeCircle(s, options.circlePositions(), options.miterLimit())
+                return MeshGenerator.fromGeoRelativeCircle(s,
+                    this.params.circlePositions(), this.params.miterLimit())
             case S.ShapeType.GeoRelativePolygon:
-                return MeshGenerator.fromGeoRelativePoygon(s, options.miterLimit())
+                return MeshGenerator.fromGeoRelativePoygon(s, this.params.miterLimit())
             case S.ShapeType.GeoRelativePolyline:
-                return MeshGenerator.fromGeoRelativePoyline(s, options.miterLimit())
+                return MeshGenerator.fromGeoRelativePoyline(s, this.params.miterLimit())
         }
     }
 

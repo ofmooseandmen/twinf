@@ -10,8 +10,17 @@ export class LatLong {
         this._longitude = longitude
     }
 
-    static ofDegrees(latitude: number, longitude: number) {
+    static ofDegrees(latitude: number, longitude: number): LatLong {
         return new LatLong(Angle.ofDegrees(latitude), Angle.ofDegrees(longitude))
+    }
+
+    /**
+     * LatLong from object literal.
+     */
+    static fromLiteral(data: any): LatLong {
+        const lat = Angle.fromLiteral(data["_latitude"])
+        const lon = Angle.fromLiteral(data["_longitude"])
+        return new LatLong(lat, lon)
     }
 
     latitude(): Angle {

@@ -38,4 +38,10 @@ describe("Colour", () => {
         expect(c.alpha()).toEqual(0.5)
     })
 
+    test("fromLiteral", () => {
+        const c = Colour.rgba(255, 99, 71, 0.5)
+        const data = JSON.parse(JSON.stringify(c))
+        expect(Colour.fromLiteral(data)).toEqual(c)
+    })
+
 })

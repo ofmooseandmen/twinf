@@ -41,4 +41,10 @@ describe("Length", () => {
         })
     })
 
+    test("fromLiteral", () => {
+        const l = Length.ofFeet(25000)
+        const data = JSON.parse(JSON.stringify(l))
+        expect(Length.fromLiteral(data)).toEqual(l)
+    })
+
 })
