@@ -2,9 +2,9 @@ import resolve from 'rollup-plugin-node-resolve'
 import typescript from 'rollup-plugin-typescript2'
 
 export default {
-  input: 'src/opensky.ts',
+  input: 'src/worker.ts',
   output: {
-    file: 'build/opensky.js',
+    file: 'build/worker.js',
     format: 'iife',
     name: 'demo'
   },

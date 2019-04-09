@@ -16,7 +16,7 @@
     "build": "npm run clean && npm run buildMain && npm run buildWorker"
   },
   "dependencies": {
-    "twinf": "0.0.2",
+    "twinf": "0.0.3",
     "@types/webgl2": "0.0.4"
   },
   "devDependencies": {
