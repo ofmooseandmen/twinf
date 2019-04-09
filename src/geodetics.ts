@@ -1,8 +1,8 @@
-import { Angle } from "./angle"
-import { Length } from "./length"
-import { CoordinateSystems } from "./coordinate-systems"
-import { LatLong } from "./latlong"
-import { InternalGeodetics, Math3d } from "./space3d"
+import { Angle } from './angle'
+import { Length } from './length'
+import { CoordinateSystems } from './coordinate-systems'
+import { LatLong } from './latlong'
+import { InternalGeodetics, Math3d } from './space3d'
 
 /**
  * Geodetic calculations assuming a spherical earth model.
@@ -93,7 +93,7 @@ export class Geodetics {
      */
     static interpolate(p0: LatLong, p1: LatLong, f: number): LatLong {
         if (f < 0 || f > 1) {
-            throw new Error("fraction must be in range [0..1], was " + f)
+            throw new Error('fraction must be in range [0..1], was ' + f)
         }
         if (f === 0) { return p0 }
         if (f === 1) { return p1 }

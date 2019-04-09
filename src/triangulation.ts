@@ -1,6 +1,6 @@
-import { Geometry2d } from "./space2d"
-import { InternalGeodetics } from "./space3d"
-import { Triangle } from "./triangle"
+import { Geometry2d } from './space2d'
+import { InternalGeodetics } from './space3d'
+import { Triangle } from './triangle'
 
 /**
  * Polygon triangulation.
@@ -21,12 +21,16 @@ export class Triangulator<T>  {
      * Triangulator that handles spherical polygons whose vertices are defined as
      * geocentric positions.
      */
-    static readonly SPHERICAL = new Triangulator(InternalGeodetics.right, InternalGeodetics.insideSurface)
+    static readonly SPHERICAL = new Triangulator(
+        InternalGeodetics.right,
+        InternalGeodetics.insideSurface)
 
     /**
      * Triangulator that handles polygons whose vertices are defined as 2D positions.
      */
-    static readonly PLANAR = new Triangulator(Geometry2d.right, Geometry2d.insideSurface)
+    static readonly PLANAR = new Triangulator(
+        Geometry2d.right,
+        Geometry2d.insideSurface)
 
     /**
      * Triangulates the given polygon which can be
@@ -34,7 +38,7 @@ export class Triangulator<T>  {
      */
     triangulate(polygon: ReadonlyArray<T>): ReadonlyArray<Triangle<T>> {
         if (polygon.length < 3) {
-            throw new RangeError("A polygon must contain at least 3 vertices")
+            throw new RangeError('A polygon must contain at least 3 vertices')
         }
         if (polygon.length == 3) {
             return [new Triangle(polygon[0], polygon[1], polygon[2])]
@@ -55,7 +59,7 @@ export class Triangulator<T>  {
      */
     triangulateSimple(vs: ReadonlyArray<T>): ReadonlyArray<Triangle<T>> {
         if (vs.length < 3) {
-            throw new RangeError("A polygon must contain at least 3 vertices")
+            throw new RangeError('A polygon must contain at least 3 vertices')
         }
         if (vs.length == 3) {
             return [new Triangle(vs[0], vs[1], vs[2])]
@@ -84,7 +88,8 @@ export class Triangulator<T>  {
             }
             const ei = this.findEar(ovs)
             if (ei === -1) {
-                throw new RangeError("Triangulation error, remaining vertices:\n" + ovs.length + "\ntriangles:\n" + triangles.length)
+                throw new RangeError('Triangulation error, remaining vertices:\n'
+                    + ovs.length + '\ntriangles:\n' + triangles.length)
             }
             const pi = Triangulator.prev(ei, ovs.length)
             const ni = Triangulator.next(ei, ovs.length)

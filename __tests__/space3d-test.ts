@@ -1,11 +1,11 @@
-import { CoordinateSystems } from "../src/coordinate-systems"
-import { LatLong } from "../src/latlong"
-import { Length } from "../src/length"
-import { InternalGeodetics, Math3d, Vector3d } from "../src/space3d"
+import { CoordinateSystems } from '../src/coordinate-systems'
+import { LatLong } from '../src/latlong'
+import { Length } from '../src/length'
+import { InternalGeodetics, Math3d, Vector3d } from '../src/space3d'
 
-import * as U from "./util"
+import * as U from './util'
 
-describe("Math3d", () => {
+describe('Math3d', () => {
 
     test('Add 2 vectors', () => {
         const v1 = new Vector3d(1, 2, 3)
@@ -80,11 +80,11 @@ describe("Math3d", () => {
 
 })
 
-describe("InternalGeodetics", () => {
+describe('InternalGeodetics', () => {
 
     const earthRadius = Length.ofMetres(6371000)
 
-    test("right returns true if position is right of line, false otherwise",
+    test('right returns true if position is right of line, false otherwise',
         () => {
             expect(InternalGeodetics.right(U.ystad, U.helsingborg, U.kristianstad)).toBe(true)
             expect(InternalGeodetics.right(U.ystad, U.kristianstad, U.helsingborg)).toBe(false)
@@ -92,7 +92,7 @@ describe("InternalGeodetics", () => {
             expect(InternalGeodetics.right(U.malmo, U.helsingborg, U.lund)).toBe(true)
         })
 
-    test("discretiseCircle returns the list of n-vectors representing the circle",
+    test('discretiseCircle returns the list of n-vectors representing the circle',
         () => {
             const r = Length.ofMetres(2000)
             const centre = LatLong.ofDegrees(55.6050, 13.0038)

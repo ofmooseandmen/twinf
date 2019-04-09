@@ -1,6 +1,6 @@
-import { Angle } from "./angle"
-import { LatLong } from "./latlong"
-import { Length } from "./length"
+import { Angle } from './angle'
+import { LatLong } from './latlong'
+import { Length } from './length'
 
 export class Vector3d {
 
@@ -76,7 +76,7 @@ export class Math3d {
      */
     static multmv(m: ReadonlyArray<Vector3d>, v: Vector3d): Vector3d {
         if (m.length != 3) {
-            throw new RangeError("Rotation matrix must be 3*3")
+            throw new RangeError('Rotation matrix must be 3*3')
         }
         return Math3d.a2v(m.map(r => Math3d.dot(v, r)))
     }
@@ -86,7 +86,7 @@ export class Math3d {
      */
     static multmm(m1: ReadonlyArray<Vector3d>, m2: ReadonlyArray<Vector3d>): ReadonlyArray<Vector3d> {
         if (m1.length != 3 || m2.length != 3) {
-            throw new RangeError("Rotation matrix must be 3*3")
+            throw new RangeError('Rotation matrix must be 3*3')
         }
         const t2 = Math3d.transpose(m2)
         return [
@@ -131,7 +131,7 @@ export class Math3d {
     /** array of numbers to vector. */
     private static a2v(a: Array<number>): Vector3d {
         if (a.length != 3) {
-            throw new RangeError("Array must contain 3 elements")
+            throw new RangeError('Array must contain 3 elements')
         }
         return new Vector3d(a[0], a[1], a[2])
     }

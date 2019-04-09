@@ -1,7 +1,7 @@
-import { CoordinateSystems } from "../src/coordinate-systems"
-import { LatLong } from "../src/latlong"
-import { Vector2d } from "../src/space2d"
-import { Vector3d } from "../src/space3d"
+import { CoordinateSystems } from '../src/coordinate-systems'
+import { LatLong } from '../src/latlong'
+import { Vector2d } from '../src/space2d'
+import { Vector3d } from '../src/space3d'
 
 export const ystad = nv(55.4295, 13.82)
 export const malmo = nv(55.6050, 13.0038)
@@ -37,6 +37,6 @@ export function assertV3Equals(expected: Vector3d, actual: Vector3d) {
     expect(actual.z()).toBeCloseTo(expected.z(), 8)
 }
 
-test("", () => {
+test('', () => {
     // test utilities
 })

@@ -1,8 +1,8 @@
-import { Angle } from "./angle"
-import { LatLong } from "./latlong"
-import { Length } from "./length"
-import { Vector2d } from "./space2d"
-import { InternalGeodetics, Math3d, Vector3d } from "./space3d"
+import { Angle } from './angle'
+import { LatLong } from './latlong'
+import { Length } from './length'
+import { Vector2d } from './space2d'
+import { InternalGeodetics, Math3d, Vector3d } from './space3d'
 
 /**
  * Transformations between positions in different coordinate systems used when rendering shapes

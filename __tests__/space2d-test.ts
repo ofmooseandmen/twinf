@@ -1,9 +1,9 @@
-import { Geometry2d, Math2d, Vector2d } from "../src/space2d"
-import { Triangle } from "../src/triangle"
+import { Geometry2d, Math2d, Vector2d } from '../src/space2d'
+import { Triangle } from '../src/triangle'
 
-import { assertV2Equals } from "./util"
+import { assertV2Equals } from './util'
 
-describe("Math2d", () => {
+describe('Math2d', () => {
 
     test('Add 2 vectors', () => {
         const v1 = new Vector2d(1, 2)
@@ -37,7 +37,7 @@ describe("Math2d", () => {
 
 })
 
-describe("Geometry2d", () => {
+describe('Geometry2d', () => {
 
     const p0 = new Vector2d(1, 2)
     const p1 = new Vector2d(-1, -1)
@@ -58,45 +58,45 @@ describe("Geometry2d", () => {
         [new Vector2d(-2, -2), new Vector2d(-4, -8), new Vector2d(-8, -14),
         new Vector2d(-12, -4)]
 
-    test("right returns true if position is right of line, false otherwise",
+    test('right returns true if position is right of line, false otherwise',
         () => {
             expect(Geometry2d.right(p0, p1, p2)).toBe(false)
             expect(Geometry2d.right(p0, p2, p1)).toBe(true)
         })
 
-    describe("insideSurface", () => {
+    describe('insideSurface', () => {
 
-        test("handles concave closed polygon", () => {
+        test('handles concave closed polygon', () => {
             expect(Geometry2d.insideSurface(new Vector2d(4, 4), concaveClosed)).toBe(true)
             expect(Geometry2d.insideSurface(new Vector2d(6, 10), concaveClosed)).toBe(false)
         })
-        test("handles concave opened polygon", () => {
+        test('handles concave opened polygon', () => {
             expect(Geometry2d.insideSurface(new Vector2d(4, 4), concaveOpened)).toBe(true)
             expect(Geometry2d.insideSurface(new Vector2d(6, 10), concaveOpened)).toBe(false)
         })
 
-        test("handles convex closed polygon", () => {
+        test('handles convex closed polygon', () => {
             expect(Geometry2d.insideSurface(new Vector2d(-4, -4), convexClosed)).toBe(true)
             expect(Geometry2d.insideSurface(new Vector2d(-8, -2), convexClosed)).toBe(false)
         })
 
-        test("handles convex opened polygon", () => {
+        test('handles convex opened polygon', () => {
             expect(Geometry2d.insideSurface(new Vector2d(-4, -4), convexOpened)).toBe(true)
             expect(Geometry2d.insideSurface(new Vector2d(-8, -2), convexOpened)).toBe(false)
         })
 
-        test("returns false if polygon is empty", () => {
+        test('returns false if polygon is empty', () => {
             expect(Geometry2d.insideSurface(p0, [])).toBe(false)
         })
 
-        test("returns false if polygon does not define at least a triangle",
+        test('returns false if polygon does not define at least a triangle',
             () => {
                 expect(Geometry2d.insideSurface(p1, [p1, p2])).toBe(false)
             })
 
     })
 
-    test("discretiseCircle returns the list of 2D points representing the circle",
+    test('discretiseCircle returns the list of 2D points representing the circle',
         () => {
             const r = 100
             const ps = Geometry2d.discretiseCircle(p0, r, 10)
@@ -105,14 +105,14 @@ describe("Geometry2d", () => {
             distances.forEach(d => expect(d).toBeCloseTo(r, 10))
         })
 
-    describe("extrude", () => {
+    describe('extrude', () => {
 
-        test("returns an empty array if not given a polyline", () => {
+        test('returns an empty array if not given a polyline', () => {
             expect(Geometry2d.extrude([], 1, 10, false).length).toBe(0)
             expect(Geometry2d.extrude([new Vector2d(50, 50)], 1, 10, false).length).toBe(0)
         })
 
-        test("triangulate a 2D line into into a stroke of given width", () => {
+        test('triangulate a 2D line into into a stroke of given width', () => {
             const w = 10
             const ps = [new Vector2d(50, 50), new Vector2d(50, 100)]
             const ts = Geometry2d.extrude(ps, w, 10, false)
@@ -123,7 +123,7 @@ describe("Geometry2d", () => {
                 ], ts)
         })
 
-        test("triangulates an opened 2D polyline into a stroke of given width", () => {
+        test('triangulates an opened 2D polyline into a stroke of given width', () => {
             const w = 10
             const ps = [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(75, 150)]
             const ts = Geometry2d.extrude(ps, w, 10, false)
@@ -148,7 +148,7 @@ describe("Geometry2d", () => {
                 ], ts)
         })
 
-        test("triangulates a closed 2D polyline into a stroke of given width", () => {
+        test('triangulates a closed 2D polyline into a stroke of given width', () => {
             const w = 10
             const ps = [new Vector2d(50, 50), new Vector2d(50, 100), new Vector2d(75, 150)]
             const ts = Geometry2d.extrude(ps, w, 10, true)
@@ -181,7 +181,7 @@ describe("Geometry2d", () => {
                 ], ts)
         })
 
-        test("Does not use the miter if its length is greater than the limit", () => {
+        test('Does not use the miter if its length is greater than the limit', () => {
             const w = 10
             const ps = [new Vector2d(50, 50), new Vector2d(100, 50), new Vector2d(50, 51)]
             const ts = Geometry2d.extrude(ps, w, 10, false)

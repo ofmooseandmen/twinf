@@ -1,7 +1,7 @@
-import { Colour } from "./colour"
-import { LatLong } from "./latlong"
-import { Length } from "./length"
-import { Offset } from "./pixels"
+import { Colour } from './colour'
+import { LatLong } from './latlong'
+import { Length } from './length'
+import { Offset } from './pixels'
 
 export class Stroke {
 
@@ -13,6 +13,15 @@ export class Stroke {
         this._width = width
     }
 
+    /**
+     * Stroke from object literal.
+     */
+    static fromLiteral(data: any): Stroke {
+        const colour = Colour.fromLiteral(data['_colour'])
+        const width = data['_width']
+        return new Stroke(colour, width)
+    }
+
     colour(): Colour {
         return this._colour
     }
@@ -20,6 +29,7 @@ export class Stroke {
     width(): number {
         return this._width
     }
+
 }
 
 export class Paint {
@@ -32,18 +42,31 @@ export class Paint {
         this._fill = fill
     }
 
-    static stroke(stroke: Stroke) {
+    static stroke(stroke: Stroke): Paint {
         return new Paint(stroke, undefined)
     }
 
-    static fill(fill: Colour) {
+    static fill(fill: Colour): Paint {
         return new Paint(undefined, fill)
     }
 
     /**
      * Paint with both a fill and stroke.
      */
-    static complete(stroke: Stroke, fill: Colour) {
+    static complete(stroke: Stroke, fill: Colour): Paint {
+        return new Paint(stroke, fill)
+    }
+
+    /**
+     * Paint from object literal.
+     */
+    static fromLiteral(data: any): Paint {
+        const stroke = data.hasOwnProperty('_stroke')
+            ? Stroke.fromLiteral(data['_stroke'])
+            : undefined
+        const fill = data.hasOwnProperty('_fill')
+            ? Colour.fromLiteral(data['_fill'])
+            : undefined
         return new Paint(stroke, fill)
     }
 
@@ -95,6 +118,13 @@ export class GeoCircle {
         this._paint = paint
     }
 
+    static fromLiteral(data: any): GeoCircle {
+        const centre = LatLong.fromLiteral(data['_centre'])
+        const radius = Length.fromLiteral(data['_radius'])
+        const paint = Paint.fromLiteral(data['_paint'])
+        return new GeoCircle(centre, radius, paint)
+    }
+
     centre(): LatLong {
         return this._centre
     }
@@ -123,6 +153,12 @@ export class GeoPolygon {
         this._paint = paint
     }
 
+    static fromLiteral(data: any): GeoPolygon {
+        const vertices = data['_vertices'].map(LatLong.fromLiteral)
+        const paint = Paint.fromLiteral(data['_paint'])
+        return new GeoPolygon(vertices, paint)
+    }
+
     vertices(): ReadonlyArray<LatLong> {
         return this._vertices
     }
@@ -145,6 +181,12 @@ export class GeoPolyline {
     constructor(points: ReadonlyArray<LatLong>, stroke: Stroke) {
         this._points = points
         this._stroke = stroke
+    }
+
+    static fromLiteral(data: any): GeoPolyline {
+        const points = data['_points'].map(LatLong.fromLiteral)
+        const stroke = Stroke.fromLiteral(data['_stroke'])
+        return new GeoPolyline(points, stroke)
     }
 
     points(): ReadonlyArray<LatLong> {
@@ -175,6 +217,14 @@ export class GeoRelativeCircle {
         this._centreOffset = centreOffset
         this._radius = radius
         this._paint = paint
+    }
+
+    static fromLiteral(data: any): GeoRelativeCircle {
+        const centreRef = LatLong.fromLiteral(data['_centreRef'])
+        const centreOffset = Offset.fromLiteral(data['_centreOffset'])
+        const radius = data['_radius']
+        const paint = Paint.fromLiteral(data['_paint'])
+        return new GeoRelativeCircle(centreRef, centreOffset, radius, paint)
     }
 
     centreRef(): LatLong {
@@ -212,6 +262,13 @@ export class GeoRelativePolygon {
         this._paint = paint
     }
 
+    static fromLiteral(data: any): GeoRelativePolygon {
+        const ref = LatLong.fromLiteral(data['_ref'])
+        const vertices = data['_vertices'].map(Offset.fromLiteral)
+        const paint = Paint.fromLiteral(data['_paint'])
+        return new GeoRelativePolygon(ref, vertices, paint)
+    }
+
     ref(): LatLong {
         return this._ref
     }
@@ -241,6 +298,13 @@ export class GeoRelativePolyline {
         this._ref = ref
         this._points = points
         this._stroke = stroke
+    }
+
+    static fromLiteral(data: any): GeoRelativePolyline {
+        const ref = LatLong.fromLiteral(data['_ref'])
+        const points = data['_points'].map(Offset.fromLiteral)
+        const stroke = Stroke.fromLiteral(data['_stroke'])
+        return new GeoRelativePolyline(ref, points, stroke)
     }
 
     ref(): LatLong {
@@ -276,4 +340,25 @@ export const Shape = {
     GeoRelativeCircle,
     GeoRelativePolygon,
     GeoRelativePolyline
+}
+
+/**
+ * Shape from object literal.
+ */
+export function fromLiteral(data: any): Shape {
+    const type: ShapeType = data['type']
+    switch (type) {
+        case ShapeType.GeoCircle:
+            return GeoCircle.fromLiteral(data)
+        case ShapeType.GeoPolygon:
+            return GeoPolygon.fromLiteral(data)
+        case ShapeType.GeoPolyline:
+            return GeoPolyline.fromLiteral(data)
+        case ShapeType.GeoRelativeCircle:
+            return GeoRelativeCircle.fromLiteral(data)
+        case ShapeType.GeoRelativePolygon:
+            return GeoRelativePolygon.fromLiteral(data)
+        case ShapeType.GeoRelativePolyline:
+            return GeoRelativePolyline.fromLiteral(data)
+    }
 }

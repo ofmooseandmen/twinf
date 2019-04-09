@@ -1,12 +1,12 @@
-import { Angle } from "../src/angle"
-import { LatLong } from "../src/latlong"
-import { Length } from "../src/length"
-import { CoordinateSystems, CanvasDimension } from "../src/coordinate-systems"
-import { Vector2d } from "../src/space2d"
+import { Angle } from '../src/angle'
+import { LatLong } from '../src/latlong'
+import { Length } from '../src/length'
+import { CoordinateSystems, CanvasDimension } from '../src/coordinate-systems'
+import { Vector2d } from '../src/space2d'
 
-import * as U from "./util"
+import * as U from './util'
 
-describe("canvas coordinate system", () => {
+describe('canvas coordinate system', () => {
 
     const pCentre = LatLong.ofDegrees(-27, 138)
     const earthRadius = Length.ofMetres(6371000)
@@ -18,7 +18,7 @@ describe("canvas coordinate system", () => {
     const cd = new CanvasDimension(1920, 1080)
     const af = CoordinateSystems.computeCanvasAffineTransform(cCentre, range, rotation, cd, sp)
 
-    test("stereographic => canvas", () => {
+    test('stereographic => canvas', () => {
         // tested against java AffineTransform
         const stereo = CoordinateSystems.geocentricToStereographic(
             CoordinateSystems.latLongToGeocentric(cCentre), sp)
@@ -27,21 +27,21 @@ describe("canvas coordinate system", () => {
         U.assertV2Equals(expected, actual)
     })
 
-    test("stereographicToCanvas(canvasToStereographic(p)) == p", () => {
+    test('stereographicToCanvas(canvasToStereographic(p)) == p', () => {
         const p = new Vector2d(15.4, 4.51)
         const a = CoordinateSystems.stereographicToCanvas(
             CoordinateSystems.canvasToStereographic(p, af), af)
         U.assertV2Equals(p, a)
     })
 
-    test("canvasToStereographic(stereographicToCanvas(p)) == p", () => {
+    test('canvasToStereographic(stereographicToCanvas(p)) == p', () => {
         const p = new Vector2d(15.4, 4.51)
         const a = CoordinateSystems.canvasToStereographic(
             CoordinateSystems.stereographicToCanvas(p, af), af)
         U.assertV2Equals(p, a)
     })
 
-    test("glMatrix", () => {
+    test('glMatrix', () => {
         const expected = Float32Array.of(
             0.001020728494040668, 0, 329.953369140625,
             0, -0.001020728494040668, -711.6326904296875,

@@ -1,4 +1,4 @@
-import { Triangle } from "./triangle"
+import { Triangle } from './triangle'
 
 export class Vector2d {
 

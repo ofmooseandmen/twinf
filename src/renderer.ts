@@ -1,7 +1,11 @@
-import { CanvasAffineTransform, CoordinateSystems, StereographicProjection } from "./coordinate-systems"
-import { Colour } from "./colour"
-import { DrawMode, Mesh } from "./mesh"
-import { WebGL2 } from "./webgl2"
+import { Colour } from './colour'
+import {
+    CanvasAffineTransform,
+    CoordinateSystems,
+    StereographicProjection
+} from './coordinate-systems'
+import { DrawMode, Mesh } from './mesh'
+import { WebGL2 } from './webgl2'
 
 export class Drawing {
 
@@ -112,12 +116,12 @@ export class Renderer {
     constructor(gl: WebGL2RenderingContext, miterLimit: number) {
         this.gl = gl
         this.miterLimit = miterLimit
-        this.aGeoPos = new Attribute("a_geo_pos", 3, this.gl.FLOAT)
-        this.aPrevGeoPos = new Attribute("a_prev_geo_pos", 3, this.gl.FLOAT)
-        this.aNextGeoPos = new Attribute("a_next_geo_pos", 3, this.gl.FLOAT)
-        this.aHalfWidth = new Attribute("a_half_width", 1, this.gl.FLOAT)
-        this.aOffset = new Attribute("a_offset", 2, this.gl.FLOAT)
-        this.aRgba = new Attribute("a_rgba", 1, this.gl.UNSIGNED_INT)
+        this.aGeoPos = new Attribute('a_geo_pos', 3, this.gl.FLOAT)
+        this.aPrevGeoPos = new Attribute('a_prev_geo_pos', 3, this.gl.FLOAT)
+        this.aNextGeoPos = new Attribute('a_next_geo_pos', 3, this.gl.FLOAT)
+        this.aHalfWidth = new Attribute('a_half_width', 1, this.gl.FLOAT)
+        this.aOffset = new Attribute('a_offset', 2, this.gl.FLOAT)
+        this.aRgba = new Attribute('a_rgba', 1, this.gl.UNSIGNED_INT)
         const vertexShader = WebGL2.createShader(this.gl, this.gl.VERTEX_SHADER, Renderer.VERTEX_SHADER)
         const fragmentShader = WebGL2.createShader(this.gl, this.gl.FRAGMENT_SHADER, Renderer.FRAGMENT_SHADER)
         this.program = WebGL2.createProgram(this.gl, vertexShader, fragmentShader)
@@ -181,22 +185,22 @@ export class Renderer {
         gl.useProgram(program)
 
         /* uniforms. */
-        const earthRadiusUniformLocation = gl.getUniformLocation(program, "u_earth_radius")
+        const earthRadiusUniformLocation = gl.getUniformLocation(program, 'u_earth_radius')
         gl.uniform1f(earthRadiusUniformLocation, earthRadiusMetres)
 
-        const miterLimitUniformLocation = gl.getUniformLocation(program, "u_miter_limit")
+        const miterLimitUniformLocation = gl.getUniformLocation(program, 'u_miter_limit')
         gl.uniform1f(miterLimitUniformLocation, this.miterLimit)
 
-        const geoCentreUniformLocation = gl.getUniformLocation(program, "u_geo_centre")
+        const geoCentreUniformLocation = gl.getUniformLocation(program, 'u_geo_centre')
         gl.uniform3fv(geoCentreUniformLocation, geoCentre)
 
-        const geoToSysUniformLocation = gl.getUniformLocation(program, "u_geo_to_system")
+        const geoToSysUniformLocation = gl.getUniformLocation(program, 'u_geo_to_system')
         gl.uniformMatrix3fv(geoToSysUniformLocation, false, geoToSys)
 
-        const stereoToCanvasLocation = gl.getUniformLocation(program, "u_stereo_to_canvas")
+        const stereoToCanvasLocation = gl.getUniformLocation(program, 'u_stereo_to_canvas')
         gl.uniformMatrix3fv(stereoToCanvasLocation, false, scene.at().glMatrix());
 
-        const canvasToClipspaceLocation = gl.getUniformLocation(program, "u_canvas_to_clipspace");
+        const canvasToClipspaceLocation = gl.getUniformLocation(program, 'u_canvas_to_clipspace');
         gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
 
         for (let i = 0; i < drawings.length; i++) {
@@ -516,7 +520,7 @@ class Batch {
 
         const vao = gl.createVertexArray();
         if (vao === null) {
-            throw new Error("Could not create vertex array")
+            throw new Error('Could not create vertex array')
         }
         gl.bindVertexArray(vao)
 
@@ -534,7 +538,7 @@ class Batch {
 
                 const attBuff = gl.createBuffer()
                 if (attBuff === null) {
-                    throw new Error("Could not create buffer for attribute: " + attName)
+                    throw new Error('Could not create buffer for attribute: ' + attName)
                 }
                 buffers.push(attBuff)
                 gl.bindBuffer(gl.ARRAY_BUFFER, attBuff)
@@ -555,7 +559,7 @@ class Batch {
         gl.bindVertexArray(null);
         const refArray = this.arrays.get(this.attributeCount.name())
         if (refArray === undefined) {
-            throw new Error("No array for attribute: " + this.attributeCount.name())
+            throw new Error('No array for attribute: ' + this.attributeCount.name())
         }
         const count = refArray.length / this.attributeCount.size()
         return new GlArrays(this.drawMode, vao, buffers, constants, count)

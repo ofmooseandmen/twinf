@@ -1,49 +1,18 @@
-import { Angle } from "./angle"
-import { Colour } from "./colour"
+import { Angle } from './angle'
+import { Colour } from './colour'
 import {
     CoordinateSystems,
     StereographicProjection,
     CanvasDimension,
     CanvasAffineTransform
-} from "./coordinate-systems"
-import { LatLong } from "./latlong"
-import { Length } from "./length"
-import { Mesh, MeshGenerator } from "./mesh"
-import { RenderingOptions } from "./options"
-import { Animator, Drawing, Renderer, Scene } from "./renderer"
-import { Shape } from "./shapes"
-import { Math2d, Vector2d } from "./space2d"
-import { Stack } from "./stack"
-
-export class Graphic {
-
-    private readonly _name: string
-    private readonly _zIndex: number
-    private readonly _shapes: ReadonlyArray<Shape>
-
-    constructor(name: string, zIndex: number, shapes: ReadonlyArray<Shape>) {
-        this._name = name
-        this._zIndex = zIndex
-        this._shapes = shapes
-    }
-
-    name(): string {
-        return this._name
-    }
-
-    /**
-     * Return the stack order of this graphic. A graphic with greater stack order
-     * is always in front of a graphic with a lower stack order.
-     */
-    zIndex(): number {
-        return this._zIndex
-    }
-
-    shapes(): ReadonlyArray<Shape> {
-        return this._shapes
-    }
-
-}
+} from './coordinate-systems'
+import { Graphic, RenderableGraphic } from './graphic'
+import { LatLong } from './latlong'
+import { Length } from './length'
+import { Mesher } from './mesh'
+import { Animator, Drawing, Renderer, Scene } from './renderer'
+import { Math2d, Vector2d } from './space2d'
+import { Stack } from './stack'
 
 /**
  * Initial definition of the world to be rendered.
@@ -81,6 +50,49 @@ export class WorldDefinition {
 
 }
 
+/**
+ * Rendering options.
+ */
+export class RenderingOptions {
+
+    private readonly _fps: number
+    private readonly _circlePositions: number
+    private readonly _miterLimit: number
+
+    constructor(fps: number, circlePositions: number, miterLimit: number) {
+        this._fps = fps
+        this._circlePositions = circlePositions
+        this._miterLimit = miterLimit
+    }
+
+    /**
+     * Number of frame per seconds.
+     */
+    fps(): number {
+        return this._fps
+    }
+
+    /**
+     * Number of positions when discretising a circle.
+     */
+    circlePositions(): number {
+        return this._circlePositions
+    }
+    /**
+     * Value of the miter limit when rendering wide polylines. If the length
+     * of the miter divide by the half width of the polyline is greater than this
+     * value, the miter will be ignored and normal to the line segment is used.
+     */
+    miterLimit(): number {
+        return this._miterLimit
+    }
+
+}
+
+/**
+ * A world instance represents a view of the earth projected using a stereographic
+ * projection centered at a given location and onto which various shapes are rendered.
+ */
 export class World {
 
     // earth radius in metres: WGS-84 ellipsoid, mean radius of semi-axis (R1). */
@@ -90,7 +102,6 @@ export class World {
     private _range: Length
     private _rotation: Angle
     private bgColour: Colour
-    private options: RenderingOptions
 
     private cd: CanvasDimension
 
@@ -98,6 +109,7 @@ export class World {
     private at: CanvasAffineTransform
 
     private readonly stack: Stack<Drawing>
+    private readonly _mesher: Mesher
     private readonly renderer: Renderer
     private readonly animator: Animator
 
@@ -107,46 +119,73 @@ export class World {
         this._range = def.range()
         this._rotation = def.rotation()
         this.bgColour = def.bgColour()
-        this.options = options
+
         this.cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight)
+
         this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS)
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
+
         this.stack = new Stack()
         this.renderer = new Renderer(gl, options.miterLimit())
+        this._mesher = new Mesher(World.EARTH_RADIUS, options.circlePositions(), options.miterLimit())
         this.animator = new Animator(() => {
             const scene = new Scene(this.stack.all(), this.bgColour, this.sp, this.at)
             this.renderer.draw(scene)
         }, options.fps())
     }
 
+    /**
+     * Starts the rendering loop. Shapes will be rendered in the
+     * WebGL rendering context and at frame/second rate given at construction.
+     */
     startRendering() {
         this.animator.start()
     }
 
+    /**
+     * Stops the rendering loop.
+     */
     stoptRendering() {
         this.animator.stop()
     }
 
+    /**
+     * Sets the background colour (clear colour) of the WeGL rendering context.
+     *
+     * The colour will be applied at the next repaint.
+     */
     setBackground(colour: Colour) {
         this.bgColour = colour
     }
 
-    insert(graphic: Graphic) {
-        const name = graphic.name()
-        const zi = graphic.zIndex()
-        const shapes = graphic.shapes()
-        let meshes = new Array<Mesh>()
-        for (let i = 0; i < shapes.length; i++) {
-            meshes = meshes.concat(MeshGenerator.mesh(shapes[i], World.EARTH_RADIUS, this.options));
-        }
+    /**
+     * Inserts the given graphic in this world.
+     *
+     * The shapes of the graphic will be converted into meshes if the graphic
+     * is not a `RenderableGraphic`. This operation can be expensive, depending on how
+     * many shapes and what shapes are to be rendered. Meshing can be done in a worker
+     * using the `mesher()` supplied by this class and the relevant `fromLiteral` functions.
+     *
+     * The graphic will be rendered at the next repaint.
+     */
+    insert(graphic: Graphic | RenderableGraphic) {
+        const g = graphic instanceof Graphic
+            ? graphic.toRenderable(this._mesher)
+            : graphic
+        const name = g.name()
         let drawing = this.stack.get(name)
         if (drawing !== undefined) {
             this.renderer.deleteDrawing(drawing)
         }
-        drawing = this.renderer.createDrawing(meshes)
-        this.stack.insert(name, zi, drawing)
+        drawing = this.renderer.createDrawing(g.meshes())
+        this.stack.insert(name, g.zIndex(), drawing)
     }
 
+    /**
+     * Deletes the graphic associated to the given name.
+     *
+     * The graphic will be deleted at the next repaint.
+     */
     delete(graphicName: string) {
         let drawing = this.stack.get(name)
         if (drawing !== undefined) {
@@ -192,6 +231,15 @@ export class World {
 
     centre(): LatLong {
         return this._centre
+    }
+
+    /**
+     * Returns the mesher to be used to transform shapes into meshes (renderable).
+     * Use this to perform meshing of complex shapes (i.e. that require intensive CPU
+     * operation) in a web worker (in order not to block the main javascript thread).
+     */
+    mesher(): Mesher {
+        return this._mesher
     }
 
 }
