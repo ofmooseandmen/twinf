@@ -1,10 +1,10 @@
-import { Angle } from "./angle"
-import { CoordinateSystems } from "./coordinate-systems"
-import { Duration } from "./duration"
-import { LatLong } from "./latlong"
-import { Length } from "./length"
-import { Math3d, InternalGeodetics, Vector3d } from "./space3d"
-import { Speed } from "./speed"
+import { Angle } from './angle'
+import { CoordinateSystems } from './coordinate-systems'
+import { Duration } from './duration'
+import { LatLong } from './latlong'
+import { Length } from './length'
+import { Math3d, InternalGeodetics, Vector3d } from './space3d'
+import { Speed } from './speed'
 
 /**
  * A track represents the state of a vehicle by its current position, bearing and speed.

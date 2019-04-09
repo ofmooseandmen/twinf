@@ -1,13 +1,13 @@
-export { Angle } from "./angle"
-export { Colour } from "./colour"
-export { Duration } from "./duration"
-export { Cpa, Track, Kinematics } from "./kinematics"
-export { LatLong } from "./latlong"
-export { Length } from "./length"
-export { Geodetics } from "./geodetics"
-export { Graphic, RenderableGraphic } from "./graphic"
-export { Mesh, Mesher } from "./mesh"
-export { Offset } from "./pixels"
+export { Angle } from './angle'
+export { Colour } from './colour'
+export { Duration } from './duration'
+export { Cpa, Track, Kinematics } from './kinematics'
+export { LatLong } from './latlong'
+export { Length } from './length'
+export { Geodetics } from './geodetics'
+export { Graphic, RenderableGraphic } from './graphic'
+export { Mesh, Mesher } from './mesh'
+export { Offset } from './pixels'
 export {
     Stroke,
     Paint,
@@ -19,6 +19,6 @@ export {
     GeoRelativeCircle,
     GeoRelativePolygon,
     GeoRelativePolyline,
-} from "./shapes"
-export { Speed } from "./speed"
-export { RenderingOptions, World, WorldDefinition } from "./world"
+} from './shapes'
+export { Speed } from './speed'
+export { RenderingOptions, World, WorldDefinition } from './world'

@@ -29,7 +29,7 @@ export class Length {
      * Length from object literal.
      */
     static fromLiteral(data: any): Length {
-        return new Length(data["tenthOfMm"])
+        return new Length(data['tenthOfMm'])
     }
 
     feet(): number {

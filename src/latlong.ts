@@ -1,4 +1,4 @@
-import { Angle } from "./angle"
+import { Angle } from './angle'
 
 export class LatLong {
 
@@ -18,8 +18,8 @@ export class LatLong {
      * LatLong from object literal.
      */
     static fromLiteral(data: any): LatLong {
-        const lat = Angle.fromLiteral(data["_latitude"])
-        const lon = Angle.fromLiteral(data["_longitude"])
+        const lat = Angle.fromLiteral(data['_latitude'])
+        const lon = Angle.fromLiteral(data['_longitude'])
         return new LatLong(lat, lon)
     }
 

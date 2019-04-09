@@ -1,19 +1,18 @@
-import { Angle } from "./angle"
-import { Colour } from "./colour"
+import { Angle } from './angle'
+import { Colour } from './colour'
 import {
     CoordinateSystems,
     StereographicProjection,
     CanvasDimension,
     CanvasAffineTransform
-} from "./coordinate-systems"
-import { Graphic, RenderableGraphic } from "./graphic"
-import { LatLong } from "./latlong"
-import { Length } from "./length"
-import { Mesh, Mesher } from "./mesh"
-import { Animator, Drawing, Renderer, Scene } from "./renderer"
-import { Shape } from "./shapes"
-import { Math2d, Vector2d } from "./space2d"
-import { Stack } from "./stack"
+} from './coordinate-systems'
+import { Graphic, RenderableGraphic } from './graphic'
+import { LatLong } from './latlong'
+import { Length } from './length'
+import { Mesher } from './mesh'
+import { Animator, Drawing, Renderer, Scene } from './renderer'
+import { Math2d, Vector2d } from './space2d'
+import { Stack } from './stack'
 
 /**
  * Initial definition of the world to be rendered.
@@ -170,24 +169,16 @@ export class World {
      * The graphic will be rendered at the next repaint.
      */
     insert(graphic: Graphic | RenderableGraphic) {
-        const name = graphic.name()
-        const zi = graphic.zIndex()
-        let meshes: ReadonlyArray<Mesh>
-        if (graphic instanceof Graphic) {
-            const elts = graphic.elements()
-            meshes = new Array<Mesh>()
-            for (let i = 0; i < elts.length; i++) {
-                meshes = meshes.concat(this._mesher.mesh(elts[i]));
-            }
-        } else {
-            meshes = graphic.elements()
-        }
+        const g = graphic instanceof Graphic
+            ? graphic.toRenderable(this._mesher)
+            : graphic
+        const name = g.name()
         let drawing = this.stack.get(name)
         if (drawing !== undefined) {
             this.renderer.deleteDrawing(drawing)
         }
-        drawing = this.renderer.createDrawing(meshes)
-        this.stack.insert(name, zi, drawing)
+        drawing = this.renderer.createDrawing(g.meshes())
+        this.stack.insert(name, g.zIndex(), drawing)
     }
 
     /**
@@ -241,7 +232,7 @@ export class World {
     centre(): LatLong {
         return this._centre
     }
-    
+
     /**
      * Returns the mesher to be used to transform shapes into meshes (renderable).
      * Use this to perform meshing of complex shapes (i.e. that require intensive CPU

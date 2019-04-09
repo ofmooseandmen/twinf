@@ -16,8 +16,8 @@ export class Offset {
      * Offset from object literal.
      */
     static fromLiteral(data: any): Offset {
-        const x = data["_x"]
-        const y = data["_y"]
+        const x = data['_x']
+        const y = data['_y']
         return new Offset(x, y)
     }
 

@@ -31,7 +31,7 @@ export class Angle {
      * Angle from object literal.
      */
     static fromLiteral(data: any): Angle {
-        return new Angle(data["milliseconds"])
+        return new Angle(data['milliseconds'])
     }
 
     /**

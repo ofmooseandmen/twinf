@@ -1,12 +1,12 @@
-import { CoordinateSystems } from "./coordinate-systems"
-import { Colour } from "./colour"
-import { LatLong } from "./latlong"
-import { Length } from "./length"
-import * as S from "./shapes"
-import { Geometry2d, Vector2d } from "./space2d"
-import { InternalGeodetics, Vector3d } from "./space3d"
-import { Triangle } from "./triangle"
-import { Triangulator } from "./triangulation"
+import { CoordinateSystems } from './coordinate-systems'
+import { Colour } from './colour'
+import { LatLong } from './latlong'
+import { Length } from './length'
+import * as S from './shapes'
+import { Geometry2d, Vector2d } from './space2d'
+import { InternalGeodetics, Vector3d } from './space3d'
+import { Triangle } from './triangle'
+import { Triangulator } from './triangulation'
 
 export enum DrawMode {
     LINES,
@@ -32,9 +32,9 @@ export class Extrusion {
     }
 
     static fromLiteral(data: any): Extrusion {
-        const prevGeos = data["_prevGeos"]
-        const nextGeos = data["_nextGeos"]
-        const halfWidths = data["__halfWidths"]
+        const prevGeos = data['_prevGeos']
+        const nextGeos = data['_nextGeos']
+        const halfWidths = data['_halfWidths']
         return new Extrusion(prevGeos, nextGeos, halfWidths)
     }
 
@@ -73,13 +73,13 @@ export class Mesh {
     }
 
     static fromLiteral(data: any): Mesh {
-        const geos = data["_geos"]
-        const extrusion = data.hasOwnProperty("_extrusion")
-            ? Extrusion.fromLiteral(data["_extrusion"])
+        const geos = data['_geos']
+        const extrusion = data.hasOwnProperty('_extrusion')
+            ? Extrusion.fromLiteral(data['_extrusion'])
             : undefined
-        const offsets = data["_offsets"]
-        const colours = data["_colours"]
-        const drawMode = data["_drawMode"]
+        const offsets = data['_offsets']
+        const colours = data['_colours']
+        const drawMode = data['_drawMode']
         return new Mesh(geos, extrusion, offsets, colours, drawMode)
     }
 
@@ -134,13 +134,13 @@ export class Mesher {
     }
 
     static fromLiteral(data: any): Mesher {
-        const earthRadius = Length.fromLiteral(data["earthRadius"])
-        const circlePositions = data["circlePositions"]
-        const miterLimit = data["miterLimit"]
+        const earthRadius = Length.fromLiteral(data['earthRadius'])
+        const circlePositions = data['circlePositions']
+        const miterLimit = data['miterLimit']
         return new Mesher(earthRadius, circlePositions, miterLimit)
     }
 
-    mesh(s: S.Shape): ReadonlyArray<Mesh> {
+    meshShape(s: S.Shape): ReadonlyArray<Mesh> {
         switch (s.type) {
             case S.ShapeType.GeoCircle:
                 return Mesher.fromGeoCircle(s, this.earthRadius, this.circlePositions)

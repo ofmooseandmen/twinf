@@ -21,11 +21,11 @@ export class Stack<T> {
         }
         const layer = this.elements.get(zi)
         if (layer === undefined) {
-            throw new Error("Unknown z-index: " + zi)
+            throw new Error('Unknown z-index: ' + zi)
         }
         const e = layer.get(name)
         if (e === undefined) {
-            throw new Error("Unknown name: " + name)
+            throw new Error('Unknown name: ' + name)
         }
         return e
     }
@@ -64,7 +64,7 @@ export class Stack<T> {
         }
         const layer = this.elements.get(zi)
         if (layer === undefined) {
-            throw new Error("Unknown z-index: " + zi)
+            throw new Error('Unknown z-index: ' + zi)
         }
         this.stackOrder.delete(name)
         layer.delete(name)

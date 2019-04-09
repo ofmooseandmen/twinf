@@ -1,20 +1,20 @@
-import { Triangle } from "../src/triangle"
-import { Triangulator } from "../src/triangulation"
-import { Vector3d } from "../src/space3d"
+import { Triangle } from '../src/triangle'
+import { Triangulator } from '../src/triangulation'
+import { Vector3d } from '../src/space3d'
 
-import * as U from "./util"
+import * as U from './util'
 
-describe("Triangulator", () => {
+describe('Triangulator', () => {
 
-    describe("spherical polygons", () => {
+    describe('spherical polygons', () => {
 
-        test("triangle", () => {
+        test('triangle', () => {
             assertTrianglesEquals(
                 [[U.ystad, U.malmo, U.helsingborg]],
                 Triangulator.SPHERICAL.triangulate([U.ystad, U.malmo, U.helsingborg]))
         });
 
-        test("convex polygon (4 vertices) in clockwise order", () => {
+        test('convex polygon (4 vertices) in clockwise order', () => {
             assertTrianglesEquals(
                 [
                     [U.ystad, U.malmo, U.helsingborg],
@@ -26,7 +26,7 @@ describe("Triangulator", () => {
             )
         })
 
-        test("convex polygon (4 vertices) in counterclockwise order", () => {
+        test('convex polygon (4 vertices) in counterclockwise order', () => {
             assertTrianglesEquals(
                 [
                     [U.ystad, U.kristianstad, U.helsingborg],
@@ -38,7 +38,7 @@ describe("Triangulator", () => {
             )
         })
 
-        test("concave polygon (5 vertices) in clockwise order", () => {
+        test('concave polygon (5 vertices) in clockwise order', () => {
             assertTrianglesEquals(
                 [
                     [U.ystad, U.kristianstad, U.helsingborg],
@@ -51,7 +51,7 @@ describe("Triangulator", () => {
             )
         })
 
-        test("concave polygon (5 vertices) in counterclockwise order", () => {
+        test('concave polygon (5 vertices) in counterclockwise order', () => {
             assertTrianglesEquals(
                 [
                     [U.malmo, U.ystad, U.lund],
@@ -64,7 +64,7 @@ describe("Triangulator", () => {
             )
         })
 
-        test("convex polygon (6 vertices) in clockwise order", () => {
+        test('convex polygon (6 vertices) in clockwise order', () => {
             assertTrianglesEquals(
                 [
                     [U.bangui, U.kinshasa, U.harare],
@@ -78,7 +78,7 @@ describe("Triangulator", () => {
             )
         })
 
-        test("concave polygon (7 vertices) in clockwise order", () => {
+        test('concave polygon (7 vertices) in clockwise order', () => {
             assertTrianglesEquals(
                 [
                     [U.narobi, U.kinshasa, U.dar_es_salaam],
@@ -88,13 +88,14 @@ describe("Triangulator", () => {
                     [U.narobi, U.juba, U.bangui]
                 ],
                 Triangulator.SPHERICAL.triangulate([
-                    U.bangui, U.juba, U.djibouti, U.antananrivo, U.dar_es_salaam, U.kinshasa, U.narobi
+                    U.bangui, U.juba, U.djibouti,
+                    U.antananrivo, U.dar_es_salaam, U.kinshasa, U.narobi
                 ])
             )
         })
 
-        function assertTrianglesEquals(expected: Array<Array<Vector3d>>,
-            actual: Array<Triangle<Vector3d>>) {
+        function assertTrianglesEquals(expected: ReadonlyArray<ReadonlyArray<Vector3d>>,
+            actual: ReadonlyArray<Triangle<Vector3d>>) {
             expect(actual.length).toEqual(expected.length)
             for (var i = 0; i < expected.length; i++) {
                 expect(actual[i].v1()).toBe(expected[i][0])

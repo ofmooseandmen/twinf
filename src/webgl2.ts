@@ -9,7 +9,7 @@ export class WebGL2 {
         source: string): WebGLShader {
         const shader = gl.createShader(type);
         if (shader === null) {
-            throw new Error("Invalid shader type: " + type)
+            throw new Error('Invalid shader type: ' + type)
         }
         gl.shaderSource(shader, source);
         gl.compileShader(shader);
@@ -19,14 +19,14 @@ export class WebGL2 {
         }
         const log = gl.getShaderInfoLog(shader)
         gl.deleteShader(shader);
-        throw new Error("Could not compile shader:" + log)
+        throw new Error('Could not compile shader:' + log)
     }
 
     static createProgram(gl: WebGL2RenderingContext, vertexShader: WebGLShader,
         fragmentShader: WebGLShader): WebGLProgram {
         const program = gl.createProgram();
         if (program === null) {
-            throw new Error("WebGL is not supported")
+            throw new Error('WebGL is not supported')
         }
         gl.attachShader(program, vertexShader);
         gl.attachShader(program, fragmentShader);
@@ -37,7 +37,7 @@ export class WebGL2 {
         }
 
         gl.deleteProgram(program);
-        throw new Error("Invalid shader(s)")
+        throw new Error('Invalid shader(s)')
     }
 
 }
