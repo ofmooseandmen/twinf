@@ -121,68 +121,39 @@ export class Mesh {
 
 }
 
-export class MeshingParameters {
+export class Mesher {
 
-    private readonly _earthRadius: Length
-    private readonly _circlePositions: number
-    private readonly _miterLimit: number
+    private readonly earthRadius: Length
+    private readonly circlePositions: number
+    private readonly miterLimit: number
 
     constructor(earthRadius: Length, circlePositions: number, miterLimit: number) {
-        this._earthRadius = earthRadius
-        this._circlePositions = circlePositions
-        this._miterLimit = miterLimit
+        this.earthRadius = earthRadius
+        this.circlePositions = circlePositions
+        this.miterLimit = miterLimit
     }
 
-    static fromLiteral(data: any): MeshingParameters {
-        const earthRadius = Length.fromLiteral(data["_earthRadius"])
-        const circlePositions = data["_circlePositions"]
-        const miterLimit = data["_miterLimit"]
-        return new MeshingParameters(earthRadius, circlePositions, miterLimit)
-    }
-
-    earthRadius(): Length {
-        return this._earthRadius
-    }
-
-    /**
-     * See RenderingOptions#circlePositions.
-     */
-    circlePositions(): number {
-        return this._circlePositions
-    }
-    /**
-     * See RenderingOptions#miterLimit.
-     */
-    miterLimit(): number {
-        return this._miterLimit
-    }
-
-}
-
-export class MeshGenerator {
-
-    private readonly params: MeshingParameters
-
-    constructor(params: MeshingParameters) {
-        this.params = params
+    static fromLiteral(data: any): Mesher {
+        const earthRadius = Length.fromLiteral(data["earthRadius"])
+        const circlePositions = data["circlePositions"]
+        const miterLimit = data["miterLimit"]
+        return new Mesher(earthRadius, circlePositions, miterLimit)
     }
 
     mesh(s: S.Shape): ReadonlyArray<Mesh> {
         switch (s.type) {
             case S.ShapeType.GeoCircle:
-                return MeshGenerator.fromGeoCircle(s,
-                    this.params.earthRadius(), this.params.circlePositions())
+                return Mesher.fromGeoCircle(s, this.earthRadius, this.circlePositions)
             case S.ShapeType.GeoPolygon:
-                return MeshGenerator.fromGeoPolygon(s)
+                return Mesher.fromGeoPolygon(s)
             case S.ShapeType.GeoPolyline:
-                return MeshGenerator.fromGeoPolyline(s)
+                return Mesher.fromGeoPolyline(s)
             case S.ShapeType.GeoRelativeCircle:
-                return MeshGenerator.fromGeoRelativeCircle(s,
-                    this.params.circlePositions(), this.params.miterLimit())
+                return Mesher.fromGeoRelativeCircle(s, this.circlePositions, this.miterLimit)
             case S.ShapeType.GeoRelativePolygon:
-                return MeshGenerator.fromGeoRelativePoygon(s, this.params.miterLimit())
+                return Mesher.fromGeoRelativePoygon(s, this.miterLimit)
             case S.ShapeType.GeoRelativePolyline:
-                return MeshGenerator.fromGeoRelativePoyline(s, this.params.miterLimit())
+                return Mesher.fromGeoRelativePoyline(s, this.miterLimit)
         }
     }
 
@@ -190,18 +161,18 @@ export class MeshGenerator {
         circlePositions: number): ReadonlyArray<Mesh> {
         const gs = InternalGeodetics.discretiseCircle(c.centre(), c.radius(), earthRadius, circlePositions)
         const paint = c.paint()
-        return MeshGenerator._fromGeoPolygon(gs, paint)
+        return Mesher._fromGeoPolygon(gs, paint)
     }
 
     private static fromGeoPolyline(l: S.GeoPolyline): ReadonlyArray<Mesh> {
         const gs = l.points().map(CoordinateSystems.latLongToGeocentric)
-        return [MeshGenerator._fromGeoPoyline(gs, l.stroke(), false)]
+        return [Mesher._fromGeoPoyline(gs, l.stroke(), false)]
     }
 
     private static fromGeoPolygon(p: S.GeoPolygon): ReadonlyArray<Mesh> {
         const gs = p.vertices().map(CoordinateSystems.latLongToGeocentric)
         const paint = p.paint()
-        return MeshGenerator._fromGeoPolygon(gs, paint)
+        return Mesher._fromGeoPolygon(gs, paint)
     }
 
     private static _fromGeoPolygon(gs: ReadonlyArray<Vector3d>, paint: S.Paint): ReadonlyArray<Mesh> {
@@ -210,12 +181,12 @@ export class MeshGenerator {
         let res = new Array<Mesh>()
         if (fill !== undefined) {
             const ts = Triangulator.SPHERICAL.triangulate(gs)
-            const vs = MeshGenerator.geoTrianglesToArray(ts)
-            const cs = MeshGenerator.colours(fill, vs, 3)
+            const vs = Mesher.geoTrianglesToArray(ts)
+            const cs = Mesher.colours(fill, vs, 3)
             res.push(new Mesh(vs, undefined, [], cs, DrawMode.TRIANGLES))
         }
         if (stroke !== undefined) {
-            res.push(MeshGenerator._fromGeoPoyline(gs, stroke, true))
+            res.push(Mesher._fromGeoPoyline(gs, stroke, true))
         }
         return res
     }
@@ -223,15 +194,15 @@ export class MeshGenerator {
     private static _fromGeoPoyline(points: ReadonlyArray<Vector3d>, stroke: S.Stroke,
         closed: boolean): Mesh {
         if (stroke.width() === 1) {
-            const vs = MeshGenerator.geoPointsToArray(points, closed)
-            const cs = MeshGenerator.colours(stroke.colour(), vs, 3)
+            const vs = Mesher.geoPointsToArray(points, closed)
+            const cs = Mesher.colours(stroke.colour(), vs, 3)
             return new Mesh(vs, undefined, [], cs, DrawMode.LINES)
         }
         const e = closed
-            ? MeshGenerator.closedExtrusion(points, stroke.width())
-            : MeshGenerator.openedExtrusion(points, stroke.width())
+            ? Mesher.closedExtrusion(points, stroke.width())
+            : Mesher.openedExtrusion(points, stroke.width())
         const vs = e[0]
-        const cs = MeshGenerator.colours(stroke.colour(), vs, 3)
+        const cs = Mesher.colours(stroke.colour(), vs, 3)
         return new Mesh(vs, e[1], [], cs, DrawMode.TRIANGLES)
     }
 
@@ -241,7 +212,7 @@ export class MeshGenerator {
         const centre = new Vector2d(c.centreOffset().x(), c.centreOffset().y())
         const ps = Geometry2d.discretiseCircle(centre, c.radius(), circlePositions)
         const paint = c.paint()
-        return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint, miterLimit)
+        return Mesher._fromGeoRelativePoygon(ref, ps, paint, miterLimit)
     }
 
     private static fromGeoRelativePoygon(p: S.GeoRelativePolygon,
@@ -249,7 +220,7 @@ export class MeshGenerator {
         const ref = p.ref()
         const ps = p.vertices().map(v => new Vector2d(v.x(), v.y()))
         const paint = p.paint()
-        return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint, miterLimit)
+        return Mesher._fromGeoRelativePoygon(ref, ps, paint, miterLimit)
     }
 
     private static _fromGeoRelativePoygon(ref: LatLong, vertices: ReadonlyArray<Vector2d>,
@@ -259,13 +230,13 @@ export class MeshGenerator {
         let res = new Array<Mesh>()
         if (fill !== undefined) {
             const ts = Triangulator.PLANAR.triangulate(vertices)
-            const os = MeshGenerator.offsetTrianglesToArray(ts)
-            const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
-            const cs = MeshGenerator.colours(fill, os, 2)
+            const os = Mesher.offsetTrianglesToArray(ts)
+            const vs = Mesher.reference(CoordinateSystems.latLongToGeocentric(ref), os)
+            const cs = Mesher.colours(fill, os, 2)
             res.push(new Mesh(vs, undefined, os, cs, DrawMode.TRIANGLES))
         }
         if (stroke !== undefined) {
-            res.push(MeshGenerator._fromGeoRelativePoyline(ref, vertices, stroke, true, miterLimit))
+            res.push(Mesher._fromGeoRelativePoyline(ref, vertices, stroke, true, miterLimit))
         }
         return res
     }
@@ -274,22 +245,22 @@ export class MeshGenerator {
         miterLimit: number): ReadonlyArray<Mesh> {
         const ps = l.points().map(p => new Vector2d(p.x(), p.y()))
         return [
-            MeshGenerator._fromGeoRelativePoyline(l.ref(), ps, l.stroke(), false, miterLimit)
+            Mesher._fromGeoRelativePoyline(l.ref(), ps, l.stroke(), false, miterLimit)
         ]
     }
 
     private static _fromGeoRelativePoyline(ref: LatLong, points: ReadonlyArray<Vector2d>,
         stroke: S.Stroke, closed: boolean, miterLimit: number): Mesh {
         if (stroke.width() === 1) {
-            const os = MeshGenerator.offsetPointsToArray(points, closed)
-            const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
-            const cs = MeshGenerator.colours(stroke.colour(), os, 2)
+            const os = Mesher.offsetPointsToArray(points, closed)
+            const vs = Mesher.reference(CoordinateSystems.latLongToGeocentric(ref), os)
+            const cs = Mesher.colours(stroke.colour(), os, 2)
             return new Mesh(vs, undefined, os, cs, DrawMode.LINES)
         }
         const ts = Geometry2d.extrude(points, stroke.width(), miterLimit, closed)
-        const os = MeshGenerator.offsetTrianglesToArray(ts)
-        const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os)
-        const cs = MeshGenerator.colours(stroke.colour(), os, 2)
+        const os = Mesher.offsetTrianglesToArray(ts)
+        const vs = Mesher.reference(CoordinateSystems.latLongToGeocentric(ref), os)
+        const cs = Mesher.colours(stroke.colour(), os, 2)
         return new Mesh(vs, undefined, os, cs, DrawMode.TRIANGLES)
     }
 
@@ -384,34 +355,34 @@ export class MeshGenerator {
             const next = vs[ni]
 
             /* first triangle. */
-            MeshGenerator.pushV3(start, curs)
-            MeshGenerator.pushV3(start, curs)
-            MeshGenerator.pushV3(end, curs)
+            Mesher.pushV3(start, curs)
+            Mesher.pushV3(start, curs)
+            Mesher.pushV3(end, curs)
 
-            MeshGenerator.pushV3(prev, prevs)
-            MeshGenerator.pushV3(prev, prevs)
-            MeshGenerator.pushV3(start, prevs)
+            Mesher.pushV3(prev, prevs)
+            Mesher.pushV3(prev, prevs)
+            Mesher.pushV3(start, prevs)
 
-            MeshGenerator.pushV3(end, nexts)
-            MeshGenerator.pushV3(end, nexts)
-            MeshGenerator.pushV3(next, nexts)
+            Mesher.pushV3(end, nexts)
+            Mesher.pushV3(end, nexts)
+            Mesher.pushV3(next, nexts)
 
             halfWidths.push(halfWidth)
             halfWidths.push(-halfWidth)
             halfWidths.push(halfWidth)
 
             /* second triangle. */
-            MeshGenerator.pushV3(start, curs)
-            MeshGenerator.pushV3(end, curs)
-            MeshGenerator.pushV3(end, curs)
+            Mesher.pushV3(start, curs)
+            Mesher.pushV3(end, curs)
+            Mesher.pushV3(end, curs)
 
-            MeshGenerator.pushV3(prev, prevs)
-            MeshGenerator.pushV3(start, prevs)
-            MeshGenerator.pushV3(start, prevs)
+            Mesher.pushV3(prev, prevs)
+            Mesher.pushV3(start, prevs)
+            Mesher.pushV3(start, prevs)
 
-            MeshGenerator.pushV3(end, nexts)
-            MeshGenerator.pushV3(next, nexts)
-            MeshGenerator.pushV3(next, nexts)
+            Mesher.pushV3(end, nexts)
+            Mesher.pushV3(next, nexts)
+            Mesher.pushV3(next, nexts)
 
             halfWidths.push(-halfWidth)
             halfWidths.push(halfWidth)
@@ -439,34 +410,34 @@ export class MeshGenerator {
             const next = i + 1 === len - 1 ? zero : vs[i + 2]
 
             /* first triangle. */
-            MeshGenerator.pushV3(start, curs)
-            MeshGenerator.pushV3(start, curs)
-            MeshGenerator.pushV3(end, curs)
+            Mesher.pushV3(start, curs)
+            Mesher.pushV3(start, curs)
+            Mesher.pushV3(end, curs)
 
-            MeshGenerator.pushV3(prev, prevs)
-            MeshGenerator.pushV3(prev, prevs)
-            MeshGenerator.pushV3(start, prevs)
+            Mesher.pushV3(prev, prevs)
+            Mesher.pushV3(prev, prevs)
+            Mesher.pushV3(start, prevs)
 
-            MeshGenerator.pushV3(end, nexts)
-            MeshGenerator.pushV3(end, nexts)
-            MeshGenerator.pushV3(next, nexts)
+            Mesher.pushV3(end, nexts)
+            Mesher.pushV3(end, nexts)
+            Mesher.pushV3(next, nexts)
 
             halfWidths.push(halfWidth)
             halfWidths.push(-halfWidth)
             halfWidths.push(halfWidth)
 
             /* second triangle. */
-            MeshGenerator.pushV3(start, curs)
-            MeshGenerator.pushV3(end, curs)
-            MeshGenerator.pushV3(end, curs)
+            Mesher.pushV3(start, curs)
+            Mesher.pushV3(end, curs)
+            Mesher.pushV3(end, curs)
 
-            MeshGenerator.pushV3(prev, prevs)
-            MeshGenerator.pushV3(start, prevs)
-            MeshGenerator.pushV3(start, prevs)
+            Mesher.pushV3(prev, prevs)
+            Mesher.pushV3(start, prevs)
+            Mesher.pushV3(start, prevs)
 
-            MeshGenerator.pushV3(end, nexts)
-            MeshGenerator.pushV3(next, nexts)
-            MeshGenerator.pushV3(next, nexts)
+            Mesher.pushV3(end, nexts)
+            Mesher.pushV3(next, nexts)
+            Mesher.pushV3(next, nexts)
 
             halfWidths.push(-halfWidth)
             halfWidths.push(halfWidth)
@@ -479,34 +450,34 @@ export class MeshGenerator {
             const last = vs[len - 1]
             const penultimate = vs[len - 2]
             const prev = vs[len - 3]
-            MeshGenerator.pushV3(penultimate, curs)
-            MeshGenerator.pushV3(penultimate, curs)
-            MeshGenerator.pushV3(last, curs)
+            Mesher.pushV3(penultimate, curs)
+            Mesher.pushV3(penultimate, curs)
+            Mesher.pushV3(last, curs)
 
-            MeshGenerator.pushV3(prev, prevs)
-            MeshGenerator.pushV3(prev, prevs)
-            MeshGenerator.pushV3(penultimate, prevs)
+            Mesher.pushV3(prev, prevs)
+            Mesher.pushV3(prev, prevs)
+            Mesher.pushV3(penultimate, prevs)
 
-            MeshGenerator.pushV3(last, nexts)
-            MeshGenerator.pushV3(last, nexts)
-            MeshGenerator.pushV3(zero, nexts)
+            Mesher.pushV3(last, nexts)
+            Mesher.pushV3(last, nexts)
+            Mesher.pushV3(zero, nexts)
 
             halfWidths.push(halfWidth)
             halfWidths.push(-halfWidth)
             halfWidths.push(-halfWidth)
 
             /* second triangle. */
-            MeshGenerator.pushV3(penultimate, curs)
-            MeshGenerator.pushV3(last, curs)
-            MeshGenerator.pushV3(last, curs)
+            Mesher.pushV3(penultimate, curs)
+            Mesher.pushV3(last, curs)
+            Mesher.pushV3(last, curs)
 
-            MeshGenerator.pushV3(prev, prevs)
-            MeshGenerator.pushV3(penultimate, prevs)
-            MeshGenerator.pushV3(penultimate, prevs)
+            Mesher.pushV3(prev, prevs)
+            Mesher.pushV3(penultimate, prevs)
+            Mesher.pushV3(penultimate, prevs)
 
-            MeshGenerator.pushV3(last, nexts)
-            MeshGenerator.pushV3(zero, nexts)
-            MeshGenerator.pushV3(zero, nexts)
+            Mesher.pushV3(last, nexts)
+            Mesher.pushV3(zero, nexts)
+            Mesher.pushV3(zero, nexts)
 
             halfWidths.push(-halfWidth)
             halfWidths.push(-halfWidth)

@@ -1,50 +1,60 @@
 import { Mesh } from "./mesh"
-import { Shape } from "./shapes"
+import { Shape, fromLiteral } from "./shapes"
 
-export interface Graphic<T> {
+/**
+ * Base class for graphics.
+ */
+export abstract class BaseGraphic <T> {
+
+    private readonly _name: string
+    private readonly _zIndex: number
+
+    constructor(name: string, zIndex: number) {
+        this._name = name
+        this._zIndex = zIndex
+    }
+
     /**
      * Returns the name that uniquely identifies this graphic.
      */
-    name(): string
+    name(): string {
+        return this._name
+    }
 
     /**
      * Returns the stack order of this graphic. A graphic with greater stack order
      * is always in front of a graphic with a lower stack order.
      */
-    zIndex(): number
+    
+    zIndex(): number {
+        return this._zIndex
+    }
 
     /**
-     * Returns the elements of this graphic.
+     * Returns the elements of this graphic: shapes or meshes.
      */
-    elements(): ReadonlyArray<T>
+    abstract elements(): ReadonlyArray<T>
 
 }
 
 /**
- * A graphic whose elements are shapes.
+ * A graphic whose elements are shapes: each shape needs to be converted
+ * to a mesh before rendering.
  */
-export class Shapes implements Graphic<Shape> {
-
-    private readonly _name: string
-    private readonly _zIndex: number
+export class Graphic extends BaseGraphic<Shape> {
+    
     private readonly _elements: ReadonlyArray<Shape>
-
+    
     constructor(name: string, zIndex: number, elements: ReadonlyArray<Shape>) {
-        this._name = name
-        this._zIndex = zIndex
+        super(name, zIndex)
         this._elements = elements
     }
-
-    static fromLiteral(data: any): Shapes {
-        return new Shapes(data["_name"], data["_zIndex"], data["_elements"])
-    }
-
-    name(): string {
-        return this._name
-    }
-
-    zIndex(): number {
-        return this._zIndex
+    
+    static fromLiteral(data: any): Graphic {
+        const name = data["_name"]
+        const zIndex = data["_zIndex"]
+        const elements = data["_elements"].map(fromLiteral)
+        return new Graphic(name, zIndex, elements)
     }
 
     elements(): ReadonlyArray<Shape> {
@@ -56,28 +66,20 @@ export class Shapes implements Graphic<Shape> {
 /**
  * A graphic whose elements are meshes.
  */
-export class Meshes implements Graphic<Mesh> {
-
-    private readonly _name: string
-    private readonly _zIndex: number
+export class RenderableGraphic extends BaseGraphic<Mesh> {
+    
     private readonly _elements: ReadonlyArray<Mesh>
 
     constructor(name: string, zIndex: number, elements: ReadonlyArray<Mesh>) {
-        this._name = name
-        this._zIndex = zIndex
+        super(name, zIndex)
         this._elements = elements
     }
 
-    static fromLiteral(data: any): Meshes {
-        return new Meshes(data["_name"], data["_zIndex"], data["_elements"])
-    }
-
-    name(): string {
-        return this._name
-    }
-
-    zIndex(): number {
-        return this._zIndex
+    static fromLiteral(data: any): Graphic {
+        const name = data["_name"]
+        const zIndex = data["_zIndex"]
+        const elements = data["_elements"].map(Mesh.fromLiteral)
+        return new Graphic(name, zIndex, elements)
     }
 
     elements(): ReadonlyArray<Mesh> {

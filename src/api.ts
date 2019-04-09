@@ -5,7 +5,8 @@ export { Cpa, Track, Kinematics } from "./kinematics"
 export { LatLong } from "./latlong"
 export { Length } from "./length"
 export { Geodetics } from "./geodetics"
-export { RenderingOptions } from "./options"
+export { Graphic, RenderableGraphic } from "./graphic"
+export { Mesh, Mesher } from "./mesh"
 export { Offset } from "./pixels"
 export {
     Stroke,
@@ -20,8 +21,4 @@ export {
     GeoRelativePolyline,
 } from "./shapes"
 export { Speed } from "./speed"
-export {
-    Graphic,
-    World,
-    WorldDefinition
-} from "./world"
+export { RenderingOptions, World, WorldDefinition } from "./world"
