@@ -20,48 +20,6 @@ export class Drawing {
     }
 }
 
-export class Animator {
-
-    private readonly callback: Function
-    private readonly fps: number
-
-    private now: number
-    private then: number
-    private readonly interval: number
-    private delta: number
-    private handle: number
-
-    constructor(callback: Function, fps: number) {
-        this.callback = callback
-        this.fps = fps
-
-        this.now = Date.now()
-        this.then = Date.now()
-        this.interval = 1000 / this.fps
-        this.delta = -1
-        this.handle = -1
-    }
-
-    start() {
-        this.render()
-    }
-
-    stop() {
-        cancelAnimationFrame(this.handle)
-    }
-
-    private render() {
-        this.handle = requestAnimationFrame(() => this.render());
-        this.now = Date.now();
-        this.delta = this.now - this.then;
-        if (this.delta > this.interval) {
-            this.then = this.now - (this.delta % this.interval);
-            this.callback()
-        }
-    }
-
-}
-
 /**
  * A scene contains all the drawings and required attributed to render them.
  */
@@ -475,12 +433,18 @@ class GlArrays {
          * disable the vertex array, the attribute will have
          * the default value which the shader can handle.
          */
-        this.constants.forEach(c => gl.disableVertexAttribArray(c))
+        const len = this.constants.length
+        for (let i = 0; i < len; i++) {
+            gl.disableVertexAttribArray(this.constants[i])
+        }
         gl.drawArrays(this.drawMode, 0, this.count)
     }
 
     delete(gl: WebGL2RenderingContext) {
-        this.buffers.forEach(b => gl.deleteBuffer(b))
+        const len = this.buffers.length
+        for (let i = 0; i < len; i++) {
+            gl.deleteBuffer(this.buffers[i])
+        }        
         gl.deleteVertexArray(this.vao)
     }
 

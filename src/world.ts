@@ -10,7 +10,7 @@ import { Graphic, RenderableGraphic } from './graphic'
 import { LatLong } from './latlong'
 import { Length } from './length'
 import { Mesher } from './mesh'
-import { Animator, Drawing, Renderer, Scene } from './renderer'
+import { Drawing, Renderer, Scene } from './renderer'
 import { Math2d, Vector2d } from './space2d'
 import { Stack } from './stack'
 
@@ -111,7 +111,6 @@ export class World {
     private readonly stack: Stack<Drawing>
     private readonly _mesher: Mesher
     private readonly renderer: Renderer
-    private readonly animator: Animator
 
     constructor(gl: WebGL2RenderingContext, def: WorldDefinition,
         options: RenderingOptions = new RenderingOptions(60, 100, 5)) {
@@ -128,25 +127,16 @@ export class World {
         this.stack = new Stack()
         this.renderer = new Renderer(gl, options.miterLimit())
         this._mesher = new Mesher(World.EARTH_RADIUS, options.circlePositions(), options.miterLimit())
-        this.animator = new Animator(() => {
-            const scene = new Scene(this.stack.all(), this.bgColour, this.sp, this.at)
-            this.renderer.draw(scene)
-        }, options.fps())
     }
-
+    
     /**
-     * Starts the rendering loop. Shapes will be rendered in the
-     * WebGL rendering context and at frame/second rate given at construction.
+     * Renders all inserted shapes into the WebGL rendering context given at construction.
+     *
+     * This should be called within `requestAnimationFrame`
      */
-    startRendering() {
-        this.animator.start()
-    }
-
-    /**
-     * Stops the rendering loop.
-     */
-    stoptRendering() {
-        this.animator.stop()
+    render() {
+        const scene = new Scene(this.stack.all(), this.bgColour, this.sp, this.at)
+        this.renderer.draw(scene)
     }
 
     /**
