@@ -2234,32 +2234,6 @@ var demo = (function (exports) {
             return this._batches;
         }
     }
-    class Animator {
-        constructor(callback, fps) {
-            this.callback = callback;
-            this.fps = fps;
-            this.now = Date.now();
-            this.then = Date.now();
-            this.interval = 1000 / this.fps;
-            this.delta = -1;
-            this.handle = -1;
-        }
-        start() {
-            this.render();
-        }
-        stop() {
-            cancelAnimationFrame(this.handle);
-        }
-        render() {
-            this.handle = requestAnimationFrame(() => this.render());
-            this.now = Date.now();
-            this.delta = this.now - this.then;
-            if (this.delta > this.interval) {
-                this.then = this.now - (this.delta % this.interval);
-                this.callback();
-            }
-        }
-    }
     /**
      * A scene contains all the drawings and required attributed to render them.
      */
@@ -2606,11 +2580,17 @@ void main() {
              * disable the vertex array, the attribute will have
              * the default value which the shader can handle.
              */
-            this.constants.forEach(c => gl.disableVertexAttribArray(c));
+            const len = this.constants.length;
+            for (let i = 0; i < len; i++) {
+                gl.disableVertexAttribArray(this.constants[i]);
+            }
             gl.drawArrays(this.drawMode, 0, this.count);
         }
         delete(gl) {
-            this.buffers.forEach(b => gl.deleteBuffer(b));
+            const len = this.buffers.length;
+            for (let i = 0; i < len; i++) {
+                gl.deleteBuffer(this.buffers[i]);
+            }
             gl.deleteVertexArray(this.vao);
         }
     }
@@ -2864,23 +2844,15 @@ void main() {
             this.stack = new Stack();
             this.renderer = new Renderer(gl, options.miterLimit());
             this._mesher = new Mesher(World.EARTH_RADIUS, options.circlePositions(), options.miterLimit());
-            this.animator = new Animator(() => {
-                const scene = new Scene(this.stack.all(), this.bgColour, this.sp, this.at);
-                this.renderer.draw(scene);
-            }, options.fps());
         }
         /**
-         * Starts the rendering loop. Shapes will be rendered in the
-         * WebGL rendering context and at frame/second rate given at construction.
+         * Renders all inserted shapes into the WebGL rendering context given at construction.
+         *
+         * This should be called within `requestAnimationFrame`
          */
-        startRendering() {
-            this.animator.start();
-        }
-        /**
-         * Stops the rendering loop.
-         */
-        stoptRendering() {
-            this.animator.stop();
+        render() {
+            const scene = new Scene(this.stack.all(), this.bgColour, this.sp, this.at);
+            this.renderer.draw(scene);
         }
         /**
          * Sets the background colour (clear colour) of the WeGL rendering context.
@@ -2969,7 +2941,8 @@ void main() {
             const linkoping = LatLong.ofDegrees(58.4108, 15.6214);
             const def = new WorldDefinition(linkoping, Length.ofKilometres(2000), Angle.ofDegrees(0), Colour.GAINSBORO);
             this.world = new World(gl, def);
-            this.l = (_c, _r) => { };
+            this.events = new Events();
+            this.animator = new Animator(() => this.world.render(), this.events, 60);
             this.worker = new Worker('/build/worker.js');
             this.worker.postMessage({
                 'topic': 'mesher',
@@ -2983,27 +2956,36 @@ void main() {
                     case 'coastline':
                         const c = RenderableGraphic.fromLiteral(payload);
                         this.world.insert(c);
+                        this.worker.postMessage({
+                            'topic': 'tracks'
+                        });
                         break;
                     case 'tracks':
                         const tracks = payload.map(RenderableGraphic.fromLiteral);
                         for (let i = 0; i < tracks.length; i++) {
                             this.world.insert(tracks[i]);
                         }
+                        this.events.fireEvent('tracksChanged', tracks.length);
+                        break;
+                    case 'error':
+                        console.log(payload);
                         break;
                 }
             };
         }
-        setOnChange(l) {
-            this.l = l;
-            this.fireEvent();
+        addEventListener(name, handler) {
+            this.events.addEventListener(name, handler);
+            if (name === 'centreChanged') {
+                this.fireCentreChanged();
+            }
+            else if (name === 'rangeChanged') {
+                this.fireRangeChanged();
+            }
         }
         run() {
-            this.world.startRendering();
+            this.animator.start();
             this.worker.postMessage({
                 'topic': 'coastline'
-            });
-            this.worker.postMessage({
-                'topic': 'tracks'
             });
         }
         handleKeyboardEvent(evt) {
@@ -3011,16 +2993,17 @@ void main() {
             const factor = DemoApp.FACTOR.get(evt.key);
             if (delta !== undefined) {
                 this.world.pan(delta[0], delta[1]);
+                this.fireCentreChanged();
             }
             else if (factor !== undefined) {
                 this.world.setRange(this.world.range().scale(factor));
+                this.fireRangeChanged();
             }
             else {
                 return;
             }
-            this.fireEvent();
         }
-        fireEvent() {
+        fireCentreChanged() {
             const c = this.world.centre();
             const lat = c.latitude().degrees();
             const lon = c.longitude().degrees();
@@ -3028,8 +3011,11 @@ void main() {
                 + (lat < 0 ? 'S' : 'N')
                 + ' ' + Math.abs(lon).toFixed(4)
                 + (lon < 0 ? 'W' : 'E');
-            const r = (this.world.range().kilometres()).toFixed(0) + ' km';
-            this.l(ll, r);
+            this.events.fireEvent('centreChanged', ll);
+        }
+        fireRangeChanged() {
+            const r = this.world.range().kilometres().toFixed(0) + ' km';
+            this.events.fireEvent('rangeChanged', r);
         }
     }
     DemoApp.DELTA = new Map([
@@ -3042,6 +3028,75 @@ void main() {
         ['+', 0.95],
         ['-', 1.05],
     ]);
+    class Events {
+        constructor() {
+            this.els = {};
+        }
+        addEventListener(name, handler) {
+            if (this.els.hasOwnProperty(name)) {
+                this.els[name].push(handler);
+            }
+            else {
+                this.els[name] = [handler];
+            }
+        }
+        fireEvent(name, data) {
+            if (!this.els.hasOwnProperty(name)) {
+                return;
+            }
+            const ls = this.els[name];
+            const len = ls.length;
+            for (var i = 0; i < len; i++) {
+                ls[i](data);
+            }
+        }
+    }
+    class FpsTracker {
+        constructor(events) {
+            this.start = performance.now();
+            this.frames = 0;
+            this.events = events;
+        }
+        doneRendering() {
+            this.frames = this.frames + 1;
+            const now = performance.now();
+            const delta = now - this.start;
+            if (delta >= 1000) {
+                const fps = Math.round(this.frames / delta * 1000);
+                this.events.fireEvent('fpsChanged', fps);
+                this.start = now;
+                this.frames = 0;
+            }
+        }
+    }
+    class Animator {
+        constructor(callback, events, fps) {
+            this.callback = callback;
+            this.fps = fps;
+            this.now = performance.now();
+            this.then = performance.now();
+            this.interval = 1000 / this.fps;
+            this.delta = -1;
+            this.handle = -1;
+            this.fpst = new FpsTracker(events);
+        }
+        start() {
+            this.render();
+        }
+        stop() {
+            cancelAnimationFrame(this.handle);
+        }
+        render() {
+            this.handle = requestAnimationFrame(() => this.render());
+            this.now = performance.now();
+            this.delta = this.now - this.then;
+            if (this.delta > this.interval) {
+                this.then = this.now - (this.delta % this.interval);
+                this.callback();
+                this.fpst.doneRendering();
+            }
+        }
+    }
 
     exports.DemoApp = DemoApp;
 

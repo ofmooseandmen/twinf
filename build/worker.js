@@ -2323,32 +2323,6 @@
             return this._batches;
         }
     }
-    class Animator {
-        constructor(callback, fps) {
-            this.callback = callback;
-            this.fps = fps;
-            this.now = Date.now();
-            this.then = Date.now();
-            this.interval = 1000 / this.fps;
-            this.delta = -1;
-            this.handle = -1;
-        }
-        start() {
-            this.render();
-        }
-        stop() {
-            cancelAnimationFrame(this.handle);
-        }
-        render() {
-            this.handle = requestAnimationFrame(() => this.render());
-            this.now = Date.now();
-            this.delta = this.now - this.then;
-            if (this.delta > this.interval) {
-                this.then = this.now - (this.delta % this.interval);
-                this.callback();
-            }
-        }
-    }
     /**
      * A scene contains all the drawings and required attributed to render them.
      */
@@ -2695,11 +2669,17 @@ void main() {
              * disable the vertex array, the attribute will have
              * the default value which the shader can handle.
              */
-            this.constants.forEach(c => gl.disableVertexAttribArray(c));
+            const len = this.constants.length;
+            for (let i = 0; i < len; i++) {
+                gl.disableVertexAttribArray(this.constants[i]);
+            }
             gl.drawArrays(this.drawMode, 0, this.count);
         }
         delete(gl) {
-            this.buffers.forEach(b => gl.deleteBuffer(b));
+            const len = this.buffers.length;
+            for (let i = 0; i < len; i++) {
+                gl.deleteBuffer(this.buffers[i]);
+            }
             gl.deleteVertexArray(this.vao);
         }
     }
@@ -2930,23 +2910,15 @@ void main() {
             this.stack = new Stack();
             this.renderer = new Renderer(gl, options.miterLimit());
             this._mesher = new Mesher(World.EARTH_RADIUS, options.circlePositions(), options.miterLimit());
-            this.animator = new Animator(() => {
-                const scene = new Scene(this.stack.all(), this.bgColour, this.sp, this.at);
-                this.renderer.draw(scene);
-            }, options.fps());
         }
         /**
-         * Starts the rendering loop. Shapes will be rendered in the
-         * WebGL rendering context and at frame/second rate given at construction.
+         * Renders all inserted shapes into the WebGL rendering context given at construction.
+         *
+         * This should be called within `requestAnimationFrame`
          */
-        startRendering() {
-            this.animator.start();
-        }
-        /**
-         * Stops the rendering loop.
-         */
-        stoptRendering() {
-            this.animator.stop();
+        render() {
+            const scene = new Scene(this.stack.all(), this.bgColour, this.sp, this.at);
+            this.renderer.draw(scene);
         }
         /**
          * Sets the background colour (clear colour) of the WeGL rendering context.
@@ -3048,6 +3020,11 @@ void main() {
                             'topic': 'coastline',
                             'payload': JSON.stringify(c)
                         });
+                    }).catch(e => {
+                        ctx.postMessage({
+                            'topic': 'error',
+                            'payload': JSON.stringify(e)
+                        });
                     });
                     break;
                 case 'tracks':
@@ -3061,8 +3038,12 @@ void main() {
                                 'topic': 'tracks',
                                 'payload': JSON.stringify(tracks)
                             });
-                            setTimeout(h, 10000);
-                        });
+                        }).catch(e => {
+                            ctx.postMessage({
+                                'topic': 'error',
+                                'payload': JSON.stringify(e)
+                            });
+                        }).finally(() => setTimeout(h, 10000));
                     };
                     setTimeout(h, 100);
                     break;
@@ -3071,6 +3052,12 @@ void main() {
     }
     const ctx = self;
     const eh = new EventHandler();
+    const adsbPaint = Paint.complete(new Stroke(Colour.DEEPPINK, 2), Colour.LIGHTPINK);
+    const asterixPaint = Paint.complete(new Stroke(Colour.DEEPSKYBLUE, 2), Colour.SKYBLUE);
+    const mlatPaint = Paint.complete(new Stroke(Colour.LIMEGREEN, 2), Colour.LIGHTGREEN);
+    const trackPaints = [adsbPaint, asterixPaint, mlatPaint];
+    const trackOffsets = [new Offset(-5, -5), new Offset(-5, 5), new Offset(5, 5), new Offset(5, -5)];
+    const trackZIndex = 1;
     ctx.onmessage = eh.handle;
     function computeCoastline(mesher) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -3101,19 +3088,13 @@ void main() {
         return __awaiter(this, void 0, void 0, function* () {
             const states = yield fetchStateVectors();
             const len = states.length;
-            const zIndex = 1;
-            const adsbPaint = Paint.complete(new Stroke(Colour.DEEPPINK, 1), Colour.LIGHTPINK);
-            const asterixPaint = Paint.complete(new Stroke(Colour.DEEPSKYBLUE, 1), Colour.SKYBLUE);
-            const mlatPaint = Paint.complete(new Stroke(Colour.LIMEGREEN, 1), Colour.LIGHTGREEN);
-            const paints = [adsbPaint, asterixPaint, mlatPaint];
-            const offsets = [new Offset(-5, -5), new Offset(-5, 5), new Offset(5, 5), new Offset(5, -5)];
             let res = new Array();
             for (let i = 0; i < len; i++) {
                 const state = states[i];
                 if (state.position !== undefined) {
-                    const paint = paints[state.positionSource];
-                    const m = mesher.meshShape(new GeoRelativePolygon(state.position, offsets, paint));
-                    res.push(new RenderableGraphic(state.icao24, zIndex, m));
+                    const paint = trackPaints[state.positionSource];
+                    const m = mesher.meshShape(new GeoRelativePolygon(state.position, trackOffsets, paint));
+                    res.push(new RenderableGraphic(state.icao24, trackZIndex, m));
                 }
             }
             return res;
@@ -3121,20 +3102,16 @@ void main() {
     }
     function fetchStateVectors() {
         return __awaiter(this, void 0, void 0, function* () {
-            try {
-                const response = yield fetch('https://opensky-network.org/api/states/all');
-                const data = yield response.json();
-                for (const prop in data) {
-                    if (prop === 'states') {
-                        const states = data[prop];
-                        return states.map(StateVector.parse);
-                    }
+            // 'https://opensky-network.org/api/states/all'
+            const response = yield fetch('/assets/opensky-all.json');
+            const data = yield response.json();
+            for (const prop in data) {
+                if (prop === 'states') {
+                    const states = data[prop];
+                    return states.map(StateVector.parse);
                 }
-                return [];
             }
-            catch (err) {
-                return [];
-            }
+            return [];
         });
     }
     var PositionSource;

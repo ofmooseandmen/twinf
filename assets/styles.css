@@ -5,7 +5,7 @@ html, body {
   border: 0;
   overflow: hidden; /*  Disable scrollbars */
   display: block;  /* No floating content on sides */
-  font-family: Arial, Helvetica, sans-serif
+  font-family: Consolas, monaco, monospace
 }
 
 #info {
@@ -19,4 +19,9 @@ html, body {
   padding-right: 5px;
   color: white;
   background-color: rgba(128, 128, 128, 0.7);
+}
+
+#info td {
+   padding-top: 5px;
+   padding-bottom: 5px;
 }

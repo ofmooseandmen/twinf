@@ -22,6 +22,11 @@ class EventHandler {
                         'topic': 'coastline',
                         'payload': JSON.stringify(c)
                     })
+                }).catch(e => {
+                    ctx.postMessage({
+                        'topic': 'error',
+                        'payload': JSON.stringify(e)
+                    })
                 })
                 break
             case 'tracks':
@@ -35,8 +40,12 @@ class EventHandler {
                             'topic': 'tracks',
                             'payload': JSON.stringify(tracks)
                         })
-                        setTimeout(h, 10000)
-                    })
+                    }).catch(e => {
+                        ctx.postMessage({
+                            'topic': 'error',
+                            'payload': JSON.stringify(e)
+                        })
+                    }).finally(() => setTimeout(h, 10000))
                 }
                 setTimeout(h, 100)
                 break
@@ -48,6 +57,12 @@ class EventHandler {
 
 const ctx: Worker = self as any
 const eh = new EventHandler()
+const adsbPaint = T.Paint.complete(new T.Stroke(T.Colour.DEEPPINK, 2), T.Colour.LIGHTPINK)
+const asterixPaint = T.Paint.complete(new T.Stroke(T.Colour.DEEPSKYBLUE, 2), T.Colour.SKYBLUE)
+const mlatPaint = T.Paint.complete(new T.Stroke(T.Colour.LIMEGREEN, 2), T.Colour.LIGHTGREEN)
+const trackPaints = [adsbPaint, asterixPaint, mlatPaint]
+const trackOffsets = [new T.Offset(-5, -5), new T.Offset(-5, 5), new T.Offset(5, 5), new T.Offset(5, -5)]
+const trackZIndex = 1
 
 ctx.onmessage = eh.handle
 
@@ -81,40 +96,30 @@ async function computeCoastline(mesher: T.Mesher): Promise<T.RenderableGraphic> 
 async function computeTracks(mesher: T.Mesher): Promise<ReadonlyArray<T.RenderableGraphic>> {
     const states = await fetchStateVectors()
     const len = states.length
-    const zIndex = 1
 
-    const adsbPaint = T.Paint.complete(new T.Stroke(T.Colour.DEEPPINK, 1), T.Colour.LIGHTPINK)
-    const asterixPaint = T.Paint.complete(new T.Stroke(T.Colour.DEEPSKYBLUE, 1), T.Colour.SKYBLUE)
-    const mlatPaint = T.Paint.complete(new T.Stroke(T.Colour.LIMEGREEN, 1), T.Colour.LIGHTGREEN)
-    const paints = [adsbPaint, asterixPaint, mlatPaint]
-
-    const offsets = [new T.Offset(-5, -5), new T.Offset(-5, 5), new T.Offset(5, 5), new T.Offset(5, -5)]
     let res = new Array<T.RenderableGraphic>()
     for (let i = 0; i < len; i++) {
         const state = states[i]
         if (state.position !== undefined) {
-            const paint = paints[state.positionSource]
-            const m = mesher.meshShape(new T.GeoRelativePolygon(state.position, offsets, paint))
-            res.push(new T.RenderableGraphic(state.icao24, zIndex, m))
+            const paint = trackPaints[state.positionSource]
+            const m = mesher.meshShape(new T.GeoRelativePolygon(state.position, trackOffsets, paint))
+            res.push(new T.RenderableGraphic(state.icao24, trackZIndex, m))
         }
     }
     return res
 }
 
 async function fetchStateVectors(): Promise<ReadonlyArray<StateVector>> {
-    try {
-        const response = await fetch('https://opensky-network.org/api/states/all');
-        const data = await response.json();
-        for (const prop in data) {
-            if (prop === 'states') {
-                const states: Array<Array<string>> = (<any>data)[prop]
-                return states.map(StateVector.parse)
-            }
+    // 'https://opensky-network.org/api/states/all'
+    const response = await fetch('/assets/opensky-all.json');
+    const data = await response.json();
+    for (const prop in data) {
+        if (prop === 'states') {
+            const states: Array<Array<string>> = (<any>data)[prop]
+            return states.map(StateVector.parse)
         }
-        return []
-    } catch (err) {
-        return []
     }
+    return []
 }
 
 
