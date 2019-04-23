@@ -111,7 +111,8 @@ async function computeTracks(mesher: T.Mesher): Promise<ReadonlyArray<T.Renderab
 
 async function fetchStateVectors(): Promise<ReadonlyArray<StateVector>> {
     // 'https://opensky-network.org/api/states/all'
-    const response = await fetch('/assets/opensky-all.json');
+    // '/assets/opensky-all.json'
+    const response = await fetch('/assets/opensky-eu.json');
     const data = await response.json();
     for (const prop in data) {
         if (prop === 'states') {

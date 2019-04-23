@@ -2278,6 +2278,144 @@
         }
     }
 
+    class BatchManager {
+        constructor(factory) {
+            this.factory = factory;
+            this._batches = new Map();
+        }
+        insert(graphic) {
+            const graphicName = graphic.name();
+            /* delete graphic first but don't refresh the batches yet. */
+            this.remove(graphicName);
+            const zIndex = graphic.zIndex();
+            let bs = this._batches.get(zIndex);
+            if (bs === undefined) {
+                /* new z-index.*/
+                bs = new Array();
+                this._batches.set(zIndex, bs);
+            }
+            const meshes = graphic.meshes();
+            const len = meshes.length;
+            for (let i = 0; i < len; i++) {
+                const mesh = meshes[i];
+                const last = bs[bs.length - 1];
+                if (last === undefined || !this.factory.fits(mesh, last)) {
+                    const newBatch = this.factory.createBatch(mesh);
+                    newBatch.add(graphicName, mesh);
+                    bs.push(newBatch);
+                }
+                else {
+                    last.add(graphicName, mesh);
+                }
+            }
+            this.refresh();
+        }
+        delete(graphicName) {
+            this.remove(graphicName);
+            this.refresh();
+        }
+        /**
+         * All layers in order of drawing, each element of the array contains all
+         * the batches of the layer.
+         */
+        layers() {
+            const sorted = Array.from(this._batches.entries()).sort();
+            const res = new Array();
+            for (const l of sorted) {
+                res.push(l[1]);
+            }
+            return res;
+        }
+        remove(graphicName) {
+            for (let bs of this._batches.values()) {
+                const len = bs.length;
+                for (let i = 0; i < len; i++) {
+                    bs[i].remove(graphicName);
+                }
+            }
+        }
+        refresh() {
+            for (let bs of this._batches.values()) {
+                for (var i = bs.length - 1; i >= 0; i--) {
+                    const b = bs[i];
+                    if (b.isEmpty()) {
+                        b.destroy();
+                        bs.splice(i, 1);
+                        // } else if (b.isDirty()) {
+                        //     b.clean()
+                    }
+                }
+            }
+        }
+    }
+    /**
+     * A collection of meshes rendered with one draw call
+     * and therefore sharing the same draw mode and attributes.
+     */
+    class Batch {
+        constructor() {
+            this._meshes = new Map();
+            this._dirty = true;
+        }
+        /**
+         * whether this batch is dirty, i.e. the VBO are not populated
+         * with the meshes. If batch is empty it must be destroy otherwise
+         * updated
+         */
+        isDirty() {
+            return this._dirty;
+        }
+        /**
+         * whether this batch contains no mesh and can therefore be destroyed.
+         */
+        isEmpty() {
+            return this._meshes.size === 0;
+        }
+        // clean() {
+        //     let all = new Array<Mesh>()
+        //     for (let ms of this._meshes.values()) {
+        //         const len = ms.length
+        //         for (let i = 0; i < len; i++) {
+        //             all.push(ms[i])
+        //         }
+        //
+        //     }
+        //     this.update(all)
+        //     this._dirty = false
+        // }
+        unsetDirty() {
+            this._dirty = false;
+        }
+        meshes() {
+            let all = new Array();
+            for (let ms of this._meshes.values()) {
+                const len = ms.length;
+                for (let i = 0; i < len; i++) {
+                    all.push(ms[i]);
+                }
+            }
+            return all;
+        }
+        add(graphicName, mesh) {
+            let ms = this._meshes.get(graphicName);
+            if (ms === undefined) {
+                ms = new Array();
+                this._meshes.set(graphicName, ms);
+            }
+            ms.push(mesh);
+            this._dirty = true;
+        }
+        /**
+         * If this batch contains meshes for the given graphic, removes them
+         * and marks this batch as dirty.
+         */
+        remove(graphicName) {
+            if (this._meshes.delete(graphicName)) {
+                this._dirty = true;
+            }
+        }
+    }
+
     /**
      * Static utility methods for manipulation WebGL2 constructs.
      */
@@ -2315,26 +2453,263 @@
         }
     }
 
-    class Drawing {
-        constructor(batches) {
-            this._batches = batches;
+    /**
+     * Characteristics of a WebGL attibute.
+     */
+    class Attribute {
+        constructor(name, size, type, extractor) {
+            this._name = name;
+            this._size = size;
+            this._type = type;
+            this._extractor = extractor;
         }
-        batches() {
-            return this._batches;
+        /**
+         * Name of the attribute.
+         */
+        name() {
+            return this._name;
+        }
+        /**
+         * Number of components per vertex attribute.
+         */
+        size() {
+            return this._size;
+        }
+        /**
+         * Data type of each component in the array.
+         */
+        type() {
+            return this._type;
+        }
+        /**
+         * Function to extract the data relevant to this
+         * attribute from a mesh.
+         */
+        extractor() {
+            return this._extractor;
         }
     }
     /**
-     * A scene contains all the drawings and required attributed to render them.
+     * All attributes used to render mesh.
      */
-    class Scene {
-        constructor(drawings, bgColour, sp, at) {
-            this._drawings = drawings;
+    class Attributes {
+        constructor(gl) {
+            this.atts = [
+                new Attribute('a_geo_pos', 3, gl.FLOAT, m => m.geos()),
+                new Attribute('a_prev_geo_pos', 3, gl.FLOAT, m => {
+                    const e = m.extrusion();
+                    return e === undefined ? [] : e.prevGeos();
+                }),
+                new Attribute('a_next_geo_pos', 3, gl.FLOAT, m => {
+                    const e = m.extrusion();
+                    return e === undefined ? [] : e.nextGeos();
+                }),
+                new Attribute('a_half_width', 1, gl.FLOAT, m => {
+                    const e = m.extrusion();
+                    return e === undefined ? [] : e.halfWidths();
+                }),
+                new Attribute('a_offset', 2, gl.FLOAT, m => m.offsets()),
+                new Attribute('a_rgba', 1, gl.UNSIGNED_INT, m => m.colours())
+            ];
+        }
+        enabled(mesh) {
+            let res = new Array();
+            if (mesh.geos().length > 0) {
+                res.push('a_geo_pos');
+            }
+            const extrusion = mesh.extrusion();
+            if (extrusion !== undefined) {
+                res.push('a_prev_geo_pos');
+                res.push('a_next_geo_pos');
+                res.push('a_half_width');
+            }
+            if (mesh.offsets().length > 0) {
+                res.push('a_offset');
+            }
+            res.push('a_rgba');
+            return res;
+        }
+        disabled(mesh) {
+            let res = new Array();
+            if (mesh.geos().length === 0) {
+                res.push('a_geo_pos');
+            }
+            const extrusion = mesh.extrusion();
+            if (extrusion === undefined) {
+                res.push('a_prev_geo_pos');
+                res.push('a_next_geo_pos');
+                res.push('a_half_width');
+            }
+            if (mesh.offsets().length === 0) {
+                res.push('a_offset');
+            }
+            return res;
+        }
+        /* count is geos if not empty, offsets otherwise. */
+        counter(mesh) {
+            return mesh.geos().length === 0 ? 'a_offset' : 'a_geo_pos';
+        }
+        named(attName) {
+            const att = this.atts.find(a => a.name() === attName);
+            if (att === undefined) {
+                throw new Error('Unknown attribute: ' + attName);
+            }
+            return att;
+        }
+    }
+    class GlBatch extends Batch {
+        constructor(enabled, disabled, counter, drawMode, gl, program, attributes) {
+            super();
+            this.enabled = enabled;
+            this._disabled = disabled;
+            this.counter = counter;
+            this._drawMode = drawMode;
+            this.gl = gl;
+            this.program = program;
+            this.attributes = attributes;
+            this.count = 0;
+            const vao = gl.createVertexArray();
+            if (vao === null) {
+                throw new Error('Could not create vertex array');
+            }
+            this.vao = vao;
+            this.buffers = new Map();
+            for (const attName of this.enabled) {
+                const attBuff = gl.createBuffer();
+                if (attBuff === null) {
+                    throw new Error('Could not create buffer for attribute: ' + attName);
+                }
+                this.buffers.set(attName, attBuff);
+            }
+        }
+        destroy() {
+            const gl = this.gl;
+            for (const att of this.buffers.entries()) {
+                gl.deleteBuffer(att[1]);
+            }
+            gl.deleteVertexArray(this.vao);
+        }
+        draw() {
+            const gl = this.gl;
+            gl.bindVertexArray(this.vao);
+            if (this.isDirty()) {
+                this.update(this.meshes());
+                this.unsetDirty();
+            }
+            /*
+             * disable the vertex array, the attribute will have
+             * the default value which the shader can handle.
+             */
+            const len = this._disabled.length;
+            for (let i = 0; i < len; i++) {
+                const attLocation = gl.getAttribLocation(this.program, this._disabled[i]);
+                gl.disableVertexAttribArray(attLocation);
+            }
+            const drawMode = this._drawMode == DrawMode.LINES
+                ? gl.LINES
+                : gl.TRIANGLES;
+            gl.drawArrays(drawMode, 0, this.count);
+        }
+        disabled() {
+            return this._disabled;
+        }
+        drawMode() {
+            return this._drawMode;
+        }
+        update(meshes) {
+            const gl = this.gl;
+            // gl.bindVertexArray(this.vao)
+            for (const att of this.buffers.entries()) {
+                const attName = att[0];
+                const a = this.attributes.named(attName);
+                const arr = a.type() == gl.UNSIGNED_INT
+                    ? this.mkUint32Array(meshes, a.extractor())
+                    : this.mkFloat32Array(meshes, a.extractor());
+                const attLocation = gl.getAttribLocation(this.program, attName);
+                gl.enableVertexAttribArray(attLocation);
+                gl.bindBuffer(gl.ARRAY_BUFFER, att[1]);
+                /* 0 = move forward size * sizeof(type) each iteration to get the next position */
+                const stride = 0;
+                /* start at the beginning of the buffer */
+                const offset = 0;
+                if (a.type() == gl.UNSIGNED_INT) {
+                    gl.vertexAttribIPointer(attLocation, a.size(), a.type(), stride, offset);
+                }
+                else {
+                    gl.vertexAttribPointer(attLocation, a.size(), a.type(), false, stride, offset);
+                }
+                gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW, 0);
+                if (attName === this.counter) {
+                    this.count = arr.length / a.size();
+                }
+            }
+            // gl.bindVertexArray(null);
+        }
+        mkFloat32Array(ms, extract) {
+            const len = ms.length;
+            let length = 0;
+            for (let i = 0; i < len; i++) {
+                length += extract(ms[i]).length;
+            }
+            let result = new Float32Array(length);
+            let offset = 0;
+            for (let i = 0; i < len; i++) {
+                const arr = extract(ms[i]);
+                result.set(arr, offset);
+                offset += arr.length;
+            }
+            return result;
+        }
+        mkUint32Array(ms, extract) {
+            const len = ms.length;
+            let length = 0;
+            for (let i = 0; i < len; i++) {
+                length += extract(ms[i]).length;
+            }
+            let result = new Uint32Array(length);
+            let offset = 0;
+            for (let i = 0; i < len; i++) {
+                const arr = extract(ms[i]);
+                result.set(arr, offset);
+                offset += arr.length;
+            }
+            return result;
+        }
+    }
+    class GlBatchFactory {
+        constructor(gl, program, attributes) {
+            this.gl = gl;
+            this.program = program;
+            this.attributes = attributes;
+        }
+        fits(mesh, batch) {
+            const od = this.attributes.disabled(mesh);
+            return mesh.drawMode() === batch.drawMode()
+                && GlBatchFactory.arraysEqual(od, batch.disabled());
+        }
+        createBatch(mesh) {
+            return new GlBatch(this.attributes.enabled(mesh), this.attributes.disabled(mesh), this.attributes.counter(mesh), mesh.drawMode(), this.gl, this.program, this.attributes);
+        }
+        static arraysEqual(a, b) {
+            if (a === b)
+                return true;
+            if (a.length != b.length)
+                return false;
+            for (let i = 0; i < a.length; ++i) {
+                if (a[i] !== b[i])
+                    return false;
+            }
+            return true;
+        }
+    }
+    /**
+     * Contextual information to draw meshes.
+     */
+    class DrawingContext {
+        constructor(bgColour, sp, at) {
             this._bgColour = bgColour;
             this._sp = sp;
             this._at = at;
-        }
-        drawings() {
-            return this._drawings;
         }
         bgColour() {
             return this._bgColour;
@@ -2353,61 +2728,30 @@
         constructor(gl, miterLimit) {
             this.gl = gl;
             this.miterLimit = miterLimit;
-            this.aGeoPos = new Attribute('a_geo_pos', 3, this.gl.FLOAT);
-            this.aPrevGeoPos = new Attribute('a_prev_geo_pos', 3, this.gl.FLOAT);
-            this.aNextGeoPos = new Attribute('a_next_geo_pos', 3, this.gl.FLOAT);
-            this.aHalfWidth = new Attribute('a_half_width', 1, this.gl.FLOAT);
-            this.aOffset = new Attribute('a_offset', 2, this.gl.FLOAT);
-            this.aRgba = new Attribute('a_rgba', 1, this.gl.UNSIGNED_INT);
-            const vertexShader = WebGL2.createShader(this.gl, this.gl.VERTEX_SHADER, Renderer.VERTEX_SHADER);
-            const fragmentShader = WebGL2.createShader(this.gl, this.gl.FRAGMENT_SHADER, Renderer.FRAGMENT_SHADER);
-            this.program = WebGL2.createProgram(this.gl, vertexShader, fragmentShader);
+            const vertexShader = WebGL2.createShader(gl, gl.VERTEX_SHADER, Renderer.VERTEX_SHADER);
+            const fragmentShader = WebGL2.createShader(gl, gl.FRAGMENT_SHADER, Renderer.FRAGMENT_SHADER);
+            this.program = WebGL2.createProgram(gl, vertexShader, fragmentShader);
+            const attributes = new Attributes(gl);
+            const factory = new GlBatchFactory(gl, this.program, attributes);
+            this.bm = new BatchManager(factory);
         }
-        createDrawing(meshes) {
-            const len = meshes.length;
-            if (len === 0) {
-                return new Drawing([]);
-            }
-            const attributes = [
-                this.aGeoPos,
-                this.aPrevGeoPos,
-                this.aNextGeoPos,
-                this.aHalfWidth,
-                this.aOffset,
-                this.aRgba
-            ];
-            let batches = new Array();
-            let mesh = meshes[0];
-            const state = new State(mesh, this.gl);
-            let batch = this.createBatch(state, attributes);
-            batches.push(batch);
-            this.fillBatch(batch, state, mesh);
-            for (let i = 1; i < len; i++) {
-                mesh = meshes[i];
-                // new batch if different drawing mode or any array changes from empty/non empty
-                const newBatch = state.update(mesh, this.gl);
-                if (newBatch) {
-                    batch = this.createBatch(state, attributes);
-                    batches.push(batch);
-                }
-                this.fillBatch(batch, state, mesh);
-            }
-            return new Drawing(batches.map(b => b.createGlArrays(this.gl, this.program)));
-        }
-        deleteDrawing(drawing) {
+        insert(graphic) {
             this.gl.useProgram(this.program);
-            drawing.batches().forEach(b => b.delete(this.gl));
+            this.bm.insert(graphic);
         }
-        draw(scene) {
-            const bgColour = scene.bgColour();
+        delete(graphicName) {
+            this.gl.useProgram(this.program);
+            this.bm.delete(graphicName);
+        }
+        draw(ctx) {
+            const bgColour = ctx.bgColour();
             this.gl.clearColor(bgColour.red(), bgColour.green(), bgColour.blue(), bgColour.alpha());
             this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
             this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-            const sp = scene.sp();
+            const sp = ctx.sp();
             const geoCentre = [sp.centre().x(), sp.centre().y(), sp.centre().z()];
             const geoToSys = sp.directRotationGl();
             const canvasToClipspace = CoordinateSystems.canvasToClipspace(this.gl.canvas.clientWidth, this.gl.canvas.clientHeight);
-            const drawings = scene.drawings();
             const earthRadiusMetres = sp.earthRadius();
             const gl = this.gl;
             const program = this.program;
@@ -2422,35 +2766,18 @@
             const geoToSysUniformLocation = gl.getUniformLocation(program, 'u_geo_to_system');
             gl.uniformMatrix3fv(geoToSysUniformLocation, false, geoToSys);
             const stereoToCanvasLocation = gl.getUniformLocation(program, 'u_stereo_to_canvas');
-            gl.uniformMatrix3fv(stereoToCanvasLocation, false, scene.at().glMatrix());
+            gl.uniformMatrix3fv(stereoToCanvasLocation, false, ctx.at().glMatrix());
             const canvasToClipspaceLocation = gl.getUniformLocation(program, 'u_canvas_to_clipspace');
             gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace);
-            for (let i = 0; i < drawings.length; i++) {
-                const bs = drawings[i].batches();
-                for (let j = 0; j < bs.length; j++) {
-                    bs[j].draw(this.gl);
+            const layers = this.bm.layers();
+            const ll = layers.length;
+            for (let i = 0; i < ll; i++) {
+                const layer = layers[i];
+                const bl = layer.length;
+                for (let j = 0; j < bl; j++) {
+                    layer[j].draw();
                 }
             }
-        }
-        createBatch(state, attributes) {
-            /* count is driven by geos if not empty, offsets otherwise. */
-            const attCount = state.emptyGeos ? this.aOffset : this.aGeoPos;
-            return new Batch(state.drawMode, attributes, attCount);
-        }
-        fillBatch(batch, state, mesh) {
-            if (!state.emptyGeos) {
-                batch.addToArray(this.aGeoPos, mesh.geos());
-            }
-            const extrusion = mesh.extrusion();
-            if (extrusion !== undefined) {
-                batch.addToArray(this.aPrevGeoPos, extrusion.prevGeos());
-                batch.addToArray(this.aNextGeoPos, extrusion.nextGeos());
-                batch.addToArray(this.aHalfWidth, extrusion.halfWidths());
-            }
-            if (!state.emptyOffsets) {
-                batch.addToArray(this.aOffset, mesh.offsets());
-            }
-            batch.addToArray(this.aRgba, mesh.colours());
         }
     }
     Renderer.VERTEX_SHADER = `#version 300 es
@@ -2624,245 +2951,6 @@ void main() {
   colour = v_colour;
 }
 `;
-    /**
-     * Characteristics of a WebGL attibute.
-     */
-    class Attribute {
-        constructor(name, size, type) {
-            this._name = name;
-            this._size = size;
-            this._type = type;
-        }
-        /**
-         * Name of the attribute.
-         */
-        name() {
-            return this._name;
-        }
-        /**
-         * Number of components per vertex attribute.
-         */
-        size() {
-            return this._size;
-        }
-        /**
-         * Data type of each component in the array.
-         */
-        type() {
-            return this._type;
-        }
-    }
-    /**
-     * VAO, VBOs and constant attributes to be rendered by one draw call.
-     */
-    class GlArrays {
-        constructor(drawMode, vao, buffers, constants, count) {
-            this.drawMode = drawMode;
-            this.vao = vao;
-            this.buffers = buffers;
-            this.constants = constants;
-            this.count = count;
-        }
-        draw(gl) {
-            gl.bindVertexArray(this.vao);
-            /*
-             * disable the vertex array, the attribute will have
-             * the default value which the shader can handle.
-             */
-            const len = this.constants.length;
-            for (let i = 0; i < len; i++) {
-                gl.disableVertexAttribArray(this.constants[i]);
-            }
-            gl.drawArrays(this.drawMode, 0, this.count);
-        }
-        delete(gl) {
-            const len = this.buffers.length;
-            for (let i = 0; i < len; i++) {
-                gl.deleteBuffer(this.buffers[i]);
-            }
-            gl.deleteVertexArray(this.vao);
-        }
-    }
-    /**
-     * Batch of meshes to be rendered with the same draw mode and enables VBOs.
-     */
-    class Batch {
-        constructor(drawMode, attributes, attributeCount) {
-            this.drawMode = drawMode;
-            this.attributes = attributes;
-            this.attributeCount = attributeCount;
-            this.arrays = new Map();
-        }
-        addToArray(attribute, data) {
-            let arr = this.arrays.get(attribute.name());
-            if (arr === undefined) {
-                arr = new Array();
-                this.arrays.set(attribute.name(), arr);
-            }
-            const len = data.length;
-            for (let i = 0; i < len; i++) {
-                arr.push(data[i]);
-            }
-        }
-        createGlArrays(gl, program) {
-            gl.useProgram(program);
-            const vao = gl.createVertexArray();
-            if (vao === null) {
-                throw new Error('Could not create vertex array');
-            }
-            gl.bindVertexArray(vao);
-            let buffers = new Array();
-            let constants = new Array();
-            for (const a of this.attributes) {
-                const attName = a.name();
-                const attLocation = gl.getAttribLocation(program, attName);
-                const arr = this.arrays.get(attName);
-                if (arr === undefined) {
-                    gl.disableVertexAttribArray(attLocation);
-                    constants.push(attLocation);
-                }
-                else {
-                    gl.enableVertexAttribArray(attLocation);
-                    const attBuff = gl.createBuffer();
-                    if (attBuff === null) {
-                        throw new Error('Could not create buffer for attribute: ' + attName);
-                    }
-                    buffers.push(attBuff);
-                    gl.bindBuffer(gl.ARRAY_BUFFER, attBuff);
-                    /* 0 = move forward size * sizeof(type) each iteration to get the next position */
-                    const stride = 0;
-                    /* start at the beginning of the buffer */
-                    const offset = 0;
-                    if (a.type() == gl.UNSIGNED_INT) {
-                        gl.vertexAttribIPointer(attLocation, a.size(), a.type(), stride, offset);
-                        gl.bufferData(gl.ARRAY_BUFFER, new Uint32Array(arr), gl.STATIC_DRAW, 0);
-                    }
-                    else {
-                        gl.vertexAttribPointer(attLocation, a.size(), a.type(), false, stride, offset);
-                        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arr), gl.STATIC_DRAW, 0);
-                    }
-                }
-            }
-            gl.bindVertexArray(null);
-            const refArray = this.arrays.get(this.attributeCount.name());
-            if (refArray === undefined) {
-                throw new Error('No array for attribute: ' + this.attributeCount.name());
-            }
-            const count = refArray.length / this.attributeCount.size();
-            return new GlArrays(this.drawMode, vao, buffers, constants, count);
-        }
-    }
-    /**
-     * Capture the state of the drawing to create batches.
-     */
-    class State {
-        constructor(m, gl) {
-            this.drawMode = State.drawMode(m, gl);
-            this.emptyGeos = State.isEmpty(m.geos());
-            this.emptyExtrusion = m.extrusion() === undefined;
-            this.emptyOffsets = State.isEmpty(m.offsets());
-        }
-        update(m, gl) {
-            const drawMode = State.drawMode(m, gl);
-            const emptyGeos = State.isEmpty(m.geos());
-            const emptyExtrusion = m.extrusion() === undefined;
-            const emptyOffsets = State.isEmpty(m.offsets());
-            const changed = this.drawMode !== drawMode
-                || this.emptyGeos !== emptyGeos
-                || this.emptyExtrusion !== emptyExtrusion
-                || this.emptyOffsets !== emptyOffsets;
-            if (changed) {
-                this.drawMode = drawMode;
-                this.emptyGeos = emptyGeos;
-                this.emptyExtrusion = emptyExtrusion;
-                this.emptyOffsets = emptyOffsets;
-            }
-            return changed;
-        }
-        static drawMode(m, gl) {
-            return m.drawMode() == DrawMode.LINES ? gl.LINES : gl.TRIANGLES;
-        }
-        static isEmpty(a) {
-            return a.length === 0;
-        }
-    }
-
-    /**
-     * Ad-hoc stack to order element uniquely identified by name
-     * according to their z-index. Within a layer (i.e. a z-index)
-     * elements are ordered as inserted.
-     */
-    class Stack {
-        constructor() {
-            this.stackOrder = new Map();
-            this.elements = new Map();
-        }
-        get(name) {
-            const zi = this.stackOrder.get(name);
-            if (zi === undefined) {
-                return undefined;
-            }
-            const layer = this.elements.get(zi);
-            if (layer === undefined) {
-                throw new Error('Unknown z-index: ' + zi);
-            }
-            const e = layer.get(name);
-            if (e === undefined) {
-                throw new Error('Unknown name: ' + name);
-            }
-            return e;
-        }
-        all() {
-            const sorted = Array.from(this.elements.entries()).sort();
-            const len = sorted.length;
-            let res = new Array();
-            for (let i = 0; i < len; i++) {
-                const ds = Array.from(sorted[i][1].values());
-                const dsl = ds.length;
-                for (let i = 0; i < dsl; i++) {
-                    res.push(ds[i]);
-                }
-            }
-            return res;
-        }
-        insert(name, zi, e) {
-            const czi = this.stackOrder.get(name);
-            if (czi === undefined) {
-                /* new element */
-                this.stackOrder.set(name, zi);
-            }
-            else if (czi !== zi) {
-                /* change of stack order */
-                this.delete(name);
-                this.stackOrder.set(name, zi);
-            }
-            this.add(name, zi, e);
-        }
-        delete(name) {
-            const zi = this.stackOrder.get(name);
-            if (zi === undefined) {
-                return;
-            }
-            const layer = this.elements.get(zi);
-            if (layer === undefined) {
-                throw new Error('Unknown z-index: ' + zi);
-            }
-            this.stackOrder.delete(name);
-            layer.delete(name);
-            if (layer.size === 0) {
-                this.elements.delete(zi);
-            }
-        }
-        add(name, zi, e) {
-            let layer = this.elements.get(zi);
-            if (layer === undefined) {
-                /* new layer */
-                layer = new Map();
-                this.elements.set(zi, layer);
-            }
-            layer.set(name, e);
-        }
-    }
 
     /**
      * Rendering options.
@@ -2907,7 +2995,6 @@ void main() {
             this.cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight);
             this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS);
             this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp);
-            this.stack = new Stack();
             this.renderer = new Renderer(gl, options.miterLimit());
             this._mesher = new Mesher(World.EARTH_RADIUS, options.circlePositions(), options.miterLimit());
         }
@@ -2917,8 +3004,8 @@ void main() {
          * This should be called within `requestAnimationFrame`
          */
         render() {
-            const scene = new Scene(this.stack.all(), this.bgColour, this.sp, this.at);
-            this.renderer.draw(scene);
+            const ctx = new DrawingContext(this.bgColour, this.sp, this.at);
+            this.renderer.draw(ctx);
         }
         /**
          * Sets the background colour (clear colour) of the WeGL rendering context.
@@ -2942,13 +3029,7 @@ void main() {
             const g = graphic instanceof Graphic
                 ? graphic.toRenderable(this._mesher)
                 : graphic;
-            const name = g.name();
-            let drawing = this.stack.get(name);
-            if (drawing !== undefined) {
-                this.renderer.deleteDrawing(drawing);
-            }
-            drawing = this.renderer.createDrawing(g.meshes());
-            this.stack.insert(name, g.zIndex(), drawing);
+            this.renderer.insert(g);
         }
         /**
          * Deletes the graphic associated to the given name.
@@ -2956,11 +3037,7 @@ void main() {
          * The graphic will be deleted at the next repaint.
          */
         delete(graphicName) {
-            let drawing = this.stack.get(name);
-            if (drawing !== undefined) {
-                this.stack.delete(graphicName);
-                this.renderer.deleteDrawing(drawing);
-            }
+            this.renderer.delete(graphicName);
         }
         pan(deltaX, deltaY) {
             // pixels to stereographic
@@ -3103,7 +3180,8 @@ void main() {
     function fetchStateVectors() {
         return __awaiter(this, void 0, void 0, function* () {
             // 'https://opensky-network.org/api/states/all'
-            const response = yield fetch('/assets/opensky-all.json');
+            // '/assets/opensky-all.json'
+            const response = yield fetch('/assets/opensky-eu.json');
             const data = yield response.json();
             for (const prop in data) {
                 if (prop === 'states') {
