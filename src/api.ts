@@ -21,4 +21,4 @@ export {
     GeoRelativePolyline,
 } from './shapes'
 export { Speed } from './speed'
-export { RenderingOptions, World, WorldDefinition } from './world'
+export { RenderingOptions, World, WorldDefinition } from './world0'
