@@ -2189,7 +2189,7 @@ var demo = (function (exports) {
      * A speed with a resolution of 1 millimetre per hour.
      */
 
-    class BatchManager {
+    class Batcher {
         constructor(factory) {
             this.factory = factory;
             this._batches = new Map();
@@ -2226,16 +2226,21 @@ var demo = (function (exports) {
             this.refresh();
         }
         /**
-         * All layers in order of drawing, each element of the array contains all
-         * the batches of the layer.
+         * Draws all the batches in order of z-index and insertion order.
          */
-        layers() {
+        draw() {
             const sorted = Array.from(this._batches.entries()).sort();
-            const res = new Array();
             for (const l of sorted) {
-                res.push(l[1]);
+                const batches = l[1];
+                const len = batches.length;
+                for (let i = 0; i < len; i++) {
+                    const batch = batches[i];
+                    if (batch.isDirty()) {
+                        batch.clean();
+                    }
+                    batch.draw();
+                }
             }
-            return res;
         }
         remove(graphicName) {
             for (let bs of this._batches.values()) {
@@ -2252,8 +2257,6 @@ var demo = (function (exports) {
                     if (b.isEmpty()) {
                         b.destroy();
                         bs.splice(i, 1);
-                        // } else if (b.isDirty()) {
-                        //     b.clean()
                     }
                 }
             }
@@ -2282,30 +2285,16 @@ var demo = (function (exports) {
         isEmpty() {
             return this._meshes.size === 0;
         }
-        // clean() {
-        //     let all = new Array<Mesh>()
-        //     for (let ms of this._meshes.values()) {
-        //         const len = ms.length
-        //         for (let i = 0; i < len; i++) {
-        //             all.push(ms[i])
-        //         }
-        //
-        //     }
-        //     this.update(all)
-        //     this._dirty = false
-        // }
-        unsetDirty() {
-            this._dirty = false;
-        }
-        meshes() {
-            let all = new Array();
+        clean() {
+            let meshes = new Array();
             for (let ms of this._meshes.values()) {
                 const len = ms.length;
                 for (let i = 0; i < len; i++) {
-                    all.push(ms[i]);
+                    meshes.push(ms[i]);
                 }
             }
-            return all;
+            this.update(meshes);
+            this._dirty = false;
         }
         add(graphicName, mesh) {
             let ms = this._meshes.get(graphicName);
@@ -2368,10 +2357,11 @@ var demo = (function (exports) {
      * Characteristics of a WebGL attibute.
      */
     class Attribute {
-        constructor(name, size, type, extractor) {
+        constructor(name, size, type, isDisabled, extractor) {
             this._name = name;
             this._size = size;
             this._type = type;
+            this._isDisabled = isDisabled;
             this._extractor = extractor;
         }
         /**
@@ -2393,6 +2383,12 @@ var demo = (function (exports) {
             return this._type;
         }
         /**
+         * Predicate to decide whether attribute is disabled for given mesh.
+         */
+        isDisabled() {
+            return this._isDisabled;
+        }
+        /**
          * Function to extract the data relevant to this
          * attribute from a mesh.
          */
@@ -2406,55 +2402,34 @@ var demo = (function (exports) {
     class Attributes {
         constructor(gl) {
             this.atts = [
-                new Attribute('a_geo_pos', 3, gl.FLOAT, m => m.geos()),
-                new Attribute('a_prev_geo_pos', 3, gl.FLOAT, m => {
+                new Attribute('a_geo_pos', 3, gl.FLOAT, m => m.geos().length === 0, m => m.geos()),
+                new Attribute('a_prev_geo_pos', 3, gl.FLOAT, m => m.extrusion() === undefined, m => {
                     const e = m.extrusion();
                     return e === undefined ? [] : e.prevGeos();
                 }),
-                new Attribute('a_next_geo_pos', 3, gl.FLOAT, m => {
+                new Attribute('a_next_geo_pos', 3, gl.FLOAT, m => m.extrusion() === undefined, m => {
                     const e = m.extrusion();
                     return e === undefined ? [] : e.nextGeos();
                 }),
-                new Attribute('a_half_width', 1, gl.FLOAT, m => {
+                new Attribute('a_half_width', 1, gl.FLOAT, m => m.extrusion() === undefined, m => {
                     const e = m.extrusion();
                     return e === undefined ? [] : e.halfWidths();
                 }),
-                new Attribute('a_offset', 2, gl.FLOAT, m => m.offsets()),
-                new Attribute('a_rgba', 1, gl.UNSIGNED_INT, m => m.colours())
+                new Attribute('a_offset', 2, gl.FLOAT, m => m.offsets().length === 0, m => m.offsets()),
+                new Attribute('a_rgba', 1, gl.UNSIGNED_INT, m => m.colours().length === 0, m => m.colours())
             ];
         }
-        enabled(mesh) {
-            let res = new Array();
-            if (mesh.geos().length > 0) {
-                res.push('a_geo_pos');
-            }
-            const extrusion = mesh.extrusion();
-            if (extrusion !== undefined) {
-                res.push('a_prev_geo_pos');
-                res.push('a_next_geo_pos');
-                res.push('a_half_width');
-            }
-            if (mesh.offsets().length > 0) {
-                res.push('a_offset');
-            }
-            res.push('a_rgba');
-            return res;
-        }
+        /**
+         * All disabled attributes for given mesh.
+         */
         disabled(mesh) {
-            let res = new Array();
-            if (mesh.geos().length === 0) {
-                res.push('a_geo_pos');
-            }
-            const extrusion = mesh.extrusion();
-            if (extrusion === undefined) {
-                res.push('a_prev_geo_pos');
-                res.push('a_next_geo_pos');
-                res.push('a_half_width');
-            }
-            if (mesh.offsets().length === 0) {
-                res.push('a_offset');
-            }
-            return res;
+            return this.atts.filter(a => a.isDisabled()(mesh)).map(a => a.name());
+        }
+        /**
+         * All disabled attributes for given mesh.
+         */
+        enabled(mesh) {
+            return this.atts.filter(a => !a.isDisabled()(mesh)).map(a => a.name());
         }
         /* count is geos if not empty, offsets otherwise. */
         counter(mesh) {
@@ -2471,9 +2446,9 @@ var demo = (function (exports) {
     class GlBatch extends Batch {
         constructor(enabled, disabled, counter, drawMode, gl, program, attributes) {
             super();
-            this.enabled = enabled;
+            this._enabled = enabled;
             this._disabled = disabled;
-            this.counter = counter;
+            this._counter = counter;
             this._drawMode = drawMode;
             this.gl = gl;
             this.program = program;
@@ -2485,7 +2460,7 @@ var demo = (function (exports) {
             }
             this.vao = vao;
             this.buffers = new Map();
-            for (const attName of this.enabled) {
+            for (const attName of this._enabled) {
                 const attBuff = gl.createBuffer();
                 if (attBuff === null) {
                     throw new Error('Could not create buffer for attribute: ' + attName);
@@ -2503,10 +2478,6 @@ var demo = (function (exports) {
         draw() {
             const gl = this.gl;
             gl.bindVertexArray(this.vao);
-            if (this.isDirty()) {
-                this.update(this.meshes());
-                this.unsetDirty();
-            }
             /*
              * disable the vertex array, the attribute will have
              * the default value which the shader can handle.
@@ -2529,13 +2500,13 @@ var demo = (function (exports) {
         }
         update(meshes) {
             const gl = this.gl;
-            // gl.bindVertexArray(this.vao)
+            gl.bindVertexArray(this.vao);
             for (const att of this.buffers.entries()) {
                 const attName = att[0];
                 const a = this.attributes.named(attName);
                 const arr = a.type() == gl.UNSIGNED_INT
-                    ? this.mkUint32Array(meshes, a.extractor())
-                    : this.mkFloat32Array(meshes, a.extractor());
+                    ? this.mkArray(meshes, (l) => new Uint32Array(l), a.extractor())
+                    : this.mkArray(meshes, (l) => new Float32Array(l), a.extractor());
                 const attLocation = gl.getAttribLocation(this.program, attName);
                 gl.enableVertexAttribArray(attLocation);
                 gl.bindBuffer(gl.ARRAY_BUFFER, att[1]);
@@ -2550,37 +2521,22 @@ var demo = (function (exports) {
                     gl.vertexAttribPointer(attLocation, a.size(), a.type(), false, stride, offset);
                 }
                 gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW, 0);
-                if (attName === this.counter) {
+                if (attName === this._counter) {
                     this.count = arr.length / a.size();
                 }
             }
-            // gl.bindVertexArray(null);
+            gl.bindVertexArray(null);
         }
-        mkFloat32Array(ms, extract) {
-            const len = ms.length;
+        mkArray(meshes, ctor, extract) {
             let length = 0;
+            const len = meshes.length;
             for (let i = 0; i < len; i++) {
-                length += extract(ms[i]).length;
+                length += extract(meshes[i]).length;
             }
-            let result = new Float32Array(length);
+            let result = ctor(length);
             let offset = 0;
             for (let i = 0; i < len; i++) {
-                const arr = extract(ms[i]);
-                result.set(arr, offset);
-                offset += arr.length;
-            }
-            return result;
-        }
-        mkUint32Array(ms, extract) {
-            const len = ms.length;
-            let length = 0;
-            for (let i = 0; i < len; i++) {
-                length += extract(ms[i]).length;
-            }
-            let result = new Uint32Array(length);
-            let offset = 0;
-            for (let i = 0; i < len; i++) {
-                const arr = extract(ms[i]);
+                const arr = extract(meshes[i]);
                 result.set(arr, offset);
                 offset += arr.length;
             }
@@ -2644,15 +2600,15 @@ var demo = (function (exports) {
             this.program = WebGL2.createProgram(gl, vertexShader, fragmentShader);
             const attributes = new Attributes(gl);
             const factory = new GlBatchFactory(gl, this.program, attributes);
-            this.bm = new BatchManager(factory);
+            this.batcher = new Batcher(factory);
         }
         insert(graphic) {
             this.gl.useProgram(this.program);
-            this.bm.insert(graphic);
+            this.batcher.insert(graphic);
         }
         delete(graphicName) {
             this.gl.useProgram(this.program);
-            this.bm.delete(graphicName);
+            this.batcher.delete(graphicName);
         }
         draw(ctx) {
             const bgColour = ctx.bgColour();
@@ -2680,15 +2636,7 @@ var demo = (function (exports) {
             gl.uniformMatrix3fv(stereoToCanvasLocation, false, ctx.at().glMatrix());
             const canvasToClipspaceLocation = gl.getUniformLocation(program, 'u_canvas_to_clipspace');
             gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace);
-            const layers = this.bm.layers();
-            const ll = layers.length;
-            for (let i = 0; i < ll; i++) {
-                const layer = layers[i];
-                const bl = layer.length;
-                for (let j = 0; j < bl; j++) {
-                    layer[j].draw();
-                }
-            }
+            this.batcher.draw();
         }
     }
     Renderer.VERTEX_SHADER = `#version 300 es
