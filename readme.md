@@ -15,9 +15,10 @@ npm run test
 
 ## Demo
 
-[click me!](https://ofmooseandmen.github.io/twinf)
+[click me!][demo-url]
 
-Use arrow keys to pan and +/- to zoom in/out
+Allow some time for the coastline and tracks to be fetched, then use arrow
+keys to pan and +/- to zoom in/out. Tracks are fetched every 10 seconds from [opensky][opensky-url].
 
 ## Concepts
 
@@ -36,3 +37,5 @@ The following transformations are applied to shapes:
 [npm-url]: https://www.npmjs.com/package/twinf
 [license]: https://img.shields.io/badge/license-MIT-lightgray.svg
 [license-url]: https://opensource.org/licenses/MIT
+[demo-url]: https://ofmooseandmen.github.io/twinf
+[opensky-url]: https://opensky-network.org
