@@ -68,31 +68,27 @@ ctx.onmessage = eh.handle
 
 async function computeCoastline(mesher: T.Mesher): Promise<T.RenderableGraphic> {
 
-    const response = await fetch('/assets/coastline.json');
-    // const data = await response.json();
-    const data = await response.text();
-
-    console.log(data)
-    // const length = data.features.length
-    // let meshes = new Array<T.Mesh>()
-    // for (let i = 0; i < length; i++) {
-    //     const feature = data.features[i]
-    //     if (feature.properties.featurecla == 'Coastline') {
-    //         const coordinates = feature.geometry.coordinates
-    //         const nb_coordinates = coordinates.length
-    //         const positions = new Array<T.LatLong>()
-    //         for (let j = 0; j < nb_coordinates; j++) {
-    //             const coord = coordinates[j]
-    //             // Be careful : longitude first, then latitude in geoJSON files
-    //             const point = T.LatLong.ofDegrees(coord[1], coord[0])
-    //             positions.push(point)
-    //         }
-    //         const shape = new T.GeoPolyline(positions, new T.Stroke(T.Colour.DIMGRAY, 1))
-    //         meshes = meshes.concat(mesher.meshShape(shape))
-    //     }
-    // }
-    // return new T.RenderableGraphic('coastlines', -1, meshes)
-    return new T.RenderableGraphic('coastlines', -1, [])
+    const response = await fetch('https://ofmooseandmen.github.io/twinf/assets/coastline.json');
+    const data = await response.json();
+    const length = data.features.length
+    let meshes = new Array<T.Mesh>()
+    for (let i = 0; i < length; i++) {
+        const feature = data.features[i]
+        if (feature.properties.featurecla == 'Coastline') {
+            const coordinates = feature.geometry.coordinates
+            const nb_coordinates = coordinates.length
+            const positions = new Array<T.LatLong>()
+            for (let j = 0; j < nb_coordinates; j++) {
+                const coord = coordinates[j]
+                // Be careful : longitude first, then latitude in geoJSON files
+                const point = T.LatLong.ofDegrees(coord[1], coord[0])
+                positions.push(point)
+            }
+            const shape = new T.GeoPolyline(positions, new T.Stroke(T.Colour.DIMGRAY, 1))
+            meshes = meshes.concat(mesher.meshShape(shape))
+        }
+    }
+    return new T.RenderableGraphic('coastlines', -1, meshes)
 }
 
 
