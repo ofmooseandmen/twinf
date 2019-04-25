@@ -1,5 +1,29 @@
-var demo = (function (exports) {
+(function () {
     'use strict';
+
+    /*! *****************************************************************************
+    Copyright (c) Microsoft Corporation. All rights reserved.
+    Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+    this file except in compliance with the License. You may obtain a copy of the
+    License at http://www.apache.org/licenses/LICENSE-2.0
+
+    THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+    WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+    MERCHANTABLITY OR NON-INFRINGEMENT.
+
+    See the Apache Version 2.0 License for specific language governing permissions
+    and limitations under the License.
+    ***************************************************************************** */
+
+    function __awaiter(thisArg, _arguments, P, generator) {
+        return new (P || (P = Promise))(function (resolve, reject) {
+            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+            function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+            step((generator = generator.apply(thisArg, _arguments || [])).next());
+        });
+    }
 
     /**
      * An angle with a resolution of a milliseconds of a degree.
@@ -19,6 +43,12 @@ var demo = (function (exports) {
             return Angle.ofDegrees(degs);
         }
         /**
+         * Angle from object literal.
+         */
+        static fromLiteral(data) {
+            return new Angle(data['milliseconds']);
+        }
+        /**
          * Computes the central angle from the given arc length and given radius.gle
          */
         static central(l, r) {
@@ -33,6 +63,13 @@ var demo = (function (exports) {
         static atan2(y, x) {
             return Angle.ofRadians(Math.atan2(y, x));
         }
+        /**
+         * Normalises the given angle to [0, n].
+         */
+        static normalise(a, n) {
+            const degs = (a.degrees() + n.degrees()) % 360.0;
+            return Angle.ofDegrees(degs);
+        }
         degrees() {
             return this.milliseconds / 3600000.0;
         }
@@ -40,16 +77,15 @@ var demo = (function (exports) {
             return this.degrees() * Math.PI / 180.0;
         }
     }
+    Angle.ZERO = Angle.ofDegrees(0);
+    Angle.HALF_CIRCLE = Angle.ofDegrees(180);
+    Angle.FULL_CIRCLE = Angle.ofDegrees(360);
 
     /**
      * A colour.
      */
     class Colour {
-        constructor(red, green, blue, alpha) {
-            let rgba = Colour.clamp(red, 255);
-            rgba = (rgba << 8) + Colour.clamp(green, 255);
-            rgba = (rgba << 8) + Colour.clamp(blue, 255);
-            rgba = (rgba << 8) + Colour.clamp(alpha * 100, 100);
+        constructor(rgba) {
             this._rgba = rgba;
         }
         /**
@@ -63,7 +99,11 @@ var demo = (function (exports) {
          * Alpha value is converted to an interger percentage (so two decimal places is enough, the rest is discarded).
          */
         static rgba(red, green, blue, alpha) {
-            return new Colour(red, green, blue, alpha);
+            let rgba = Colour.clamp(red, 255);
+            rgba = (rgba << 8) + Colour.clamp(green, 255);
+            rgba = (rgba << 8) + Colour.clamp(blue, 255);
+            rgba = (rgba << 8) + Colour.clamp(alpha * 100, 100);
+            return new Colour(rgba);
         }
         /**
          * Colour from hex string - e.g. #ff1540. Colour will be fully opaque.
@@ -76,12 +116,12 @@ var demo = (function (exports) {
          * Alpha value is converted to an interger percentage (so two decimal places is enough, the rest is discarded).
          */
         static hexa(hex, alpha) {
-            if (!hex.startsWith("#")) {
-                throw new Error("Invalid hex: " + hex);
+            if (!hex.startsWith('#')) {
+                throw new Error('Invalid hex: ' + hex);
             }
             const c = hex.substring(1);
             if (c.length !== 6) {
-                throw new Error("Invalid hex: " + hex);
+                throw new Error('Invalid hex: ' + hex);
             }
             const r = parseInt(c.substring(0, 2), 16);
             const g = parseInt(c.substring(2, 4), 16);
@@ -114,6 +154,12 @@ var demo = (function (exports) {
             const g = Math.round(f(8) * 255.0);
             const b = Math.round(f(4) * 255.0);
             return Colour.rgba(r, g, b, alpha);
+        }
+        /**
+         * Colour from object literal.
+         */
+        static fromLiteral(data) {
+            return new Colour(data['_rgba']);
         }
         /**
          * Values of RGBA packed into an integer.
@@ -150,308 +196,308 @@ var demo = (function (exports) {
         }
     }
     /** the colour transparent with an ARGB value of #00000000. */
-    Colour.TRANSPARENT = new Colour(0, 0, 0, 0);
+    Colour.TRANSPARENT = Colour.rgba(0, 0, 0, 0);
     /** the colour aliceblue with an RGB value of #F0F8FF. */
-    Colour.ALICEBLUE = new Colour(240, 248, 255, 1.0);
+    Colour.ALICEBLUE = Colour.rgba(240, 248, 255, 1.0);
     /** the colour antiquewhite with an RGB value of #FAEBD7. */
-    Colour.ANTIQUEWHITE = new Colour(250, 235, 215, 1.0);
+    Colour.ANTIQUEWHITE = Colour.rgba(250, 235, 215, 1.0);
     /** the colour aqua with an RGB value of #00FFFF. */
-    Colour.AQUA = new Colour(0, 255, 255, 1.0);
+    Colour.AQUA = Colour.rgba(0, 255, 255, 1.0);
     /** the colour aquamarine with an RGB value of #7FFFD4. */
-    Colour.AQUAMARINE = new Colour(127, 255, 212, 1.0);
+    Colour.AQUAMARINE = Colour.rgba(127, 255, 212, 1.0);
     /** the colour azure with an RGB value of #F0FFFF. */
-    Colour.AZURE = new Colour(240, 255, 255, 1.0);
+    Colour.AZURE = Colour.rgba(240, 255, 255, 1.0);
     /** the colour beige with an RGB value of #F5F5DC. */
-    Colour.BEIGE = new Colour(245, 245, 220, 1.0);
+    Colour.BEIGE = Colour.rgba(245, 245, 220, 1.0);
     /** the colour bisque with an RGB value of #FFE4C4. */
-    Colour.BISQUE = new Colour(255, 228, 196, 1.0);
+    Colour.BISQUE = Colour.rgba(255, 228, 196, 1.0);
     /** the colour black with an RGB value of #000000. */
-    Colour.BLACK = new Colour(0, 0, 0, 1.0);
+    Colour.BLACK = Colour.rgba(0, 0, 0, 1.0);
     /** the colour blanchedalmond with an RGB value of #FFEBCD. */
-    Colour.BLANCHEDALMOND = new Colour(255, 235, 205, 1.0);
+    Colour.BLANCHEDALMOND = Colour.rgba(255, 235, 205, 1.0);
     /** the colour blue with an RGB value of #0000FF. */
-    Colour.BLUE = new Colour(0, 0, 255, 1.0);
+    Colour.BLUE = Colour.rgba(0, 0, 255, 1.0);
     /** the colour blueviolet with an RGB value of #8A2BE2. */
-    Colour.BLUEVIOLET = new Colour(138, 43, 226, 1.0);
+    Colour.BLUEVIOLET = Colour.rgba(138, 43, 226, 1.0);
     /** the colour brown with an RGB value of #A52A2A. */
-    Colour.BROWN = new Colour(165, 42, 42, 1.0);
+    Colour.BROWN = Colour.rgba(165, 42, 42, 1.0);
     /** the colour burlywood with an RGB value of #DEB887. */
-    Colour.BURLYWOOD = new Colour(222, 184, 135, 1.0);
+    Colour.BURLYWOOD = Colour.rgba(222, 184, 135, 1.0);
     /** the colour cadetblue with an RGB value of #5F9EA0. */
-    Colour.CADETBLUE = new Colour(95, 158, 160, 1.0);
+    Colour.CADETBLUE = Colour.rgba(95, 158, 160, 1.0);
     /** the colour chartreuse with an RGB value of #7FFF00. */
-    Colour.CHARTREUSE = new Colour(127, 255, 0, 1.0);
+    Colour.CHARTREUSE = Colour.rgba(127, 255, 0, 1.0);
     /** the colour chocolate with an RGB value of #D2691E. */
-    Colour.CHOCOLATE = new Colour(210, 105, 30, 1.0);
+    Colour.CHOCOLATE = Colour.rgba(210, 105, 30, 1.0);
     /** the colour coral with an RGB value of #FF7F50. */
-    Colour.CORAL = new Colour(255, 127, 80, 1.0);
+    Colour.CORAL = Colour.rgba(255, 127, 80, 1.0);
     /** the colour cornflowerblue with an RGB value of #6495ED. */
-    Colour.CORNFLOWERBLUE = new Colour(100, 149, 237, 1.0);
+    Colour.CORNFLOWERBLUE = Colour.rgba(100, 149, 237, 1.0);
     /** the colour cornsilk with an RGB value of #FFF8DC. */
-    Colour.CORNSILK = new Colour(255, 248, 220, 1.0);
+    Colour.CORNSILK = Colour.rgba(255, 248, 220, 1.0);
     /** the colour crimson with an RGB value of #DC143C. */
-    Colour.CRIMSON = new Colour(220, 20, 60, 1.0);
+    Colour.CRIMSON = Colour.rgba(220, 20, 60, 1.0);
     /** the colour cyan with an RGB value of #00FFFF. */
-    Colour.CYAN = new Colour(0, 255, 255, 1.0);
+    Colour.CYAN = Colour.rgba(0, 255, 255, 1.0);
     /** the colour darkblue with an RGB value of #00008B. */
-    Colour.DARKBLUE = new Colour(0, 0, 139, 1.0);
+    Colour.DARKBLUE = Colour.rgba(0, 0, 139, 1.0);
     /** the colour darkcyan with an RGB value of #008B8B. */
-    Colour.DARKCYAN = new Colour(0, 139, 139, 1.0);
+    Colour.DARKCYAN = Colour.rgba(0, 139, 139, 1.0);
     /** the colour darkgoldenrod with an RGB value of #B8860B. */
-    Colour.DARKGOLDENROD = new Colour(184, 134, 11, 1.0);
+    Colour.DARKGOLDENROD = Colour.rgba(184, 134, 11, 1.0);
     /** the colour darkgray with an RGB value of #A9A9A9. */
-    Colour.DARKGRAY = new Colour(169, 169, 169, 1.0);
+    Colour.DARKGRAY = Colour.rgba(169, 169, 169, 1.0);
     /** the colour darkgreen with an RGB value of #006400. */
-    Colour.DARKGREEN = new Colour(0, 100, 0, 1.0);
+    Colour.DARKGREEN = Colour.rgba(0, 100, 0, 1.0);
     /** the colour darkgrey with an RGB value of #A9A9A9. */
-    Colour.DARKGREY = new Colour(169, 169, 169, 1.0);
+    Colour.DARKGREY = Colour.rgba(169, 169, 169, 1.0);
     /** the colour darkkhaki with an RGB value of #BDB76B. */
-    Colour.DARKKHAKI = new Colour(189, 183, 107, 1.0);
+    Colour.DARKKHAKI = Colour.rgba(189, 183, 107, 1.0);
     /** the colour darkmagenta with an RGB value of #8B008B. */
-    Colour.DARKMAGENTA = new Colour(139, 0, 139, 1.0);
+    Colour.DARKMAGENTA = Colour.rgba(139, 0, 139, 1.0);
     /** the colour darkolivegreen with an RGB value of #556B2F. */
-    Colour.DARKOLIVEGREEN = new Colour(85, 107, 47, 1.0);
+    Colour.DARKOLIVEGREEN = Colour.rgba(85, 107, 47, 1.0);
     /** the colour darkorange with an RGB value of #FF8C00. */
-    Colour.DARKORANGE = new Colour(255, 140, 0, 1.0);
+    Colour.DARKORANGE = Colour.rgba(255, 140, 0, 1.0);
     /** the colour darkorchid with an RGB value of #9932CC. */
-    Colour.DARKORCHID = new Colour(153, 50, 204, 1.0);
+    Colour.DARKORCHID = Colour.rgba(153, 50, 204, 1.0);
     /** the colour darkred with an RGB value of #8B0000. */
-    Colour.DARKRED = new Colour(139, 0, 0, 1.0);
+    Colour.DARKRED = Colour.rgba(139, 0, 0, 1.0);
     /** the colour darksalmon with an RGB value of #E9967A. */
-    Colour.DARKSALMON = new Colour(233, 150, 122, 1.0);
+    Colour.DARKSALMON = Colour.rgba(233, 150, 122, 1.0);
     /** the colour darkseagreen with an RGB value of #8FBC8F. */
-    Colour.DARKSEAGREEN = new Colour(143, 188, 143, 1.0);
+    Colour.DARKSEAGREEN = Colour.rgba(143, 188, 143, 1.0);
     /** the colour darkslateblue with an RGB value of #483D8B. */
-    Colour.DARKSLATEBLUE = new Colour(72, 61, 139, 1.0);
+    Colour.DARKSLATEBLUE = Colour.rgba(72, 61, 139, 1.0);
     /** the colour darkslategray with an RGB value of #2F4F4F. */
-    Colour.DARKSLATEGRAY = new Colour(47, 79, 79, 1.0);
+    Colour.DARKSLATEGRAY = Colour.rgba(47, 79, 79, 1.0);
     /** the colour darkslategrey with an RGB value of #2F4F4F. */
-    Colour.DARKSLATEGREY = new Colour(47, 79, 79, 1.0);
+    Colour.DARKSLATEGREY = Colour.rgba(47, 79, 79, 1.0);
     /** the colour darkturquoise with an RGB value of #00CED1. */
-    Colour.DARKTURQUOISE = new Colour(0, 206, 209, 1.0);
+    Colour.DARKTURQUOISE = Colour.rgba(0, 206, 209, 1.0);
     /** the colour darkviolet with an RGB value of #9400D3. */
-    Colour.DARKVIOLET = new Colour(148, 0, 211, 1.0);
+    Colour.DARKVIOLET = Colour.rgba(148, 0, 211, 1.0);
     /** the colour deeppink with an RGB value of #FF1493. */
-    Colour.DEEPPINK = new Colour(255, 20, 147, 1.0);
+    Colour.DEEPPINK = Colour.rgba(255, 20, 147, 1.0);
     /** the colour deepskyblue with an RGB value of #00BFFF. */
-    Colour.DEEPSKYBLUE = new Colour(0, 191, 255, 1.0);
+    Colour.DEEPSKYBLUE = Colour.rgba(0, 191, 255, 1.0);
     /** the colour dimgray with an RGB value of #696969. */
-    Colour.DIMGRAY = new Colour(105, 105, 105, 1.0);
+    Colour.DIMGRAY = Colour.rgba(105, 105, 105, 1.0);
     /** the colour dimgrey with an RGB value of #696969. */
-    Colour.DIMGREY = new Colour(105, 105, 105, 1.0);
+    Colour.DIMGREY = Colour.rgba(105, 105, 105, 1.0);
     /** the colour dodgerblue with an RGB value of #1E90FF. */
-    Colour.DODGERBLUE = new Colour(30, 144, 255, 1.0);
+    Colour.DODGERBLUE = Colour.rgba(30, 144, 255, 1.0);
     /** the colour firebrick with an RGB value of #B22222. */
-    Colour.FIREBRICK = new Colour(178, 34, 34, 1.0);
+    Colour.FIREBRICK = Colour.rgba(178, 34, 34, 1.0);
     /** the colour floralwhite with an RGB value of #FFFAF0. */
-    Colour.FLORALWHITE = new Colour(255, 250, 240, 1.0);
+    Colour.FLORALWHITE = Colour.rgba(255, 250, 240, 1.0);
     /** the colour forestgreen with an RGB value of #228B22. */
-    Colour.FORESTGREEN = new Colour(34, 139, 34, 1.0);
+    Colour.FORESTGREEN = Colour.rgba(34, 139, 34, 1.0);
     /** the colour fuchsia with an RGB value of #FF00FF. */
-    Colour.FUCHSIA = new Colour(255, 0, 255, 1.0);
+    Colour.FUCHSIA = Colour.rgba(255, 0, 255, 1.0);
     /** the colour gainsboro with an RGB value of #DCDCDC. */
-    Colour.GAINSBORO = new Colour(220, 220, 220, 1.0);
+    Colour.GAINSBORO = Colour.rgba(220, 220, 220, 1.0);
     /** the colour ghostwhite with an RGB value of #F8F8FF. */
-    Colour.GHOSTWHITE = new Colour(248, 248, 255, 1.0);
+    Colour.GHOSTWHITE = Colour.rgba(248, 248, 255, 1.0);
     /** the colour gold with an RGB value of #FFD700. */
-    Colour.GOLD = new Colour(255, 215, 0, 1.0);
+    Colour.GOLD = Colour.rgba(255, 215, 0, 1.0);
     /** the colour goldenrod with an RGB value of #DAA520. */
-    Colour.GOLDENROD = new Colour(218, 165, 32, 1.0);
+    Colour.GOLDENROD = Colour.rgba(218, 165, 32, 1.0);
     /** the colour gray with an RGB value of #808080. */
-    Colour.GRAY = new Colour(128, 128, 128, 1.0);
+    Colour.GRAY = Colour.rgba(128, 128, 128, 1.0);
     /** the colour green with an RGB value of #008000. */
-    Colour.GREEN = new Colour(0, 128, 0, 1.0);
+    Colour.GREEN = Colour.rgba(0, 128, 0, 1.0);
     /** the colour greenyellow with an RGB value of #ADFF2F. */
-    Colour.GREENYELLOW = new Colour(173, 255, 47, 1.0);
+    Colour.GREENYELLOW = Colour.rgba(173, 255, 47, 1.0);
     /** the colour grey with an RGB value of #808080. */
-    Colour.GREY = new Colour(128, 128, 128, 1.0);
+    Colour.GREY = Colour.rgba(128, 128, 128, 1.0);
     /** the colour honeydew with an RGB value of #F0FFF0. */
-    Colour.HONEYDEW = new Colour(240, 255, 240, 1.0);
+    Colour.HONEYDEW = Colour.rgba(240, 255, 240, 1.0);
     /** the colour hotpink with an RGB value of #FF69B4. */
-    Colour.HOTPINK = new Colour(255, 105, 180, 1.0);
+    Colour.HOTPINK = Colour.rgba(255, 105, 180, 1.0);
     /** the colour indianred with an RGB value of #CD5C5C. */
-    Colour.INDIANRED = new Colour(205, 92, 92, 1.0);
+    Colour.INDIANRED = Colour.rgba(205, 92, 92, 1.0);
     /** the colour indigo with an RGB value of #4B0082. */
-    Colour.INDIGO = new Colour(75, 0, 130, 1.0);
+    Colour.INDIGO = Colour.rgba(75, 0, 130, 1.0);
     /** the colour ivory with an RGB value of #FFFFF0. */
-    Colour.IVORY = new Colour(255, 255, 240, 1.0);
+    Colour.IVORY = Colour.rgba(255, 255, 240, 1.0);
     /** the colour khaki with an RGB value of #F0E68C. */
-    Colour.KHAKI = new Colour(240, 230, 140, 1.0);
+    Colour.KHAKI = Colour.rgba(240, 230, 140, 1.0);
     /** the colour lavender with an RGB value of #E6E6FA. */
-    Colour.LAVENDER = new Colour(230, 230, 250, 1.0);
+    Colour.LAVENDER = Colour.rgba(230, 230, 250, 1.0);
     /** the colour lavenderblush with an RGB value of #FFF0F5. */
-    Colour.LAVENDERBLUSH = new Colour(255, 240, 245, 1.0);
+    Colour.LAVENDERBLUSH = Colour.rgba(255, 240, 245, 1.0);
     /** the colour lawngreen with an RGB value of #7CFC00. */
-    Colour.LAWNGREEN = new Colour(124, 252, 0, 1.0);
+    Colour.LAWNGREEN = Colour.rgba(124, 252, 0, 1.0);
     /** the colour lemonchiffon with an RGB value of #FFFACD. */
-    Colour.LEMONCHIFFON = new Colour(255, 250, 205, 1.0);
+    Colour.LEMONCHIFFON = Colour.rgba(255, 250, 205, 1.0);
     /** the colour lightblue with an RGB value of #ADD8E6. */
-    Colour.LIGHTBLUE = new Colour(173, 216, 230, 1.0);
+    Colour.LIGHTBLUE = Colour.rgba(173, 216, 230, 1.0);
     /** the colour lightcoral with an RGB value of #F08080. */
-    Colour.LIGHTCORAL = new Colour(240, 128, 128, 1.0);
+    Colour.LIGHTCORAL = Colour.rgba(240, 128, 128, 1.0);
     /** the colour lightcyan with an RGB value of #E0FFFF. */
-    Colour.LIGHTCYAN = new Colour(224, 255, 255, 1.0);
+    Colour.LIGHTCYAN = Colour.rgba(224, 255, 255, 1.0);
     /** the colour lightgoldenrodyellow with an RGB value of #FAFAD2. */
-    Colour.LIGHTGOLDENRODYELLOW = new Colour(250, 250, 210, 1.0);
+    Colour.LIGHTGOLDENRODYELLOW = Colour.rgba(250, 250, 210, 1.0);
     /** the colour lightgray with an RGB value of #D3D3D3. */
-    Colour.LIGHTGRAY = new Colour(211, 211, 211, 1.0);
+    Colour.LIGHTGRAY = Colour.rgba(211, 211, 211, 1.0);
     /** the colour lightgreen with an RGB value of #90EE90. */
-    Colour.LIGHTGREEN = new Colour(144, 238, 144, 1.0);
+    Colour.LIGHTGREEN = Colour.rgba(144, 238, 144, 1.0);
     /** the colour lightgrey with an RGB value of #D3D3D3. */
-    Colour.LIGHTGREY = new Colour(211, 211, 211, 1.0);
+    Colour.LIGHTGREY = Colour.rgba(211, 211, 211, 1.0);
     /** the colour lightpink with an RGB value of #FFB6C1. */
-    Colour.LIGHTPINK = new Colour(255, 182, 193, 1.0);
+    Colour.LIGHTPINK = Colour.rgba(255, 182, 193, 1.0);
     /** the colour lightsalmon with an RGB value of #FFA07A. */
-    Colour.LIGHTSALMON = new Colour(255, 160, 122, 1.0);
+    Colour.LIGHTSALMON = Colour.rgba(255, 160, 122, 1.0);
     /** the colour lightseagreen with an RGB value of #20B2AA. */
-    Colour.LIGHTSEAGREEN = new Colour(32, 178, 170, 1.0);
+    Colour.LIGHTSEAGREEN = Colour.rgba(32, 178, 170, 1.0);
     /** the colour lightskyblue with an RGB value of #87CEFA. */
-    Colour.LIGHTSKYBLUE = new Colour(135, 206, 250, 1.0);
+    Colour.LIGHTSKYBLUE = Colour.rgba(135, 206, 250, 1.0);
     /** the colour lightslategray with an RGB value of #778899. */
-    Colour.LIGHTSLATEGRAY = new Colour(119, 136, 153, 1.0);
+    Colour.LIGHTSLATEGRAY = Colour.rgba(119, 136, 153, 1.0);
     /** the colour lightslategrey with an RGB value of #778899. */
-    Colour.LIGHTSLATEGREY = new Colour(119, 136, 153, 1.0);
+    Colour.LIGHTSLATEGREY = Colour.rgba(119, 136, 153, 1.0);
     /** the colour lightsteelblue with an RGB value of #B0C4DE. */
-    Colour.LIGHTSTEELBLUE = new Colour(176, 196, 222, 1.0);
+    Colour.LIGHTSTEELBLUE = Colour.rgba(176, 196, 222, 1.0);
     /** the colour lightyellow with an RGB value of #FFFFE0. */
-    Colour.LIGHTYELLOW = new Colour(255, 255, 224, 1.0);
+    Colour.LIGHTYELLOW = Colour.rgba(255, 255, 224, 1.0);
     /** the colour lime with an RGB value of #00FF00. */
-    Colour.LIME = new Colour(0, 255, 0, 1.0);
+    Colour.LIME = Colour.rgba(0, 255, 0, 1.0);
     /** the colour limegreen with an RGB value of #32CD32. */
-    Colour.LIMEGREEN = new Colour(50, 205, 50, 1.0);
+    Colour.LIMEGREEN = Colour.rgba(50, 205, 50, 1.0);
     /** the colour linen with an RGB value of #FAF0E6. */
-    Colour.LINEN = new Colour(250, 240, 230, 1.0);
+    Colour.LINEN = Colour.rgba(250, 240, 230, 1.0);
     /** the colour magenta with an RGB value of #FF00FF. */
-    Colour.MAGENTA = new Colour(255, 0, 255, 1.0);
+    Colour.MAGENTA = Colour.rgba(255, 0, 255, 1.0);
     /** the colour maroon with an RGB value of #800000. */
-    Colour.MAROON = new Colour(128, 0, 0, 1.0);
+    Colour.MAROON = Colour.rgba(128, 0, 0, 1.0);
     /** the colour mediumaquamarine with an RGB value of #66CDAA. */
-    Colour.MEDIUMAQUAMARINE = new Colour(102, 205, 170, 1.0);
+    Colour.MEDIUMAQUAMARINE = Colour.rgba(102, 205, 170, 1.0);
     /** the colour mediumblue with an RGB value of #0000CD. */
-    Colour.MEDIUMBLUE = new Colour(0, 0, 205, 1.0);
+    Colour.MEDIUMBLUE = Colour.rgba(0, 0, 205, 1.0);
     /** the colour mediumorchid with an RGB value of #BA55D3. */
-    Colour.MEDIUMORCHID = new Colour(186, 85, 211, 1.0);
+    Colour.MEDIUMORCHID = Colour.rgba(186, 85, 211, 1.0);
     /** the colour mediumpurple with an RGB value of #9370DB. */
-    Colour.MEDIUMPURPLE = new Colour(147, 112, 219, 1.0);
+    Colour.MEDIUMPURPLE = Colour.rgba(147, 112, 219, 1.0);
     /** the colour mediumseagreen with an RGB value of #3CB371. */
-    Colour.MEDIUMSEAGREEN = new Colour(60, 179, 113, 1.0);
+    Colour.MEDIUMSEAGREEN = Colour.rgba(60, 179, 113, 1.0);
     /** the colour mediumslateblue with an RGB value of #7B68EE. */
-    Colour.MEDIUMSLATEBLUE = new Colour(123, 104, 238, 1.0);
+    Colour.MEDIUMSLATEBLUE = Colour.rgba(123, 104, 238, 1.0);
     /** the colour mediumspringgreen with an RGB value of #00FA9A. */
-    Colour.MEDIUMSPRINGGREEN = new Colour(0, 250, 154, 1.0);
+    Colour.MEDIUMSPRINGGREEN = Colour.rgba(0, 250, 154, 1.0);
     /** the colour mediumturquoise with an RGB value of #48D1CC. */
-    Colour.MEDIUMTURQUOISE = new Colour(72, 209, 204, 1.0);
+    Colour.MEDIUMTURQUOISE = Colour.rgba(72, 209, 204, 1.0);
     /** the colour mediumvioletred with an RGB value of #C71585. */
-    Colour.MEDIUMVIOLETRED = new Colour(199, 21, 133, 1.0);
+    Colour.MEDIUMVIOLETRED = Colour.rgba(199, 21, 133, 1.0);
     /** the colour midnightblue with an RGB value of #191970. */
-    Colour.MIDNIGHTBLUE = new Colour(25, 25, 112, 1.0);
+    Colour.MIDNIGHTBLUE = Colour.rgba(25, 25, 112, 1.0);
     /** the colour mintcream with an RGB value of #F5FFFA. */
-    Colour.MINTCREAM = new Colour(245, 255, 250, 1.0);
+    Colour.MINTCREAM = Colour.rgba(245, 255, 250, 1.0);
     /** the colour mistyrose with an RGB value of #FFE4E1. */
-    Colour.MISTYROSE = new Colour(255, 228, 225, 1.0);
+    Colour.MISTYROSE = Colour.rgba(255, 228, 225, 1.0);
     /** the colour moccasin with an RGB value of #FFE4B5. */
-    Colour.MOCCASIN = new Colour(255, 228, 181, 1.0);
+    Colour.MOCCASIN = Colour.rgba(255, 228, 181, 1.0);
     /** the colour navajowhite with an RGB value of #FFDEAD. */
-    Colour.NAVAJOWHITE = new Colour(255, 222, 173, 1.0);
+    Colour.NAVAJOWHITE = Colour.rgba(255, 222, 173, 1.0);
     /** the colour navy with an RGB value of #000080. */
-    Colour.NAVY = new Colour(0, 0, 128, 1.0);
+    Colour.NAVY = Colour.rgba(0, 0, 128, 1.0);
     /** the colour oldlace with an RGB value of #FDF5E6. */
-    Colour.OLDLACE = new Colour(253, 245, 230, 1.0);
+    Colour.OLDLACE = Colour.rgba(253, 245, 230, 1.0);
     /** the colour olive with an RGB value of #808000. */
-    Colour.OLIVE = new Colour(128, 128, 0, 1.0);
+    Colour.OLIVE = Colour.rgba(128, 128, 0, 1.0);
     /** the colour olivedrab with an RGB value of #6B8E23. */
-    Colour.OLIVEDRAB = new Colour(107, 142, 35, 1.0);
+    Colour.OLIVEDRAB = Colour.rgba(107, 142, 35, 1.0);
     /** the colour orange with an RGB value of #FFA500. */
-    Colour.ORANGE = new Colour(255, 165, 0, 1.0);
+    Colour.ORANGE = Colour.rgba(255, 165, 0, 1.0);
     /** the colour orangered with an RGB value of #FF4500. */
-    Colour.ORANGERED = new Colour(255, 69, 0, 1.0);
+    Colour.ORANGERED = Colour.rgba(255, 69, 0, 1.0);
     /** the colour orchid with an RGB value of #DA70D6. */
-    Colour.ORCHID = new Colour(218, 112, 214, 1.0);
+    Colour.ORCHID = Colour.rgba(218, 112, 214, 1.0);
     /** the colour palegoldenrod with an RGB value of #EEE8AA. */
-    Colour.PALEGOLDENROD = new Colour(238, 232, 170, 1.0);
+    Colour.PALEGOLDENROD = Colour.rgba(238, 232, 170, 1.0);
     /** the colour palegreen with an RGB value of #98FB98. */
-    Colour.PALEGREEN = new Colour(152, 251, 152, 1.0);
+    Colour.PALEGREEN = Colour.rgba(152, 251, 152, 1.0);
     /** the colour paleturquoise with an RGB value of #AFEEEE. */
-    Colour.PALETURQUOISE = new Colour(175, 238, 238, 1.0);
+    Colour.PALETURQUOISE = Colour.rgba(175, 238, 238, 1.0);
     /** the colour palevioletred with an RGB value of #DB7093. */
-    Colour.PALEVIOLETRED = new Colour(219, 112, 147, 1.0);
+    Colour.PALEVIOLETRED = Colour.rgba(219, 112, 147, 1.0);
     /** the colour papayawhip with an RGB value of #FFEFD5. */
-    Colour.PAPAYAWHIP = new Colour(255, 239, 213, 1.0);
+    Colour.PAPAYAWHIP = Colour.rgba(255, 239, 213, 1.0);
     /** the colour peachpuff with an RGB value of #FFDAB9. */
-    Colour.PEACHPUFF = new Colour(255, 218, 185, 1.0);
+    Colour.PEACHPUFF = Colour.rgba(255, 218, 185, 1.0);
     /** the colour peru with an RGB value of #CD853F. */
-    Colour.PERU = new Colour(205, 133, 63, 1.0);
+    Colour.PERU = Colour.rgba(205, 133, 63, 1.0);
     /** the colour pink with an RGB value of #FFC0CB. */
-    Colour.PINK = new Colour(255, 192, 203, 1.0);
+    Colour.PINK = Colour.rgba(255, 192, 203, 1.0);
     /** the colour plum with an RGB value of #DDA0DD. */
-    Colour.PLUM = new Colour(221, 160, 221, 1.0);
+    Colour.PLUM = Colour.rgba(221, 160, 221, 1.0);
     /** the colour powderblue with an RGB value of #B0E0E6. */
-    Colour.POWDERBLUE = new Colour(176, 224, 230, 1.0);
+    Colour.POWDERBLUE = Colour.rgba(176, 224, 230, 1.0);
     /** the colour purple with an RGB value of #800080. */
-    Colour.PURPLE = new Colour(128, 0, 128, 1.0);
+    Colour.PURPLE = Colour.rgba(128, 0, 128, 1.0);
     /** the colour red with an RGB value of #FF0000. */
-    Colour.RED = new Colour(255, 0, 0, 1.0);
+    Colour.RED = Colour.rgba(255, 0, 0, 1.0);
     /** the colour rosybrown with an RGB value of #BC8F8F. */
-    Colour.ROSYBROWN = new Colour(188, 143, 143, 1.0);
+    Colour.ROSYBROWN = Colour.rgba(188, 143, 143, 1.0);
     /** the colour royalblue with an RGB value of #4169E1. */
-    Colour.ROYALBLUE = new Colour(65, 105, 225, 1.0);
+    Colour.ROYALBLUE = Colour.rgba(65, 105, 225, 1.0);
     /** the colour saddlebrown with an RGB value of #8B4513. */
-    Colour.SADDLEBROWN = new Colour(139, 69, 19, 1.0);
+    Colour.SADDLEBROWN = Colour.rgba(139, 69, 19, 1.0);
     /** the colour salmon with an RGB value of #FA8072. */
-    Colour.SALMON = new Colour(250, 128, 114, 1.0);
+    Colour.SALMON = Colour.rgba(250, 128, 114, 1.0);
     /** the colour sandybrown with an RGB value of #F4A460. */
-    Colour.SANDYBROWN = new Colour(244, 164, 96, 1.0);
+    Colour.SANDYBROWN = Colour.rgba(244, 164, 96, 1.0);
     /** the colour seagreen with an RGB value of #2E8B57. */
-    Colour.SEAGREEN = new Colour(46, 139, 87, 1.0);
+    Colour.SEAGREEN = Colour.rgba(46, 139, 87, 1.0);
     /** the colour seashell with an RGB value of #FFF5EE. */
-    Colour.SEASHELL = new Colour(255, 245, 238, 1.0);
+    Colour.SEASHELL = Colour.rgba(255, 245, 238, 1.0);
     /** the colour sienna with an RGB value of #A0522D. */
-    Colour.SIENNA = new Colour(160, 82, 45, 1.0);
+    Colour.SIENNA = Colour.rgba(160, 82, 45, 1.0);
     /** the colour silver with an RGB value of #C0C0C0. */
-    Colour.SILVER = new Colour(192, 192, 192, 1.0);
+    Colour.SILVER = Colour.rgba(192, 192, 192, 1.0);
     /** the colour skyblue with an RGB value of #87CEEB. */
-    Colour.SKYBLUE = new Colour(135, 206, 235, 1.0);
+    Colour.SKYBLUE = Colour.rgba(135, 206, 235, 1.0);
     /** the colour slateblue with an RGB value of #6A5ACD. */
-    Colour.SLATEBLUE = new Colour(106, 90, 205, 1.0);
+    Colour.SLATEBLUE = Colour.rgba(106, 90, 205, 1.0);
     /** the colour slategray with an RGB value of #708090. */
-    Colour.SLATEGRAY = new Colour(112, 128, 144, 1.0);
+    Colour.SLATEGRAY = Colour.rgba(112, 128, 144, 1.0);
     /** the colour slategrey with an RGB value of #708090. */
-    Colour.SLATEGREY = new Colour(112, 128, 144, 1.0);
+    Colour.SLATEGREY = Colour.rgba(112, 128, 144, 1.0);
     /** the colour snow with an RGB value of #FFFAFA. */
-    Colour.SNOW = new Colour(255, 250, 250, 1.0);
+    Colour.SNOW = Colour.rgba(255, 250, 250, 1.0);
     /** the colour springgreen with an RGB value of #00FF7F. */
-    Colour.SPRINGGREEN = new Colour(0, 255, 127, 1.0);
+    Colour.SPRINGGREEN = Colour.rgba(0, 255, 127, 1.0);
     /** the colour steelblue with an RGB value of #4682B4. */
-    Colour.STEELBLUE = new Colour(70, 130, 180, 1.0);
+    Colour.STEELBLUE = Colour.rgba(70, 130, 180, 1.0);
     /** the colour tan with an RGB value of #D2B48C. */
-    Colour.TAN = new Colour(210, 180, 140, 1.0);
+    Colour.TAN = Colour.rgba(210, 180, 140, 1.0);
     /** the colour teal with an RGB value of #008080. */
-    Colour.TEAL = new Colour(0, 128, 128, 1.0);
+    Colour.TEAL = Colour.rgba(0, 128, 128, 1.0);
     /** the colour thistle with an RGB value of #D8BFD8. */
-    Colour.THISTLE = new Colour(216, 191, 216, 1.0);
+    Colour.THISTLE = Colour.rgba(216, 191, 216, 1.0);
     /** the colour tomato with an RGB value of #FF6347. */
-    Colour.TOMATO = new Colour(255, 99, 71, 1.0);
+    Colour.TOMATO = Colour.rgba(255, 99, 71, 1.0);
     /** the colour turquoise with an RGB value of #40E0D0. */
-    Colour.TURQUOISE = new Colour(64, 224, 208, 1.0);
+    Colour.TURQUOISE = Colour.rgba(64, 224, 208, 1.0);
     /** the colour violet with an RGB value of #EE82EE. */
-    Colour.VIOLET = new Colour(238, 130, 238, 1.0);
+    Colour.VIOLET = Colour.rgba(238, 130, 238, 1.0);
     /** the colour wheat with an RGB value of #F5DEB3. */
-    Colour.WHEAT = new Colour(245, 222, 179, 1.0);
+    Colour.WHEAT = Colour.rgba(245, 222, 179, 1.0);
     /** the colour white with an RGB value of #FFFFFF. */
-    Colour.WHITE = new Colour(255, 255, 255, 1.0);
+    Colour.WHITE = Colour.rgba(255, 255, 255, 1.0);
     /** the colour whitesmoke with an RGB value of #F5F5F5. */
-    Colour.WHITESMOKE = new Colour(245, 245, 245, 1.0);
+    Colour.WHITESMOKE = Colour.rgba(245, 245, 245, 1.0);
     /** the colour yellow with an RGB value of #FFFF00. */
-    Colour.YELLOW = new Colour(255, 255, 0, 1.0);
+    Colour.YELLOW = Colour.rgba(255, 255, 0, 1.0);
     /** the colour yellowgreen with an RGB value of #9ACD32. */
-    Colour.YELLOWGREEN = new Colour(154, 205, 50, 1.0);
+    Colour.YELLOWGREEN = Colour.rgba(154, 205, 50, 1.0);
 
     /**
      * A duration with a resolution of 1 millisecond.
      */
     class Duration {
         constructor(ms) {
-            this.ms = ms;
+            this.ms = Math.round(ms);
         }
         /**
          * Duration given number of milliseconds.
@@ -490,6 +536,7 @@ var demo = (function (exports) {
             return this.ms / 1000.0;
         }
     }
+    Duration.ZERO = Duration.ofSeconds(0);
 
     class LatLong {
         constructor(latitude, longitude) {
@@ -499,11 +546,26 @@ var demo = (function (exports) {
         static ofDegrees(latitude, longitude) {
             return new LatLong(Angle.ofDegrees(latitude), Angle.ofDegrees(longitude));
         }
+        /**
+         * LatLong from object literal.
+         */
+        static fromLiteral(data) {
+            const lat = Angle.fromLiteral(data['_latitude']);
+            const lon = Angle.fromLiteral(data['_longitude']);
+            return new LatLong(lat, lon);
+        }
         latitude() {
             return this._latitude;
         }
         longitude() {
             return this._longitude;
+        }
+        /**
+         * Determines whether both given lat/long are equals.
+         */
+        static equals(ll1, ll2) {
+            return ll1.latitude().degrees() === ll2.latitude().degrees()
+                && ll1.longitude().degrees() === ll2.longitude().degrees();
         }
     }
 
@@ -525,6 +587,12 @@ var demo = (function (exports) {
         }
         static ofNauticalMiles(nauticalMiles) {
             return new Length(Math.round(nauticalMiles * 18520000.0));
+        }
+        /**
+         * Length from object literal.
+         */
+        static fromLiteral(data) {
+            return new Length(data['tenthOfMm']);
         }
         feet() {
             return this.tenthOfMm / 3048.0;
@@ -792,7 +860,7 @@ var demo = (function (exports) {
          */
         static multmv(m, v) {
             if (m.length != 3) {
-                throw new RangeError("Rotation matrix must be 3*3");
+                throw new RangeError('Rotation matrix must be 3*3');
             }
             return Math3d.a2v(m.map(r => Math3d.dot(v, r)));
         }
@@ -801,7 +869,7 @@ var demo = (function (exports) {
          */
         static multmm(m1, m2) {
             if (m1.length != 3 || m2.length != 3) {
-                throw new RangeError("Rotation matrix must be 3*3");
+                throw new RangeError('Rotation matrix must be 3*3');
             }
             const t2 = Math3d.transpose(m2);
             return [
@@ -841,15 +909,16 @@ var demo = (function (exports) {
         /** array of numbers to vector. */
         static a2v(a) {
             if (a.length != 3) {
-                throw new RangeError("Array must contain 3 elements");
+                throw new RangeError('Array must contain 3 elements');
             }
             return new Vector3d(a[0], a[1], a[2]);
         }
     }
     /**
      * Geodetic calculations assuming a spherical earth model.
+     * This implementation is internal to twinf. See Geodetics for the API.
      */
-    class Geometry3d {
+    class InternalGeodetics {
         constructor() { }
         /**
          * Antipode of given position: the horizontal position on the surface of
@@ -870,7 +939,7 @@ var demo = (function (exports) {
             }
             const r = earthRadius.metres();
             /* east direction vector at p */
-            const ed = Math3d.unit(Math3d.cross(Geometry3d.NORTH_POLE, p));
+            const ed = Math3d.unit(Math3d.cross(InternalGeodetics.NORTH_POLE, p));
             /* north direction vector at p */
             const nd = Math3d.cross(p, ed);
             /* central angle */
@@ -898,16 +967,16 @@ var demo = (function (exports) {
                 return false;
             }
             if (ps[0] === ps[len - 1]) {
-                return Geometry3d.insideSurface(p, ps.slice(0, len - 1));
+                return InternalGeodetics.insideSurface(p, ps.slice(0, len - 1));
             }
             if (len < 3) {
                 return false;
             }
             /* all vectors from p to each vertex */
-            const edges = Geometry3d.edges(ps.map(pp => Math3d.sub(p, pp)));
+            const edges = InternalGeodetics.edges(ps.map(pp => Math3d.sub(p, pp)));
             /* sum subtended angles of each edge (using vector p to determine sign) */
             const sum = edges
-                .map(e => Geometry3d.signedAngleBetween(e[0], e[1], p))
+                .map(e => InternalGeodetics.signedAngleBetween(e[0], e[1], p))
                 .reduce((acc, cur) => acc + cur, 0);
             return Math.abs(sum) > Math.PI;
         }
@@ -954,7 +1023,7 @@ var demo = (function (exports) {
          * Computes the surface distance (length of geodesic) between the given positions.
          */
         static surfaceDistance(p1, p2, earthRadius) {
-            const m = Geometry3d.signedAngleBetween(p1, p2, undefined) * earthRadius.metres();
+            const m = InternalGeodetics.signedAngleBetween(p1, p2, undefined) * earthRadius.metres();
             return Length.ofMetres(m);
         }
         /**
@@ -978,7 +1047,7 @@ var demo = (function (exports) {
             return ps.map((p, i) => [p, xs[i]]);
         }
     }
-    Geometry3d.NORTH_POLE = new Vector3d(0, 0, 1);
+    InternalGeodetics.NORTH_POLE = new Vector3d(0, 0, 1);
 
     /**
      * Transformations between positions in different coordinate systems used when rendering shapes
@@ -1092,7 +1161,7 @@ var demo = (function (exports) {
             const east = Angle.ofDegrees(90.0);
             const halfRange = hrange.scale(0.5);
             const er = Length.ofMetres(sp.earthRadius());
-            const left = CoordinateSystems.geocentricToStereographic(Geometry3d.destination(gc, east, halfRange, er), sp);
+            const left = CoordinateSystems.geocentricToStereographic(InternalGeodetics.destination(gc, east, halfRange, er), sp);
             const ratio = canvas.height() / canvas.width();
             const sc = CoordinateSystems.geocentricToStereographic(gc, sp);
             const width = 2 * Math.abs(left.x() - sc.x());
@@ -1105,13 +1174,14 @@ var demo = (function (exports) {
             const worldTopLeftY = sc.y() + height / 2.0;
             const tx = -sx * worldTopLeftX;
             const ty = -sy * worldTopLeftY;
+            let m;
             /*
              * translate to centre:
              * [   1    0    tx  ]
              * [   0    1    ty  ]
              * [   0    0    1   ]
              */
-            let m = [
+            m = [
                 new Vector3d(1, 0, tx),
                 new Vector3d(0, 1, ty),
                 new Vector3d(0, 0, 1)
@@ -1253,119 +1323,6 @@ var demo = (function (exports) {
     }
 
     /**
-     * A track represents the state of a vehicle by its current position, bearing and speed.
-     */
-    class Track {
-        constructor(pos, bearing, speed) {
-            this._pos = pos;
-            this._bearing = bearing;
-            this._speed = speed;
-        }
-        /**
-         * position of the track.
-         */
-        pos() {
-            return this._pos;
-        }
-        /**
-         * bearing of the track.
-         */
-        bearing() {
-            return this._bearing;
-        }
-        /**
-         * speed of the track.
-         */
-        speed() {
-            return this._speed;
-        }
-    }
-    /**
-     * Kinematics calculations assuming a spherical earth model.
-     */
-    // TODO: add closed point of approach and intercept
-    class Kinematics {
-        /**
-         * Computes the position of given track after given duration has elapsed and using
-         * the given earth radius.
-         */
-        static position(track, duration, earthRadius) {
-            const c = Kinematics.course(track.pos(), track.bearing());
-            const a = track.speed().metresPerSecond() / earthRadius.metres() * duration.seconds();
-            const p0 = CoordinateSystems.latLongToGeocentric(track.pos());
-            const pt = Math3d.add(Math3d.scale(p0, Math.cos(a)), Math3d.scale(c, Math.sin(a)));
-            return CoordinateSystems.geocentricToLatLong(pt);
-        }
-        static course(p, b) {
-            const lat = p.latitude();
-            const lon = p.longitude();
-            const _rx = Kinematics.rx(b);
-            const _ry = Kinematics.ry(lat);
-            const _rz = Kinematics.rz(Angle.ofDegrees(-lon.degrees()));
-            const r = Math3d.multmm(Math3d.multmm(_rz, _ry), _rx);
-            return new Vector3d(r[0].z(), r[1].z(), r[2].z());
-        }
-        static rx(a) {
-            const c = Angle.cos(a);
-            const s = Angle.sin(a);
-            return [
-                new Vector3d(1, 0, 0),
-                new Vector3d(0, c, s),
-                new Vector3d(0, -s, c)
-            ];
-        }
-        static ry(a) {
-            const c = Angle.cos(a);
-            const s = Angle.sin(a);
-            return [
-                new Vector3d(c, 0, -s),
-                new Vector3d(0, 1, 0),
-                new Vector3d(s, 0, c)
-            ];
-        }
-        static rz(a) {
-            const c = Angle.cos(a);
-            const s = Angle.sin(a);
-            return [
-                new Vector3d(c, s, 0),
-                new Vector3d(-s, c, 0),
-                new Vector3d(0, 0, 1)
-            ];
-        }
-    }
-
-    /**
-     * Rendering options.
-     */
-    class RenderingOptions {
-        constructor(fps, circlePositions, miterLimit) {
-            this._fps = fps;
-            this._circlePositions = circlePositions;
-            this._miterLimit = miterLimit;
-        }
-        /**
-         * Number of frame per seconds.
-         */
-        fps() {
-            return this._fps;
-        }
-        /**
-         * Number of positions when discretising a circle.
-         */
-        circlePositions() {
-            return this._circlePositions;
-        }
-        /**
-         * Value of the miter limit when rendering wide polylines. If the length
-         * of the miter divide by the half width of the polyline is greater than this
-         * value, the miter will be ignored and normal to the line segment is used.
-         */
-        miterLimit() {
-            return this._miterLimit;
-        }
-    }
-
-    /**
      * Offset in pixels from a point on the canvas.
      * x axis is right and y axis is down.
      */
@@ -1373,6 +1330,14 @@ var demo = (function (exports) {
         constructor(x, y) {
             this._x = x;
             this._y = y;
+        }
+        /**
+         * Offset from object literal.
+         */
+        static fromLiteral(data) {
+            const x = data['_x'];
+            const y = data['_y'];
+            return new Offset(x, y);
         }
         x() {
             return this._x;
@@ -1386,6 +1351,14 @@ var demo = (function (exports) {
         constructor(colour, width) {
             this._colour = colour;
             this._width = width;
+        }
+        /**
+         * Stroke from object literal.
+         */
+        static fromLiteral(data) {
+            const colour = Colour.fromLiteral(data['_colour']);
+            const width = data['_width'];
+            return new Stroke(colour, width);
         }
         colour() {
             return this._colour;
@@ -1409,6 +1382,18 @@ var demo = (function (exports) {
          * Paint with both a fill and stroke.
          */
         static complete(stroke, fill) {
+            return new Paint(stroke, fill);
+        }
+        /**
+         * Paint from object literal.
+         */
+        static fromLiteral(data) {
+            const stroke = data.hasOwnProperty('_stroke')
+                ? Stroke.fromLiteral(data['_stroke'])
+                : undefined;
+            const fill = data.hasOwnProperty('_fill')
+                ? Colour.fromLiteral(data['_fill'])
+                : undefined;
             return new Paint(stroke, fill);
         }
         stroke() {
@@ -1450,6 +1435,12 @@ var demo = (function (exports) {
             this._radius = radius;
             this._paint = paint;
         }
+        static fromLiteral(data) {
+            const centre = LatLong.fromLiteral(data['_centre']);
+            const radius = Length.fromLiteral(data['_radius']);
+            const paint = Paint.fromLiteral(data['_paint']);
+            return new GeoCircle(centre, radius, paint);
+        }
         centre() {
             return this._centre;
         }
@@ -1469,6 +1460,11 @@ var demo = (function (exports) {
             this._vertices = vertices;
             this._paint = paint;
         }
+        static fromLiteral(data) {
+            const vertices = data['_vertices'].map(LatLong.fromLiteral);
+            const paint = Paint.fromLiteral(data['_paint']);
+            return new GeoPolygon(vertices, paint);
+        }
         vertices() {
             return this._vertices;
         }
@@ -1484,6 +1480,11 @@ var demo = (function (exports) {
             this.type = ShapeType.GeoPolyline;
             this._points = points;
             this._stroke = stroke;
+        }
+        static fromLiteral(data) {
+            const points = data['_points'].map(LatLong.fromLiteral);
+            const stroke = Stroke.fromLiteral(data['_stroke']);
+            return new GeoPolyline(points, stroke);
         }
         points() {
             return this._points;
@@ -1503,6 +1504,13 @@ var demo = (function (exports) {
             this._centreOffset = centreOffset;
             this._radius = radius;
             this._paint = paint;
+        }
+        static fromLiteral(data) {
+            const centreRef = LatLong.fromLiteral(data['_centreRef']);
+            const centreOffset = Offset.fromLiteral(data['_centreOffset']);
+            const radius = data['_radius'];
+            const paint = Paint.fromLiteral(data['_paint']);
+            return new GeoRelativeCircle(centreRef, centreOffset, radius, paint);
         }
         centreRef() {
             return this._centreRef;
@@ -1528,6 +1536,12 @@ var demo = (function (exports) {
             this._vertices = vertices;
             this._paint = paint;
         }
+        static fromLiteral(data) {
+            const ref = LatLong.fromLiteral(data['_ref']);
+            const vertices = data['_vertices'].map(Offset.fromLiteral);
+            const paint = Paint.fromLiteral(data['_paint']);
+            return new GeoRelativePolygon(ref, vertices, paint);
+        }
         ref() {
             return this._ref;
         }
@@ -1549,6 +1563,12 @@ var demo = (function (exports) {
             this._points = points;
             this._stroke = stroke;
         }
+        static fromLiteral(data) {
+            const ref = LatLong.fromLiteral(data['_ref']);
+            const points = data['_points'].map(Offset.fromLiteral);
+            const stroke = Stroke.fromLiteral(data['_stroke']);
+            return new GeoRelativePolyline(ref, points, stroke);
+        }
         ref() {
             return this._ref;
         }
@@ -1559,73 +1579,24 @@ var demo = (function (exports) {
             return this._stroke;
         }
     }
-
     /**
-     * A speed with a resolution of 1 millimetre per hour.
+     * Shape from object literal.
      */
-    class Speed {
-        constructor(mmPerHour) {
-            this.mmPerHour = mmPerHour;
-        }
-        /**
-         * Speed from given amount of metres per second.
-         */
-        static ofMetresPerSecond(mps) {
-            return new Speed(Math.round(mps * 3600000.0));
-        }
-        /**
-         * Speed from given amount of kilometres per hour.
-         */
-        static ofKilometresPerHour(kph) {
-            return new Speed(Math.round(kph * 1e+6));
-        }
-        /**
-         * Speed from given amount of miles per hour.
-         */
-        static ofMilesPerHour(mph) {
-            return new Speed(Math.round(mph * 1609344.0));
-        }
-        /**
-         * Speed from given amount of knots.
-         */
-        static ofKnots(kt) {
-            return new Speed(Math.round(kt * 1852000.0));
-        }
-        /**
-         * Speed from given amount feet per second.
-         */
-        static feetPerSecond(fps) {
-            return new Speed(Math.round(fps * 1097280.0));
-        }
-        /**
-         * Speed to metres per second.
-         */
-        metresPerSecond() {
-            return this.mmPerHour / 3600000.0;
-        }
-        /**
-         * Speed to kilometres per hour.
-         */
-        kilometresPerHour() {
-            return this.mmPerHour / 1e+6;
-        }
-        /**
-         * Speed to miles per hour.
-         */
-        milesPerHour() {
-            return this.mmPerHour / 1609344.0;
-        }
-        /**
-         * Speed to knots.
-         */
-        knots() {
-            return this.mmPerHour / 1852000.0;
-        }
-        /**
-         * Speed to feet per second.
-         */
-        feetPerSecond() {
-            return this.mmPerHour / 1097280.0;
+    function fromLiteral(data) {
+        const type = data['type'];
+        switch (type) {
+            case ShapeType.GeoCircle:
+                return GeoCircle.fromLiteral(data);
+            case ShapeType.GeoPolygon:
+                return GeoPolygon.fromLiteral(data);
+            case ShapeType.GeoPolyline:
+                return GeoPolyline.fromLiteral(data);
+            case ShapeType.GeoRelativeCircle:
+                return GeoRelativeCircle.fromLiteral(data);
+            case ShapeType.GeoRelativePolygon:
+                return GeoRelativePolygon.fromLiteral(data);
+            case ShapeType.GeoRelativePolyline:
+                return GeoRelativePolyline.fromLiteral(data);
         }
     }
 
@@ -1643,7 +1614,7 @@ var demo = (function (exports) {
          */
         triangulate(polygon) {
             if (polygon.length < 3) {
-                throw new RangeError("A polygon must contain at least 3 vertices");
+                throw new RangeError('A polygon must contain at least 3 vertices');
             }
             if (polygon.length == 3) {
                 return [new Triangle(polygon[0], polygon[1], polygon[2])];
@@ -1663,7 +1634,7 @@ var demo = (function (exports) {
          */
         triangulateSimple(vs) {
             if (vs.length < 3) {
-                throw new RangeError("A polygon must contain at least 3 vertices");
+                throw new RangeError('A polygon must contain at least 3 vertices');
             }
             if (vs.length == 3) {
                 return [new Triangle(vs[0], vs[1], vs[2])];
@@ -1690,7 +1661,8 @@ var demo = (function (exports) {
                 }
                 const ei = this.findEar(ovs);
                 if (ei === -1) {
-                    throw new RangeError("Triangulation error, remaining vertices:\n" + ovs.length + "\ntriangles:\n" + triangles.length);
+                    throw new RangeError('Triangulation error, remaining vertices:\n'
+                        + ovs.length + '\ntriangles:\n' + triangles.length);
                 }
                 const pi = Triangulator.prev(ei, ovs.length);
                 const ni = Triangulator.next(ei, ovs.length);
@@ -1764,7 +1736,7 @@ var demo = (function (exports) {
      * Triangulator that handles spherical polygons whose vertices are defined as
      * geocentric positions.
      */
-    Triangulator.SPHERICAL = new Triangulator(Geometry3d.right, Geometry3d.insideSurface);
+    Triangulator.SPHERICAL = new Triangulator(InternalGeodetics.right, InternalGeodetics.insideSurface);
     /**
      * Triangulator that handles polygons whose vertices are defined as 2D positions.
      */
@@ -1786,6 +1758,12 @@ var demo = (function (exports) {
             this._nextGeos = nextGeos;
             this._halfWidths = halfWidths;
         }
+        static fromLiteral(data) {
+            const prevGeos = data['_prevGeos'];
+            const nextGeos = data['_nextGeos'];
+            const halfWidths = data['_halfWidths'];
+            return new Extrusion(prevGeos, nextGeos, halfWidths);
+        }
         prevGeos() {
             return this._prevGeos;
         }
@@ -1806,6 +1784,16 @@ var demo = (function (exports) {
             this._offsets = offsets;
             this._colours = colours;
             this._drawMode = drawMode;
+        }
+        static fromLiteral(data) {
+            const geos = data['_geos'];
+            const extrusion = data.hasOwnProperty('_extrusion')
+                ? Extrusion.fromLiteral(data['_extrusion'])
+                : undefined;
+            const offsets = data['_offsets'];
+            const colours = data['_colours'];
+            const drawMode = data['_drawMode'];
+            return new Mesh(geos, extrusion, offsets, colours, drawMode);
         }
         /**
          * Array of geocentric vertices (3 components each) or empty. If not empty
@@ -1839,37 +1827,47 @@ var demo = (function (exports) {
             return this._drawMode;
         }
     }
-    class MeshGenerator {
-        constructor() { }
-        static mesh(s, earthRadius, options) {
+    class Mesher {
+        constructor(earthRadius, circlePositions, miterLimit) {
+            this.earthRadius = earthRadius;
+            this.circlePositions = circlePositions;
+            this.miterLimit = miterLimit;
+        }
+        static fromLiteral(data) {
+            const earthRadius = Length.fromLiteral(data['earthRadius']);
+            const circlePositions = data['circlePositions'];
+            const miterLimit = data['miterLimit'];
+            return new Mesher(earthRadius, circlePositions, miterLimit);
+        }
+        meshShape(s) {
             switch (s.type) {
                 case ShapeType.GeoCircle:
-                    return MeshGenerator.fromGeoCircle(s, earthRadius, options.circlePositions());
+                    return Mesher.fromGeoCircle(s, this.earthRadius, this.circlePositions);
                 case ShapeType.GeoPolygon:
-                    return MeshGenerator.fromGeoPolygon(s);
+                    return Mesher.fromGeoPolygon(s);
                 case ShapeType.GeoPolyline:
-                    return MeshGenerator.fromGeoPolyline(s);
+                    return Mesher.fromGeoPolyline(s);
                 case ShapeType.GeoRelativeCircle:
-                    return MeshGenerator.fromGeoRelativeCircle(s, options.circlePositions(), options.miterLimit());
+                    return Mesher.fromGeoRelativeCircle(s, this.circlePositions, this.miterLimit);
                 case ShapeType.GeoRelativePolygon:
-                    return MeshGenerator.fromGeoRelativePoygon(s, options.miterLimit());
+                    return Mesher.fromGeoRelativePoygon(s, this.miterLimit);
                 case ShapeType.GeoRelativePolyline:
-                    return MeshGenerator.fromGeoRelativePoyline(s, options.miterLimit());
+                    return Mesher.fromGeoRelativePoyline(s, this.miterLimit);
             }
         }
         static fromGeoCircle(c, earthRadius, circlePositions) {
-            const gs = Geometry3d.discretiseCircle(c.centre(), c.radius(), earthRadius, circlePositions);
+            const gs = InternalGeodetics.discretiseCircle(c.centre(), c.radius(), earthRadius, circlePositions);
             const paint = c.paint();
-            return MeshGenerator._fromGeoPolygon(gs, paint);
+            return Mesher._fromGeoPolygon(gs, paint);
         }
         static fromGeoPolyline(l) {
             const gs = l.points().map(CoordinateSystems.latLongToGeocentric);
-            return [MeshGenerator._fromGeoPoyline(gs, l.stroke(), false)];
+            return [Mesher._fromGeoPoyline(gs, l.stroke(), false)];
         }
         static fromGeoPolygon(p) {
             const gs = p.vertices().map(CoordinateSystems.latLongToGeocentric);
             const paint = p.paint();
-            return MeshGenerator._fromGeoPolygon(gs, paint);
+            return Mesher._fromGeoPolygon(gs, paint);
         }
         static _fromGeoPolygon(gs, paint) {
             const stroke = paint.stroke();
@@ -1877,26 +1875,26 @@ var demo = (function (exports) {
             let res = new Array();
             if (fill !== undefined) {
                 const ts = Triangulator.SPHERICAL.triangulate(gs);
-                const vs = MeshGenerator.geoTrianglesToArray(ts);
-                const cs = MeshGenerator.colours(fill, vs, 3);
+                const vs = Mesher.geoTrianglesToArray(ts);
+                const cs = Mesher.colours(fill, vs, 3);
                 res.push(new Mesh(vs, undefined, [], cs, DrawMode.TRIANGLES));
             }
             if (stroke !== undefined) {
-                res.push(MeshGenerator._fromGeoPoyline(gs, stroke, true));
+                res.push(Mesher._fromGeoPoyline(gs, stroke, true));
             }
             return res;
         }
         static _fromGeoPoyline(points, stroke, closed) {
             if (stroke.width() === 1) {
-                const vs = MeshGenerator.geoPointsToArray(points, closed);
-                const cs = MeshGenerator.colours(stroke.colour(), vs, 3);
+                const vs = Mesher.geoPointsToArray(points, closed);
+                const cs = Mesher.colours(stroke.colour(), vs, 3);
                 return new Mesh(vs, undefined, [], cs, DrawMode.LINES);
             }
             const e = closed
-                ? MeshGenerator.closedExtrusion(points, stroke.width())
-                : MeshGenerator.openedExtrusion(points, stroke.width());
+                ? Mesher.closedExtrusion(points, stroke.width())
+                : Mesher.openedExtrusion(points, stroke.width());
             const vs = e[0];
-            const cs = MeshGenerator.colours(stroke.colour(), vs, 3);
+            const cs = Mesher.colours(stroke.colour(), vs, 3);
             return new Mesh(vs, e[1], [], cs, DrawMode.TRIANGLES);
         }
         static fromGeoRelativeCircle(c, circlePositions, miterLimit) {
@@ -1904,13 +1902,13 @@ var demo = (function (exports) {
             const centre = new Vector2d(c.centreOffset().x(), c.centreOffset().y());
             const ps = Geometry2d.discretiseCircle(centre, c.radius(), circlePositions);
             const paint = c.paint();
-            return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint, miterLimit);
+            return Mesher._fromGeoRelativePoygon(ref, ps, paint, miterLimit);
         }
         static fromGeoRelativePoygon(p, miterLimit) {
             const ref = p.ref();
             const ps = p.vertices().map(v => new Vector2d(v.x(), v.y()));
             const paint = p.paint();
-            return MeshGenerator._fromGeoRelativePoygon(ref, ps, paint, miterLimit);
+            return Mesher._fromGeoRelativePoygon(ref, ps, paint, miterLimit);
         }
         static _fromGeoRelativePoygon(ref, vertices, paint, miterLimit) {
             const stroke = paint.stroke();
@@ -1918,33 +1916,33 @@ var demo = (function (exports) {
             let res = new Array();
             if (fill !== undefined) {
                 const ts = Triangulator.PLANAR.triangulate(vertices);
-                const os = MeshGenerator.offsetTrianglesToArray(ts);
-                const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os);
-                const cs = MeshGenerator.colours(fill, os, 2);
+                const os = Mesher.offsetTrianglesToArray(ts);
+                const vs = Mesher.reference(CoordinateSystems.latLongToGeocentric(ref), os);
+                const cs = Mesher.colours(fill, os, 2);
                 res.push(new Mesh(vs, undefined, os, cs, DrawMode.TRIANGLES));
             }
             if (stroke !== undefined) {
-                res.push(MeshGenerator._fromGeoRelativePoyline(ref, vertices, stroke, true, miterLimit));
+                res.push(Mesher._fromGeoRelativePoyline(ref, vertices, stroke, true, miterLimit));
             }
             return res;
         }
         static fromGeoRelativePoyline(l, miterLimit) {
             const ps = l.points().map(p => new Vector2d(p.x(), p.y()));
             return [
-                MeshGenerator._fromGeoRelativePoyline(l.ref(), ps, l.stroke(), false, miterLimit)
+                Mesher._fromGeoRelativePoyline(l.ref(), ps, l.stroke(), false, miterLimit)
             ];
         }
         static _fromGeoRelativePoyline(ref, points, stroke, closed, miterLimit) {
             if (stroke.width() === 1) {
-                const os = MeshGenerator.offsetPointsToArray(points, closed);
-                const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os);
-                const cs = MeshGenerator.colours(stroke.colour(), os, 2);
+                const os = Mesher.offsetPointsToArray(points, closed);
+                const vs = Mesher.reference(CoordinateSystems.latLongToGeocentric(ref), os);
+                const cs = Mesher.colours(stroke.colour(), os, 2);
                 return new Mesh(vs, undefined, os, cs, DrawMode.LINES);
             }
             const ts = Geometry2d.extrude(points, stroke.width(), miterLimit, closed);
-            const os = MeshGenerator.offsetTrianglesToArray(ts);
-            const vs = MeshGenerator.reference(CoordinateSystems.latLongToGeocentric(ref), os);
-            const cs = MeshGenerator.colours(stroke.colour(), os, 2);
+            const os = Mesher.offsetTrianglesToArray(ts);
+            const vs = Mesher.reference(CoordinateSystems.latLongToGeocentric(ref), os);
+            const cs = Mesher.colours(stroke.colour(), os, 2);
             return new Mesh(vs, undefined, os, cs, DrawMode.TRIANGLES);
         }
         static geoTrianglesToArray(ts) {
@@ -2025,28 +2023,28 @@ var demo = (function (exports) {
                 const ni = ei === len - 1 ? 0 : ei + 1;
                 const next = vs[ni];
                 /* first triangle. */
-                MeshGenerator.pushV3(start, curs);
-                MeshGenerator.pushV3(start, curs);
-                MeshGenerator.pushV3(end, curs);
-                MeshGenerator.pushV3(prev, prevs);
-                MeshGenerator.pushV3(prev, prevs);
-                MeshGenerator.pushV3(start, prevs);
-                MeshGenerator.pushV3(end, nexts);
-                MeshGenerator.pushV3(end, nexts);
-                MeshGenerator.pushV3(next, nexts);
+                Mesher.pushV3(start, curs);
+                Mesher.pushV3(start, curs);
+                Mesher.pushV3(end, curs);
+                Mesher.pushV3(prev, prevs);
+                Mesher.pushV3(prev, prevs);
+                Mesher.pushV3(start, prevs);
+                Mesher.pushV3(end, nexts);
+                Mesher.pushV3(end, nexts);
+                Mesher.pushV3(next, nexts);
                 halfWidths.push(halfWidth);
                 halfWidths.push(-halfWidth);
                 halfWidths.push(halfWidth);
                 /* second triangle. */
-                MeshGenerator.pushV3(start, curs);
-                MeshGenerator.pushV3(end, curs);
-                MeshGenerator.pushV3(end, curs);
-                MeshGenerator.pushV3(prev, prevs);
-                MeshGenerator.pushV3(start, prevs);
-                MeshGenerator.pushV3(start, prevs);
-                MeshGenerator.pushV3(end, nexts);
-                MeshGenerator.pushV3(next, nexts);
-                MeshGenerator.pushV3(next, nexts);
+                Mesher.pushV3(start, curs);
+                Mesher.pushV3(end, curs);
+                Mesher.pushV3(end, curs);
+                Mesher.pushV3(prev, prevs);
+                Mesher.pushV3(start, prevs);
+                Mesher.pushV3(start, prevs);
+                Mesher.pushV3(end, nexts);
+                Mesher.pushV3(next, nexts);
+                Mesher.pushV3(next, nexts);
                 halfWidths.push(-halfWidth);
                 halfWidths.push(halfWidth);
                 halfWidths.push(-halfWidth);
@@ -2067,28 +2065,28 @@ var demo = (function (exports) {
                 const prev = i === 0 ? zero : vs[i - 1];
                 const next = i + 1 === len - 1 ? zero : vs[i + 2];
                 /* first triangle. */
-                MeshGenerator.pushV3(start, curs);
-                MeshGenerator.pushV3(start, curs);
-                MeshGenerator.pushV3(end, curs);
-                MeshGenerator.pushV3(prev, prevs);
-                MeshGenerator.pushV3(prev, prevs);
-                MeshGenerator.pushV3(start, prevs);
-                MeshGenerator.pushV3(end, nexts);
-                MeshGenerator.pushV3(end, nexts);
-                MeshGenerator.pushV3(next, nexts);
+                Mesher.pushV3(start, curs);
+                Mesher.pushV3(start, curs);
+                Mesher.pushV3(end, curs);
+                Mesher.pushV3(prev, prevs);
+                Mesher.pushV3(prev, prevs);
+                Mesher.pushV3(start, prevs);
+                Mesher.pushV3(end, nexts);
+                Mesher.pushV3(end, nexts);
+                Mesher.pushV3(next, nexts);
                 halfWidths.push(halfWidth);
                 halfWidths.push(-halfWidth);
                 halfWidths.push(halfWidth);
                 /* second triangle. */
-                MeshGenerator.pushV3(start, curs);
-                MeshGenerator.pushV3(end, curs);
-                MeshGenerator.pushV3(end, curs);
-                MeshGenerator.pushV3(prev, prevs);
-                MeshGenerator.pushV3(start, prevs);
-                MeshGenerator.pushV3(start, prevs);
-                MeshGenerator.pushV3(end, nexts);
-                MeshGenerator.pushV3(next, nexts);
-                MeshGenerator.pushV3(next, nexts);
+                Mesher.pushV3(start, curs);
+                Mesher.pushV3(end, curs);
+                Mesher.pushV3(end, curs);
+                Mesher.pushV3(prev, prevs);
+                Mesher.pushV3(start, prevs);
+                Mesher.pushV3(start, prevs);
+                Mesher.pushV3(end, nexts);
+                Mesher.pushV3(next, nexts);
+                Mesher.pushV3(next, nexts);
                 halfWidths.push(-halfWidth);
                 halfWidths.push(halfWidth);
                 halfWidths.push(-halfWidth);
@@ -2099,28 +2097,28 @@ var demo = (function (exports) {
                 const last = vs[len - 1];
                 const penultimate = vs[len - 2];
                 const prev = vs[len - 3];
-                MeshGenerator.pushV3(penultimate, curs);
-                MeshGenerator.pushV3(penultimate, curs);
-                MeshGenerator.pushV3(last, curs);
-                MeshGenerator.pushV3(prev, prevs);
-                MeshGenerator.pushV3(prev, prevs);
-                MeshGenerator.pushV3(penultimate, prevs);
-                MeshGenerator.pushV3(last, nexts);
-                MeshGenerator.pushV3(last, nexts);
-                MeshGenerator.pushV3(zero, nexts);
+                Mesher.pushV3(penultimate, curs);
+                Mesher.pushV3(penultimate, curs);
+                Mesher.pushV3(last, curs);
+                Mesher.pushV3(prev, prevs);
+                Mesher.pushV3(prev, prevs);
+                Mesher.pushV3(penultimate, prevs);
+                Mesher.pushV3(last, nexts);
+                Mesher.pushV3(last, nexts);
+                Mesher.pushV3(zero, nexts);
                 halfWidths.push(halfWidth);
                 halfWidths.push(-halfWidth);
                 halfWidths.push(-halfWidth);
                 /* second triangle. */
-                MeshGenerator.pushV3(penultimate, curs);
-                MeshGenerator.pushV3(last, curs);
-                MeshGenerator.pushV3(last, curs);
-                MeshGenerator.pushV3(prev, prevs);
-                MeshGenerator.pushV3(penultimate, prevs);
-                MeshGenerator.pushV3(penultimate, prevs);
-                MeshGenerator.pushV3(last, nexts);
-                MeshGenerator.pushV3(zero, nexts);
-                MeshGenerator.pushV3(zero, nexts);
+                Mesher.pushV3(penultimate, curs);
+                Mesher.pushV3(last, curs);
+                Mesher.pushV3(last, curs);
+                Mesher.pushV3(prev, prevs);
+                Mesher.pushV3(penultimate, prevs);
+                Mesher.pushV3(penultimate, prevs);
+                Mesher.pushV3(last, nexts);
+                Mesher.pushV3(zero, nexts);
+                Mesher.pushV3(zero, nexts);
                 halfWidths.push(-halfWidth);
                 halfWidths.push(-halfWidth);
                 halfWidths.push(+halfWidth);
@@ -2147,6 +2145,267 @@ var demo = (function (exports) {
     }
 
     /**
+     * Base class for graphics.
+     */
+    class BaseGraphic {
+        constructor(name, zIndex) {
+            this._name = name;
+            this._zIndex = zIndex;
+        }
+        /**
+         * Returns the name that uniquely identifies this graphic.
+         */
+        name() {
+            return this._name;
+        }
+        /**
+         * Returns the stack order of this graphic. A graphic with greater stack order
+         * is always in front of a graphic with a lower stack order.
+         */
+        zIndex() {
+            return this._zIndex;
+        }
+    }
+    /**
+     * A graphic whose elements are shapes: each shape needs to be converted
+     * to a mesh before rendering.
+     */
+    class Graphic extends BaseGraphic {
+        constructor(name, zIndex, shapes) {
+            super(name, zIndex);
+            this._shapes = shapes;
+        }
+        static fromLiteral(data) {
+            const name = data['_name'];
+            const zIndex = data['_zIndex'];
+            const elements = data['_shapes'].map(fromLiteral);
+            return new Graphic(name, zIndex, elements);
+        }
+        toRenderable(mesher) {
+            let meshes = new Array();
+            const len = this._shapes.length;
+            for (let i = 0; i < len; i++) {
+                meshes = meshes.concat(mesher.meshShape(this._shapes[i]));
+            }
+            return new RenderableGraphic(this.name(), this.zIndex(), meshes);
+        }
+    }
+    /**
+     * A graphic whose elements are meshes.
+     */
+    class RenderableGraphic extends BaseGraphic {
+        constructor(name, zIndex, meshes) {
+            super(name, zIndex);
+            this._meshes = meshes;
+        }
+        static fromLiteral(data) {
+            const name = data['_name'];
+            const zIndex = data['_zIndex'];
+            const elements = data['_meshes'].map(Mesh.fromLiteral);
+            return new RenderableGraphic(name, zIndex, elements);
+        }
+        meshes() {
+            return this._meshes;
+        }
+    }
+
+    /**
+     * A speed with a resolution of 1 millimetre per hour.
+     */
+    class Speed {
+        constructor(mmPerHour) {
+            this.mmPerHour = mmPerHour;
+        }
+        /**
+         * Speed from given amount of metres per second.
+         */
+        static ofMetresPerSecond(mps) {
+            return new Speed(Math.round(mps * 3600000.0));
+        }
+        /**
+         * Speed from given amount of kilometres per hour.
+         */
+        static ofKilometresPerHour(kph) {
+            return new Speed(Math.round(kph * 1e+6));
+        }
+        /**
+         * Speed from given amount of miles per hour.
+         */
+        static ofMilesPerHour(mph) {
+            return new Speed(Math.round(mph * 1609344.0));
+        }
+        /**
+         * Speed from given amount of knots.
+         */
+        static ofKnots(kt) {
+            return new Speed(Math.round(kt * 1852000.0));
+        }
+        /**
+         * Speed from given amount feet per second.
+         */
+        static feetPerSecond(fps) {
+            return new Speed(Math.round(fps * 1097280.0));
+        }
+        /**
+         * Speed to metres per second.
+         */
+        metresPerSecond() {
+            return this.mmPerHour / 3600000.0;
+        }
+        /**
+         * Speed to kilometres per hour.
+         */
+        kilometresPerHour() {
+            return this.mmPerHour / 1e+6;
+        }
+        /**
+         * Speed to miles per hour.
+         */
+        milesPerHour() {
+            return this.mmPerHour / 1609344.0;
+        }
+        /**
+         * Speed to knots.
+         */
+        knots() {
+            return this.mmPerHour / 1852000.0;
+        }
+        /**
+         * Speed to feet per second.
+         */
+        feetPerSecond() {
+            return this.mmPerHour / 1097280.0;
+        }
+    }
+
+    class Batcher {
+        constructor(factory) {
+            this.factory = factory;
+            this._batches = new Map();
+        }
+        insert(graphic) {
+            const graphicName = graphic.name();
+            /* delete graphic first but don't refresh the batches yet. */
+            this.remove(graphicName);
+            const zIndex = graphic.zIndex();
+            let bs = this._batches.get(zIndex);
+            if (bs === undefined) {
+                /* new z-index.*/
+                bs = new Array();
+                this._batches.set(zIndex, bs);
+            }
+            const meshes = graphic.meshes();
+            const len = meshes.length;
+            for (let i = 0; i < len; i++) {
+                const mesh = meshes[i];
+                const last = bs[bs.length - 1];
+                if (last === undefined || !this.factory.fits(mesh, last)) {
+                    const newBatch = this.factory.createBatch(mesh);
+                    newBatch.add(graphicName, mesh);
+                    bs.push(newBatch);
+                }
+                else {
+                    last.add(graphicName, mesh);
+                }
+            }
+            this.refresh();
+        }
+        delete(graphicName) {
+            this.remove(graphicName);
+            this.refresh();
+        }
+        /**
+         * Draws all the batches in order of z-index and insertion order.
+         */
+        draw() {
+            const sorted = Array.from(this._batches.entries()).sort();
+            for (const l of sorted) {
+                const batches = l[1];
+                const len = batches.length;
+                for (let i = 0; i < len; i++) {
+                    const batch = batches[i];
+                    if (batch.isDirty()) {
+                        batch.clean();
+                    }
+                    batch.draw();
+                }
+            }
+        }
+        remove(graphicName) {
+            for (let bs of this._batches.values()) {
+                const len = bs.length;
+                for (let i = 0; i < len; i++) {
+                    bs[i].remove(graphicName);
+                }
+            }
+        }
+        refresh() {
+            for (let bs of this._batches.values()) {
+                for (var i = bs.length - 1; i >= 0; i--) {
+                    const b = bs[i];
+                    if (b.isEmpty()) {
+                        b.destroy();
+                        bs.splice(i, 1);
+                    }
+                }
+            }
+        }
+    }
+    /**
+     * A collection of meshes rendered with one draw call
+     * and therefore sharing the same draw mode and attributes.
+     */
+    class Batch {
+        constructor() {
+            this._meshes = new Map();
+            this._dirty = true;
+        }
+        /**
+         * whether this batch is dirty, i.e. the VBO are not populated
+         * with the meshes. If batch is empty it must be destroy otherwise
+         * updated
+         */
+        isDirty() {
+            return this._dirty;
+        }
+        /**
+         * whether this batch contains no mesh and can therefore be destroyed.
+         */
+        isEmpty() {
+            return this._meshes.size === 0;
+        }
+        clean() {
+            let meshes = new Array();
+            for (let ms of this._meshes.values()) {
+                const len = ms.length;
+                for (let i = 0; i < len; i++) {
+                    meshes.push(ms[i]);
+                }
+            }
+            this.update(meshes);
+            this._dirty = false;
+        }
+        add(graphicName, mesh) {
+            let ms = this._meshes.get(graphicName);
+            if (ms === undefined) {
+                ms = new Array();
+                this._meshes.set(graphicName, ms);
+            }
+            ms.push(mesh);
+            this._dirty = true;
+        }
+        /**
+         * If this batch contains meshes for the given graphic, removes them
+         * and marks this batch as dirty.
+         */
+        remove(graphicName) {
+            if (this._meshes.delete(graphicName)) {
+                this._dirty = true;
+            }
+        }
+    }
+
+    /**
      * Static utility methods for manipulation WebGL2 constructs.
      */
     class WebGL2 {
@@ -2154,7 +2413,7 @@ var demo = (function (exports) {
         static createShader(gl, type, source) {
             const shader = gl.createShader(type);
             if (shader === null) {
-                throw new Error("Invalid shader type: " + type);
+                throw new Error('Invalid shader type: ' + type);
             }
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
@@ -2164,12 +2423,12 @@ var demo = (function (exports) {
             }
             const log = gl.getShaderInfoLog(shader);
             gl.deleteShader(shader);
-            throw new Error("Could not compile shader:" + log);
+            throw new Error('Could not compile shader:' + log);
         }
         static createProgram(gl, vertexShader, fragmentShader) {
             const program = gl.createProgram();
             if (program === null) {
-                throw new Error("WebGL is not supported");
+                throw new Error('WebGL is not supported');
             }
             gl.attachShader(program, vertexShader);
             gl.attachShader(program, fragmentShader);
@@ -2179,56 +2438,234 @@ var demo = (function (exports) {
                 return program;
             }
             gl.deleteProgram(program);
-            throw new Error("Invalid shader(s)");
+            throw new Error('Invalid shader(s)');
         }
     }
 
-    class Drawing {
-        constructor(batches) {
-            this._batches = batches;
+    /**
+     * Characteristics of a WebGL attibute.
+     */
+    class Attribute {
+        constructor(name, size, type, isDisabled, extractor) {
+            this._name = name;
+            this._size = size;
+            this._type = type;
+            this._isDisabled = isDisabled;
+            this._extractor = extractor;
         }
-        batches() {
-            return this._batches;
+        /**
+         * Name of the attribute.
+         */
+        name() {
+            return this._name;
         }
-    }
-    class Animator {
-        constructor(callback, fps) {
-            this.callback = callback;
-            this.fps = fps;
-            this.now = Date.now();
-            this.then = Date.now();
-            this.interval = 1000 / this.fps;
-            this.delta = -1;
-            this.handle = -1;
+        /**
+         * Number of components per vertex attribute.
+         */
+        size() {
+            return this._size;
         }
-        start() {
-            this.render();
+        /**
+         * Data type of each component in the array.
+         */
+        type() {
+            return this._type;
         }
-        stop() {
-            cancelAnimationFrame(this.handle);
+        /**
+         * Predicate to decide whether attribute is disabled for given mesh.
+         */
+        isDisabled() {
+            return this._isDisabled;
         }
-        render() {
-            this.handle = requestAnimationFrame(() => this.render());
-            this.now = Date.now();
-            this.delta = this.now - this.then;
-            if (this.delta > this.interval) {
-                this.then = this.now - (this.delta % this.interval);
-                this.callback();
-            }
+        /**
+         * Function to extract the data relevant to this
+         * attribute from a mesh.
+         */
+        extractor() {
+            return this._extractor;
         }
     }
     /**
-     * A scene contains all the drawings and required attributed to render them.
+     * All attributes used to render mesh.
      */
-    class Scene {
-        constructor(drawings, bgColour, sp, at) {
-            this._drawings = drawings;
+    class Attributes {
+        constructor(gl) {
+            this.atts = [
+                new Attribute('a_geo_pos', 3, gl.FLOAT, m => m.geos().length === 0, m => m.geos()),
+                new Attribute('a_prev_geo_pos', 3, gl.FLOAT, m => m.extrusion() === undefined, m => {
+                    const e = m.extrusion();
+                    return e === undefined ? [] : e.prevGeos();
+                }),
+                new Attribute('a_next_geo_pos', 3, gl.FLOAT, m => m.extrusion() === undefined, m => {
+                    const e = m.extrusion();
+                    return e === undefined ? [] : e.nextGeos();
+                }),
+                new Attribute('a_half_width', 1, gl.FLOAT, m => m.extrusion() === undefined, m => {
+                    const e = m.extrusion();
+                    return e === undefined ? [] : e.halfWidths();
+                }),
+                new Attribute('a_offset', 2, gl.FLOAT, m => m.offsets().length === 0, m => m.offsets()),
+                new Attribute('a_rgba', 1, gl.UNSIGNED_INT, m => m.colours().length === 0, m => m.colours())
+            ];
+        }
+        /**
+         * All disabled attributes for given mesh.
+         */
+        disabled(mesh) {
+            return this.atts.filter(a => a.isDisabled()(mesh)).map(a => a.name());
+        }
+        /**
+         * All disabled attributes for given mesh.
+         */
+        enabled(mesh) {
+            return this.atts.filter(a => !a.isDisabled()(mesh)).map(a => a.name());
+        }
+        /* count is geos if not empty, offsets otherwise. */
+        counter(mesh) {
+            return mesh.geos().length === 0 ? 'a_offset' : 'a_geo_pos';
+        }
+        named(attName) {
+            const att = this.atts.find(a => a.name() === attName);
+            if (att === undefined) {
+                throw new Error('Unknown attribute: ' + attName);
+            }
+            return att;
+        }
+    }
+    class GlBatch extends Batch {
+        constructor(enabled, disabled, counter, drawMode, gl, program, attributes) {
+            super();
+            this._enabled = enabled;
+            this._disabled = disabled;
+            this._counter = counter;
+            this._drawMode = drawMode;
+            this.gl = gl;
+            this.program = program;
+            this.attributes = attributes;
+            this.count = 0;
+            const vao = gl.createVertexArray();
+            if (vao === null) {
+                throw new Error('Could not create vertex array');
+            }
+            this.vao = vao;
+            this.buffers = new Map();
+            for (const attName of this._enabled) {
+                const attBuff = gl.createBuffer();
+                if (attBuff === null) {
+                    throw new Error('Could not create buffer for attribute: ' + attName);
+                }
+                this.buffers.set(attName, attBuff);
+            }
+        }
+        destroy() {
+            const gl = this.gl;
+            for (const att of this.buffers.entries()) {
+                gl.deleteBuffer(att[1]);
+            }
+            gl.deleteVertexArray(this.vao);
+        }
+        draw() {
+            const gl = this.gl;
+            gl.bindVertexArray(this.vao);
+            /*
+             * disable the vertex array, the attribute will have
+             * the default value which the shader can handle.
+             */
+            const len = this._disabled.length;
+            for (let i = 0; i < len; i++) {
+                const attLocation = gl.getAttribLocation(this.program, this._disabled[i]);
+                gl.disableVertexAttribArray(attLocation);
+            }
+            const drawMode = this._drawMode == DrawMode.LINES
+                ? gl.LINES
+                : gl.TRIANGLES;
+            gl.drawArrays(drawMode, 0, this.count);
+        }
+        disabled() {
+            return this._disabled;
+        }
+        drawMode() {
+            return this._drawMode;
+        }
+        update(meshes) {
+            const gl = this.gl;
+            gl.bindVertexArray(this.vao);
+            for (const att of this.buffers.entries()) {
+                const attName = att[0];
+                const a = this.attributes.named(attName);
+                const arr = a.type() == gl.UNSIGNED_INT
+                    ? this.mkArray(meshes, (l) => new Uint32Array(l), a.extractor())
+                    : this.mkArray(meshes, (l) => new Float32Array(l), a.extractor());
+                const attLocation = gl.getAttribLocation(this.program, attName);
+                gl.enableVertexAttribArray(attLocation);
+                gl.bindBuffer(gl.ARRAY_BUFFER, att[1]);
+                /* 0 = move forward size * sizeof(type) each iteration to get the next position */
+                const stride = 0;
+                /* start at the beginning of the buffer */
+                const offset = 0;
+                if (a.type() == gl.UNSIGNED_INT) {
+                    gl.vertexAttribIPointer(attLocation, a.size(), a.type(), stride, offset);
+                }
+                else {
+                    gl.vertexAttribPointer(attLocation, a.size(), a.type(), false, stride, offset);
+                }
+                gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW, 0);
+                if (attName === this._counter) {
+                    this.count = arr.length / a.size();
+                }
+            }
+            gl.bindVertexArray(null);
+        }
+        mkArray(meshes, ctor, extract) {
+            let length = 0;
+            const len = meshes.length;
+            for (let i = 0; i < len; i++) {
+                length += extract(meshes[i]).length;
+            }
+            let result = ctor(length);
+            let offset = 0;
+            for (let i = 0; i < len; i++) {
+                const arr = extract(meshes[i]);
+                result.set(arr, offset);
+                offset += arr.length;
+            }
+            return result;
+        }
+    }
+    class GlBatchFactory {
+        constructor(gl, program, attributes) {
+            this.gl = gl;
+            this.program = program;
+            this.attributes = attributes;
+        }
+        fits(mesh, batch) {
+            const od = this.attributes.disabled(mesh);
+            return mesh.drawMode() === batch.drawMode()
+                && GlBatchFactory.arraysEqual(od, batch.disabled());
+        }
+        createBatch(mesh) {
+            return new GlBatch(this.attributes.enabled(mesh), this.attributes.disabled(mesh), this.attributes.counter(mesh), mesh.drawMode(), this.gl, this.program, this.attributes);
+        }
+        static arraysEqual(a, b) {
+            if (a === b)
+                return true;
+            if (a.length != b.length)
+                return false;
+            for (let i = 0; i < a.length; ++i) {
+                if (a[i] !== b[i])
+                    return false;
+            }
+            return true;
+        }
+    }
+    /**
+     * Contextual information to draw meshes.
+     */
+    class DrawingContext {
+        constructor(bgColour, sp, at) {
             this._bgColour = bgColour;
             this._sp = sp;
             this._at = at;
-        }
-        drawings() {
-            return this._drawings;
         }
         bgColour() {
             return this._bgColour;
@@ -2247,104 +2684,48 @@ var demo = (function (exports) {
         constructor(gl, miterLimit) {
             this.gl = gl;
             this.miterLimit = miterLimit;
-            this.aGeoPos = new Attribute("a_geo_pos", 3, this.gl.FLOAT);
-            this.aPrevGeoPos = new Attribute("a_prev_geo_pos", 3, this.gl.FLOAT);
-            this.aNextGeoPos = new Attribute("a_next_geo_pos", 3, this.gl.FLOAT);
-            this.aHalfWidth = new Attribute("a_half_width", 1, this.gl.FLOAT);
-            this.aOffset = new Attribute("a_offset", 2, this.gl.FLOAT);
-            this.aRgba = new Attribute("a_rgba", 1, this.gl.UNSIGNED_INT);
-            const vertexShader = WebGL2.createShader(this.gl, this.gl.VERTEX_SHADER, Renderer.VERTEX_SHADER);
-            const fragmentShader = WebGL2.createShader(this.gl, this.gl.FRAGMENT_SHADER, Renderer.FRAGMENT_SHADER);
-            this.program = WebGL2.createProgram(this.gl, vertexShader, fragmentShader);
+            const vertexShader = WebGL2.createShader(gl, gl.VERTEX_SHADER, Renderer.VERTEX_SHADER);
+            const fragmentShader = WebGL2.createShader(gl, gl.FRAGMENT_SHADER, Renderer.FRAGMENT_SHADER);
+            this.program = WebGL2.createProgram(gl, vertexShader, fragmentShader);
+            const attributes = new Attributes(gl);
+            const factory = new GlBatchFactory(gl, this.program, attributes);
+            this.batcher = new Batcher(factory);
         }
-        createDrawing(meshes) {
-            const len = meshes.length;
-            if (len === 0) {
-                return new Drawing([]);
-            }
-            const attributes = [
-                this.aGeoPos,
-                this.aPrevGeoPos,
-                this.aNextGeoPos,
-                this.aHalfWidth,
-                this.aOffset,
-                this.aRgba
-            ];
-            let batches = new Array();
-            let mesh = meshes[0];
-            const state = new State(mesh, this.gl);
-            let batch = this.createBatch(state, attributes);
-            batches.push(batch);
-            this.fillBatch(batch, state, mesh);
-            for (let i = 1; i < len; i++) {
-                mesh = meshes[i];
-                // new batch if different drawing mode or any array changes from empty/non empty
-                const newBatch = state.update(mesh, this.gl);
-                if (newBatch) {
-                    batch = this.createBatch(state, attributes);
-                    batches.push(batch);
-                }
-                this.fillBatch(batch, state, mesh);
-            }
-            return new Drawing(batches.map(b => b.createGlArrays(this.gl, this.program)));
-        }
-        deleteDrawing(drawing) {
+        insert(graphic) {
             this.gl.useProgram(this.program);
-            drawing.batches().forEach(b => b.delete(this.gl));
+            this.batcher.insert(graphic);
         }
-        draw(scene) {
-            const bgColour = scene.bgColour();
+        delete(graphicName) {
+            this.gl.useProgram(this.program);
+            this.batcher.delete(graphicName);
+        }
+        draw(ctx) {
+            const bgColour = ctx.bgColour();
             this.gl.clearColor(bgColour.red(), bgColour.green(), bgColour.blue(), bgColour.alpha());
             this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
             this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-            const sp = scene.sp();
+            const sp = ctx.sp();
             const geoCentre = [sp.centre().x(), sp.centre().y(), sp.centre().z()];
             const geoToSys = sp.directRotationGl();
             const canvasToClipspace = CoordinateSystems.canvasToClipspace(this.gl.canvas.clientWidth, this.gl.canvas.clientHeight);
-            const drawings = scene.drawings();
             const earthRadiusMetres = sp.earthRadius();
             const gl = this.gl;
             const program = this.program;
             gl.useProgram(program);
             /* uniforms. */
-            const earthRadiusUniformLocation = gl.getUniformLocation(program, "u_earth_radius");
+            const earthRadiusUniformLocation = gl.getUniformLocation(program, 'u_earth_radius');
             gl.uniform1f(earthRadiusUniformLocation, earthRadiusMetres);
-            const miterLimitUniformLocation = gl.getUniformLocation(program, "u_miter_limit");
+            const miterLimitUniformLocation = gl.getUniformLocation(program, 'u_miter_limit');
             gl.uniform1f(miterLimitUniformLocation, this.miterLimit);
-            const geoCentreUniformLocation = gl.getUniformLocation(program, "u_geo_centre");
+            const geoCentreUniformLocation = gl.getUniformLocation(program, 'u_geo_centre');
             gl.uniform3fv(geoCentreUniformLocation, geoCentre);
-            const geoToSysUniformLocation = gl.getUniformLocation(program, "u_geo_to_system");
+            const geoToSysUniformLocation = gl.getUniformLocation(program, 'u_geo_to_system');
             gl.uniformMatrix3fv(geoToSysUniformLocation, false, geoToSys);
-            const stereoToCanvasLocation = gl.getUniformLocation(program, "u_stereo_to_canvas");
-            gl.uniformMatrix3fv(stereoToCanvasLocation, false, scene.at().glMatrix());
-            const canvasToClipspaceLocation = gl.getUniformLocation(program, "u_canvas_to_clipspace");
+            const stereoToCanvasLocation = gl.getUniformLocation(program, 'u_stereo_to_canvas');
+            gl.uniformMatrix3fv(stereoToCanvasLocation, false, ctx.at().glMatrix());
+            const canvasToClipspaceLocation = gl.getUniformLocation(program, 'u_canvas_to_clipspace');
             gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace);
-            for (let i = 0; i < drawings.length; i++) {
-                const bs = drawings[i].batches();
-                for (let j = 0; j < bs.length; j++) {
-                    bs[j].draw(this.gl);
-                }
-            }
-        }
-        createBatch(state, attributes) {
-            /* count is driven by geos if not empty, offsets otherwise. */
-            const attCount = state.emptyGeos ? this.aOffset : this.aGeoPos;
-            return new Batch(state.drawMode, attributes, attCount);
-        }
-        fillBatch(batch, state, mesh) {
-            if (!state.emptyGeos) {
-                batch.addToArray(this.aGeoPos, mesh.geos());
-            }
-            const extrusion = mesh.extrusion();
-            if (extrusion !== undefined) {
-                batch.addToArray(this.aPrevGeoPos, extrusion.prevGeos());
-                batch.addToArray(this.aNextGeoPos, extrusion.nextGeos());
-                batch.addToArray(this.aHalfWidth, extrusion.halfWidths());
-            }
-            if (!state.emptyOffsets) {
-                batch.addToArray(this.aOffset, mesh.offsets());
-            }
-            batch.addToArray(this.aRgba, mesh.colours());
+            this.batcher.draw();
         }
     }
     Renderer.VERTEX_SHADER = `#version 300 es
@@ -2518,330 +2899,93 @@ void main() {
   colour = v_colour;
 }
 `;
-    /**
-     * Characteristics of a WebGL attibute.
-     */
-    class Attribute {
-        constructor(name, size, type) {
-            this._name = name;
-            this._size = size;
-            this._type = type;
-        }
-        /**
-         * Name of the attribute.
-         */
-        name() {
-            return this._name;
-        }
-        /**
-         * Number of components per vertex attribute.
-         */
-        size() {
-            return this._size;
-        }
-        /**
-         * Data type of each component in the array.
-         */
-        type() {
-            return this._type;
-        }
-    }
-    /**
-     * VAO, VBOs and constant attributes to be rendered by one draw call.
-     */
-    class GlArrays {
-        constructor(drawMode, vao, buffers, constants, count) {
-            this.drawMode = drawMode;
-            this.vao = vao;
-            this.buffers = buffers;
-            this.constants = constants;
-            this.count = count;
-        }
-        draw(gl) {
-            gl.bindVertexArray(this.vao);
-            /*
-             * disable the vertex array, the attribute will have
-             * the default value which the shader can handle.
-             */
-            this.constants.forEach(c => gl.disableVertexAttribArray(c));
-            gl.drawArrays(this.drawMode, 0, this.count);
-        }
-        delete(gl) {
-            this.buffers.forEach(b => gl.deleteBuffer(b));
-            gl.deleteVertexArray(this.vao);
-        }
-    }
-    /**
-     * Batch of meshes to be rendered with the same draw mode and enables VBOs.
-     */
-    class Batch {
-        constructor(drawMode, attributes, attributeCount) {
-            this.drawMode = drawMode;
-            this.attributes = attributes;
-            this.attributeCount = attributeCount;
-            this.arrays = new Map();
-        }
-        addToArray(attribute, data) {
-            let arr = this.arrays.get(attribute.name());
-            if (arr === undefined) {
-                arr = new Array();
-                this.arrays.set(attribute.name(), arr);
-            }
-            const len = data.length;
-            for (let i = 0; i < len; i++) {
-                arr.push(data[i]);
-            }
-        }
-        createGlArrays(gl, program) {
-            gl.useProgram(program);
-            const vao = gl.createVertexArray();
-            if (vao === null) {
-                throw new Error("Could not create vertex array");
-            }
-            gl.bindVertexArray(vao);
-            let buffers = new Array();
-            let constants = new Array();
-            for (const a of this.attributes) {
-                const attName = a.name();
-                const attLocation = gl.getAttribLocation(program, attName);
-                const arr = this.arrays.get(attName);
-                if (arr === undefined) {
-                    gl.disableVertexAttribArray(attLocation);
-                    constants.push(attLocation);
-                }
-                else {
-                    gl.enableVertexAttribArray(attLocation);
-                    const attBuff = gl.createBuffer();
-                    if (attBuff === null) {
-                        throw new Error("Could not create buffer for attribute: " + attName);
-                    }
-                    buffers.push(attBuff);
-                    gl.bindBuffer(gl.ARRAY_BUFFER, attBuff);
-                    /* 0 = move forward size * sizeof(type) each iteration to get the next position */
-                    const stride = 0;
-                    /* start at the beginning of the buffer */
-                    const offset = 0;
-                    if (a.type() == gl.UNSIGNED_INT) {
-                        gl.vertexAttribIPointer(attLocation, a.size(), a.type(), stride, offset);
-                        gl.bufferData(gl.ARRAY_BUFFER, new Uint32Array(arr), gl.STATIC_DRAW, 0);
-                    }
-                    else {
-                        gl.vertexAttribPointer(attLocation, a.size(), a.type(), false, stride, offset);
-                        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arr), gl.STATIC_DRAW, 0);
-                    }
-                }
-            }
-            gl.bindVertexArray(null);
-            const refArray = this.arrays.get(this.attributeCount.name());
-            if (refArray === undefined) {
-                throw new Error("No array for attribute: " + this.attributeCount.name());
-            }
-            const count = refArray.length / this.attributeCount.size();
-            return new GlArrays(this.drawMode, vao, buffers, constants, count);
-        }
-    }
-    /**
-     * Capture the state of the drawing to create batches.
-     */
-    class State {
-        constructor(m, gl) {
-            this.drawMode = State.drawMode(m, gl);
-            this.emptyGeos = State.isEmpty(m.geos());
-            this.emptyExtrusion = m.extrusion() === undefined;
-            this.emptyOffsets = State.isEmpty(m.offsets());
-        }
-        update(m, gl) {
-            const drawMode = State.drawMode(m, gl);
-            const emptyGeos = State.isEmpty(m.geos());
-            const emptyExtrusion = m.extrusion() === undefined;
-            const emptyOffsets = State.isEmpty(m.offsets());
-            const changed = this.drawMode !== drawMode
-                || this.emptyGeos !== emptyGeos
-                || this.emptyExtrusion !== emptyExtrusion
-                || this.emptyOffsets !== emptyOffsets;
-            if (changed) {
-                this.drawMode = drawMode;
-                this.emptyGeos = emptyGeos;
-                this.emptyExtrusion = emptyExtrusion;
-                this.emptyOffsets = emptyOffsets;
-            }
-            return changed;
-        }
-        static drawMode(m, gl) {
-            return m.drawMode() == DrawMode.LINES ? gl.LINES : gl.TRIANGLES;
-        }
-        static isEmpty(a) {
-            return a.length === 0;
-        }
-    }
 
     /**
-     * Ad-hoc stack to order element uniquely identified by name
-     * according to their z-index. Within a layer (i.e. a z-index)
-     * elements are ordered as inserted.
+     * Rendering options.
      */
-    class Stack {
-        constructor() {
-            this.stackOrder = new Map();
-            this.elements = new Map();
-        }
-        get(name) {
-            const zi = this.stackOrder.get(name);
-            if (zi === undefined) {
-                return undefined;
-            }
-            const layer = this.elements.get(zi);
-            if (layer === undefined) {
-                throw new Error("Unknown z-index: " + zi);
-            }
-            const e = layer.get(name);
-            if (e === undefined) {
-                throw new Error("Unknown name: " + name);
-            }
-            return e;
-        }
-        all() {
-            const sorted = Array.from(this.elements.entries()).sort();
-            const len = sorted.length;
-            let res = new Array();
-            for (let i = 0; i < len; i++) {
-                const ds = Array.from(sorted[i][1].values());
-                const dsl = ds.length;
-                for (let i = 0; i < dsl; i++) {
-                    res.push(ds[i]);
-                }
-            }
-            return res;
-        }
-        insert(name, zi, e) {
-            const czi = this.stackOrder.get(name);
-            if (czi === undefined) {
-                /* new element */
-                this.stackOrder.set(name, zi);
-            }
-            else if (czi !== zi) {
-                /* change of stack order */
-                this.delete(name);
-                this.stackOrder.set(name, zi);
-            }
-            this.add(name, zi, e);
-        }
-        delete(name) {
-            const zi = this.stackOrder.get(name);
-            if (zi === undefined) {
-                return;
-            }
-            const layer = this.elements.get(zi);
-            if (layer === undefined) {
-                throw new Error("Unknown z-index: " + zi);
-            }
-            this.stackOrder.delete(name);
-            layer.delete(name);
-            if (layer.size === 0) {
-                this.elements.delete(zi);
-            }
-        }
-        add(name, zi, e) {
-            let layer = this.elements.get(zi);
-            if (layer === undefined) {
-                /* new layer */
-                layer = new Map();
-                this.elements.set(zi, layer);
-            }
-            layer.set(name, e);
-        }
-    }
-
-    class Graphic {
-        constructor(name, zIndex, shapes) {
-            this._name = name;
-            this._zIndex = zIndex;
-            this._shapes = shapes;
-        }
-        name() {
-            return this._name;
+    class RenderingOptions {
+        constructor(fps, circlePositions, miterLimit) {
+            this._fps = fps;
+            this._circlePositions = circlePositions;
+            this._miterLimit = miterLimit;
         }
         /**
-         * Return the stack order of this graphic. A graphic with greater stack order
-         * is always in front of a graphic with a lower stack order.
+         * Number of frame per seconds.
          */
-        zIndex() {
-            return this._zIndex;
+        fps() {
+            return this._fps;
         }
-        shapes() {
-            return this._shapes;
+        /**
+         * Number of positions when discretising a circle.
+         */
+        circlePositions() {
+            return this._circlePositions;
+        }
+        /**
+         * Value of the miter limit when rendering wide polylines. If the length
+         * of the miter divide by the half width of the polyline is greater than this
+         * value, the miter will be ignored and normal to the line segment is used.
+         */
+        miterLimit() {
+            return this._miterLimit;
         }
     }
     /**
-     * Initial definition of the world to be rendered.
+     * A world instance represents a view of the earth projected using a stereographic
+     * projection centered at a given location and onto which various shapes are rendered.
      */
-    class WorldDefinition {
-        constructor(centre, range, rotation, bgColour) {
-            this._centre = centre;
-            this._range = range;
-            this._rotation = rotation;
-            this._bgColour = bgColour;
-        }
-        centre() {
-            return this._centre;
-        }
-        range() {
-            return this._range;
-        }
-        rotation() {
-            return this._rotation;
-        }
-        bgColour() {
-            return this._bgColour;
-        }
-    }
     class World {
         constructor(gl, def, options = new RenderingOptions(60, 100, 5)) {
             this._centre = def.centre();
             this._range = def.range();
             this._rotation = def.rotation();
             this.bgColour = def.bgColour();
-            this.options = options;
             this.cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight);
             this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS);
             this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp);
-            this.stack = new Stack();
             this.renderer = new Renderer(gl, options.miterLimit());
-            this.animator = new Animator(() => {
-                const scene = new Scene(this.stack.all(), this.bgColour, this.sp, this.at);
-                this.renderer.draw(scene);
-            }, options.fps());
+            this._mesher = new Mesher(World.EARTH_RADIUS, options.circlePositions(), options.miterLimit());
         }
-        startRendering() {
-            this.animator.start();
+        /**
+         * Renders all inserted shapes into the WebGL rendering context given at construction.
+         *
+         * This should be called within `requestAnimationFrame`
+         */
+        render() {
+            const ctx = new DrawingContext(this.bgColour, this.sp, this.at);
+            this.renderer.draw(ctx);
         }
-        stoptRendering() {
-            this.animator.stop();
-        }
+        /**
+         * Sets the background colour (clear colour) of the WeGL rendering context.
+         *
+         * The colour will be applied at the next repaint.
+         */
         setBackground(colour) {
             this.bgColour = colour;
         }
+        /**
+         * Inserts the given graphic in this world.
+         *
+         * The shapes of the graphic will be converted into meshes if the graphic
+         * is not a `RenderableGraphic`. This operation can be expensive, depending on how
+         * many shapes and what shapes are to be rendered. Meshing can be done in a worker
+         * using the `mesher()` supplied by this class and the relevant `fromLiteral` functions.
+         *
+         * The graphic will be rendered at the next repaint.
+         */
         insert(graphic) {
-            const name = graphic.name();
-            const zi = graphic.zIndex();
-            const shapes = graphic.shapes();
-            let meshes = new Array();
-            for (let i = 0; i < shapes.length; i++) {
-                meshes = meshes.concat(MeshGenerator.mesh(shapes[i], World.EARTH_RADIUS, this.options));
-            }
-            let drawing = this.stack.get(name);
-            if (drawing !== undefined) {
-                this.renderer.deleteDrawing(drawing);
-            }
-            drawing = this.renderer.createDrawing(meshes);
-            this.stack.insert(name, zi, drawing);
+            const g = graphic instanceof Graphic
+                ? graphic.toRenderable(this._mesher)
+                : graphic;
+            this.renderer.insert(g);
         }
+        /**
+         * Deletes the graphic associated to the given name.
+         *
+         * The graphic will be deleted at the next repaint.
+         */
         delete(graphicName) {
-            let drawing = this.stack.get(name);
-            if (drawing !== undefined) {
-                this.stack.delete(graphicName);
-                this.renderer.deleteDrawing(drawing);
-            }
+            this.renderer.delete(graphicName);
         }
         pan(deltaX, deltaY) {
             // pixels to stereographic
@@ -2871,159 +3015,189 @@ void main() {
         centre() {
             return this._centre;
         }
+        /**
+         * Returns the mesher to be used to transform shapes into meshes (renderable).
+         * Use this to perform meshing of complex shapes (i.e. that require intensive CPU
+         * operation) in a web worker (in order not to block the main javascript thread).
+         */
+        mesher() {
+            return this._mesher;
+        }
     }
     // earth radius in metres: WGS-84 ellipsoid, mean radius of semi-axis (R1). */
     World.EARTH_RADIUS = Length.ofMetres(6371008.7714);
 
-    class DemoApp {
-        constructor(gl) {
-            const linkoping = LatLong.ofDegrees(58.4108, 15.6214);
-            const def = new WorldDefinition(linkoping, Length.ofKilometres(2000), Angle.ofDegrees(0), Colour.GAINSBORO);
-            this.world = new World(gl, def);
-            this.l = (_c, _r) => { };
-        }
-        setOnChange(l) {
-            this.l = l;
-            this.fireEvent();
-        }
-        run() {
-            const ystad = LatLong.ofDegrees(55.4295, 13.82);
-            const malmo = LatLong.ofDegrees(55.6050, 13.0038);
-            const lund = LatLong.ofDegrees(55.7047, 13.1910);
-            const helsingborg = LatLong.ofDegrees(56.0465, 12.6945);
-            const kristianstad = LatLong.ofDegrees(56.0294, 14.1567);
-            const jonkoping = LatLong.ofDegrees(57.7826, 14.1618);
-            const linkoping = LatLong.ofDegrees(58.4108, 15.6214);
-            const norrkoping = LatLong.ofDegrees(58.5877, 16.1924);
-            const goteborg = LatLong.ofDegrees(57.7089, 11.9746);
-            const stockholm = LatLong.ofDegrees(59.3293, 18.0686);
-            // Gotland
-            const visby = LatLong.ofDegrees(57.6349, 18.2948);
-            const irevik = LatLong.ofDegrees(57.8371, 18.5866);
-            const larbro = LatLong.ofDegrees(57.7844, 18.7890);
-            const blase = LatLong.ofDegrees(57.8945, 18.8440);
-            const farosund = LatLong.ofDegrees(57.8613, 19.0540);
-            const slite = LatLong.ofDegrees(57.7182, 18.7923);
-            const gothem = LatLong.ofDegrees(57.5790, 18.7298);
-            const ljugarn = LatLong.ofDegrees(57.3299, 18.7084);
-            const nar = LatLong.ofDegrees(57.2573, 18.6351);
-            const vamlingbo = LatLong.ofDegrees(56.9691, 18.2319);
-            const sundre = LatLong.ofDegrees(56.9364, 18.1834);
-            const sanda = LatLong.ofDegrees(57.4295, 18.2223);
-            const p = new GeoPolygon([ystad, malmo, lund, helsingborg, kristianstad], Paint.stroke(new Stroke(Colour.LIMEGREEN, 5)));
-            const paint = Paint.fill(Colour.CORAL);
-            const c2 = new GeoCircle(goteborg, Length.ofKilometres(10), paint);
-            const c3 = new GeoCircle(jonkoping, Length.ofKilometres(5), paint);
-            const c4 = new GeoCircle(norrkoping, Length.ofKilometres(5), paint);
-            const c5 = new GeoCircle(linkoping, Length.ofKilometres(5), paint);
-            const l1 = new GeoPolyline([jonkoping, linkoping, norrkoping, stockholm, goteborg], new Stroke(Colour.DODGERBLUE, 1));
-            const l2 = new GeoPolyline([visby, irevik, larbro, blase,
-                farosund, slite, gothem, ljugarn,
-                nar, vamlingbo, sundre, sanda, visby], new Stroke(Colour.DODGERBLUE, 5));
-            const rp = new GeoRelativePolygon(linkoping, [new Offset(50, 50), new Offset(50, 200), new Offset(70, 160),
-                new Offset(90, 200), new Offset(110, 50)], Paint.complete(new Stroke(Colour.SLATEGRAY, 5), Colour.SNOW));
-            const rl = new GeoRelativePolyline(norrkoping, [new Offset(50, 50), new Offset(50, 100), new Offset(75, 150)], new Stroke(Colour.NAVY, 3));
-            this.world.insert(new Graphic("sak", 0, [p, c2, c3, l1, c4, c5, l2]));
-            this.world.insert(new Graphic("andra", 0, [rp, rl]));
-            DemoApp.parseCoastlines(this.world);
-            this.simulateTrack(new Track(stockholm, Angle.ofDegrees(135), Speed.ofMetresPerSecond(555.5556)));
-            this.world.startRendering();
-        }
-        handleKeyboardEvent(evt) {
-            const delta = DemoApp.DELTA.get(evt.key);
-            const factor = DemoApp.FACTOR.get(evt.key);
-            if (delta !== undefined) {
-                this.world.pan(delta[0], delta[1]);
-            }
-            else if (factor !== undefined) {
-                this.world.setRange(this.world.range().scale(factor));
-            }
-            else {
-                return;
-            }
-            this.fireEvent();
-        }
-        fireEvent() {
-            const c = this.world.centre();
-            const lat = c.latitude().degrees();
-            const lon = c.longitude().degrees();
-            const ll = Math.abs(lat).toFixed(4)
-                + (lat < 0 ? 'S' : 'N')
-                + ' ' + Math.abs(lon).toFixed(4)
-                + (lon < 0 ? 'W' : 'E');
-            const r = (this.world.range().kilometres()).toFixed(0) + " km";
-            this.l(ll, r);
-        }
-        simulateTrack(track) {
-            var elapsedSecs = 0;
-            const h = () => {
-                elapsedSecs = elapsedSecs + 1;
-                const p = Kinematics.position(track, Duration.ofSeconds(elapsedSecs), World.EARTH_RADIUS);
-                const offset = new Offset(0, 0);
-                const radius = 16;
-                const paint = Paint.complete(new Stroke(Colour.DEEPPINK, 12), Colour.LIGHTPINK);
-                const c = [new GeoRelativeCircle(p, offset, radius, paint)];
-                this.world.insert(new Graphic("Track", 1, c));
-                setTimeout(h, 1000);
-            };
-            setTimeout(h, 1000);
-        }
-        static parseCoastlines(world) {
-            DemoApp.load("./coastline.json", (data) => {
-                const length = data.features.length;
-                const shapes = new Array();
-                for (let i = 0; i < length; i++) {
-                    const feature = data.features[i];
-                    if (feature.properties.featurecla == "Coastline") {
-                        const coordinates = feature.geometry.coordinates;
-                        const nb_coordinates = coordinates.length;
-                        const positions = new Array();
-                        for (let j = 0; j < nb_coordinates; j++) {
-                            const coord = coordinates[j];
-                            // Be careful : longitude first, then latitude in geoJSON files
-                            const point = LatLong.ofDegrees(coord[1], coord[0]);
-                            positions.push(point);
-                        }
-                        shapes.push(new GeoPolyline(positions, new Stroke(Colour.DIMGRAY, 1)));
+    class EventHandler {
+        constructor() { }
+        handle(e) {
+            const data = e.data;
+            const topic = data.topic;
+            switch (topic) {
+                case 'mesher':
+                    this.mesher = Mesher.fromLiteral(JSON.parse(data.payload));
+                    break;
+                case 'coastline':
+                    if (this.mesher === undefined) {
+                        throw new Error('Mesher not initialised');
                     }
-                }
-                world.insert(new Graphic("coastlines", -1, shapes));
-            }, (_) => {
-                /* damn. */
-            });
+                    computeCoastline(this.mesher).then(c => {
+                        ctx.postMessage({
+                            'topic': 'coastline',
+                            'payload': JSON.stringify(c)
+                        });
+                    }).catch(e => {
+                        ctx.postMessage({
+                            'topic': 'error',
+                            'payload': JSON.stringify(e)
+                        });
+                    });
+                    break;
+                case 'tracks':
+                    if (this.mesher === undefined) {
+                        throw new Error('Mesher not initialised');
+                    }
+                    const m = this.mesher;
+                    const h = () => {
+                        computeTracks(m).then(tracks => {
+                            ctx.postMessage({
+                                'topic': 'tracks',
+                                'payload': JSON.stringify(tracks)
+                            });
+                        }).catch(e => {
+                            ctx.postMessage({
+                                'topic': 'error',
+                                'payload': JSON.stringify(e)
+                            });
+                        }).finally(() => setTimeout(h, 10000));
+                    };
+                    setTimeout(h, 100);
+                    break;
+            }
         }
     }
-    DemoApp.DELTA = new Map([
-        ["ArrowUp", [0, -10]],
-        ["ArrowDown", [0, 10]],
-        ["ArrowLeft", [-10, 0]],
-        ["ArrowRight", [10, 0]]
-    ]);
-    DemoApp.FACTOR = new Map([
-        ["+", 0.95],
-        ["-", 1.05],
-    ]);
-    DemoApp.load = (url, success, error) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('get', url, true);
-        xhr.onreadystatechange = () => {
-            if (xhr.readyState == 4) {
-                // done
-                const status = xhr.status;
-                if (status == 200) {
-                    const data = JSON.parse(xhr.responseText);
-                    success(data);
-                }
-                else {
-                    error(status);
+    const ctx = self;
+    const eh = new EventHandler();
+    const adsbPaint = Paint.complete(new Stroke(Colour.DEEPPINK, 2), Colour.LIGHTPINK);
+    const asterixPaint = Paint.complete(new Stroke(Colour.DEEPSKYBLUE, 2), Colour.SKYBLUE);
+    const mlatPaint = Paint.complete(new Stroke(Colour.LIMEGREEN, 2), Colour.LIGHTGREEN);
+    const trackPaints = [adsbPaint, asterixPaint, mlatPaint];
+    const trackOffsets = [new Offset(-5, -5), new Offset(-5, 5), new Offset(5, 5), new Offset(5, -5)];
+    const trackZIndex = 1;
+    ctx.onmessage = eh.handle;
+    function computeCoastline(mesher) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let response = yield fetch('/assets/coastline.json');
+            let data = yield response.json();
+            const length = data.features.length;
+            let meshes = new Array();
+            for (let i = 0; i < length; i++) {
+                const feature = data.features[i];
+                if (feature.properties.featurecla == 'Coastline') {
+                    const coordinates = feature.geometry.coordinates;
+                    const nb_coordinates = coordinates.length;
+                    const positions = new Array();
+                    for (let j = 0; j < nb_coordinates; j++) {
+                        const coord = coordinates[j];
+                        // Be careful : longitude first, then latitude in geoJSON files
+                        const point = LatLong.ofDegrees(coord[1], coord[0]);
+                        positions.push(point);
+                    }
+                    const shape = new GeoPolyline(positions, new Stroke(Colour.DIMGRAY, 1));
+                    meshes = meshes.concat(mesher.meshShape(shape));
                 }
             }
-        };
-        xhr.send();
-    };
+            return new RenderableGraphic('coastlines', -1, meshes);
+        });
+    }
+    function computeTracks(mesher) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const states = yield fetchStateVectors();
+            const len = states.length;
+            let res = new Array();
+            for (let i = 0; i < len; i++) {
+                const state = states[i];
+                if (state.position !== undefined) {
+                    const paint = trackPaints[state.positionSource];
+                    const m = mesher.meshShape(new GeoRelativePolygon(state.position, trackOffsets, paint));
+                    res.push(new RenderableGraphic(state.icao24, trackZIndex, m));
+                }
+            }
+            return res;
+        });
+    }
+    function fetchStateVectors() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const response = yield fetch('https://opensky-network.org/api/states/all');
+            const data = yield response.json();
+            for (const prop in data) {
+                if (prop === 'states') {
+                    const states = data[prop];
+                    return states.map(StateVector.parse);
+                }
+            }
+            return [];
+        });
+    }
+    var PositionSource;
+    (function (PositionSource) {
+        PositionSource[PositionSource["ADSB"] = 0] = "ADSB";
+        PositionSource[PositionSource["ASTERIX"] = 1] = "ASTERIX";
+        PositionSource[PositionSource["MLAT"] = 2] = "MLAT";
+    })(PositionSource || (PositionSource = {}));
+    class StateVector {
+        constructor() {
+            this.icao24 = "";
+            this.country = "";
+            this.lastContact = 0;
+            this.onGround = true;
+            this.spi = false;
+            this.positionSource = PositionSource.ADSB;
+        }
+        static parse(arr) {
+            let res = new StateVector();
+            res.icao24 = arr[0];
+            if (arr[1] !== null) {
+                res.callsign = arr[1];
+            }
+            res.country = arr[2];
+            if (arr[3] !== null) {
+                res.timePosition = parseInt(arr[3]);
+            }
+            res.lastContact = parseInt(arr[4]);
+            if (arr[5] !== null && arr[6] !== null) {
+                res.position = LatLong.ofDegrees(parseFloat(arr[6]), parseFloat(arr[5]));
+            }
+            if (arr[7] !== null) {
+                res.baroAltitude = Length.ofMetres(parseFloat(arr[7]));
+            }
+            res.onGround = (arr[8] === 'true') ? true : false;
+            if (arr[9] !== null) {
+                res.velocity = Speed.ofMetresPerSecond(parseFloat(arr[9]));
+            }
+            if (arr[10] !== null) {
+                res.trueBearing = Angle.ofDegrees(parseFloat(arr[10]));
+            }
+            if (arr[11] !== null) {
+                res.verticalRate = Speed.ofMetresPerSecond(parseFloat(arr[11]));
+            }
+            if (arr[13] !== null) {
+                res.geoAltitude = Length.ofMetres(parseFloat(arr[13]));
+            }
+            if (arr[14] !== null) {
+                res.squawk = arr[14];
+            }
+            res.spi = (arr[15] === 'true') ? true : false;
+            if (arr[16] === '0') {
+                res.positionSource = PositionSource.ADSB;
+            }
+            else if (arr[16] === '1') {
+                res.positionSource = PositionSource.ASTERIX;
+            }
+            else if (arr[16] === '2') {
+                res.positionSource = PositionSource.MLAT;
+            }
+            return res;
+        }
+    }
 
-    exports.DemoApp = DemoApp;
-
-    return exports;
-
-}({}));
+}());

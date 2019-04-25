@@ -1,21 +1,29 @@
 <html>
 
 <head>
-  <link rel="stylesheet" type="text/css" href="styles.css" media="screen" />
-  <script type="text/javascript" src="bundle.js"></script>
+  <link rel="stylesheet" type="text/css" href="assets/styles.css" media="screen" />
+  <script type="text/javascript" src="build/index.js"></script>
   <script>
     window.onload = function() {
-      const canvas = document.getElementById("canvas");
+      const canvas = document.getElementById('canvas');
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      const gl = canvas.getContext("webgl2");
+      const gl = canvas.getContext('webgl2');
       const app = new demo.DemoApp(gl)
-      canvas.addEventListener("keydown", function(event) {
+      canvas.addEventListener('keydown', function(event) {
         app.handleKeyboardEvent(event)
       })
-      app.setOnChange(function(centre, range) {
-        document.getElementById("centre").innerHTML = centre
-        document.getElementById("range").innerHTML = range
+      app.addEventListener('centreChanged', function(centre) {
+        document.getElementById('centre').innerHTML = centre
+      })
+      app.addEventListener('rangeChanged', function(range) {
+        document.getElementById('range').innerHTML = range
+      })
+      app.addEventListener('tracksChanged', function(tracks) {
+        document.getElementById('tracks').innerHTML = tracks
+      })
+      app.addEventListener('fpsChanged', function(fps) {
+        document.getElementById('fps').innerHTML = fps
       })
       app.run(gl);
     }
@@ -23,10 +31,12 @@
 </head>
 
 <body>
-  <div id="info">
-    <p id="centre" />
-    <p id="range" />
-  </div>
+  <table id="info">
+    <tr><td>centre</td><td>:</td><td id="centre"</td></tr>
+    <tr><td>range</td><td>:</td><td id="range"</td></tr>
+    <tr><td>tracks</td><td>:</td><td id="tracks"</td></tr>
+    <tr><td>fps</td><td>:</td><td id="fps"</td></tr>    
+  </table>
   <canvas id="canvas" style='position:absolute; left:0px; top:0px;' tabindex='1'></canvas>
 </body>
 
