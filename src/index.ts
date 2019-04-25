@@ -28,10 +28,10 @@ export class DemoApp {
             T.Colour.GAINSBORO)
         this.world = new T.World(gl, def)
         this.events = new Events()
-        
+
         this.animator = new Animator(() => this.world.render(), this.events, 60)
 
-        this.worker = new Worker('/build/worker.js')
+        this.worker = new Worker('build/worker.js')
         this.worker.postMessage({
             'topic': 'mesher',
             'payload': JSON.stringify(this.world.mesher())
@@ -61,7 +61,7 @@ export class DemoApp {
             }
         }
     }
-    
+
     addEventListener(name: string, handler: any) {
         this.events.addEventListener(name, handler)
         if (name === 'centreChanged') {
@@ -106,7 +106,7 @@ export class DemoApp {
     private fireRangeChanged() {
         const r = this.world.range().kilometres().toFixed(0) + ' km'
         this.events.fireEvent('rangeChanged', r)
-    }    
+    }
 
 }
 
@@ -134,23 +134,23 @@ class Events {
         const len = ls.length
         for (var i = 0; i < len; i++) {
             ls[i](data);
-        }       
+        }
     }
 
 }
 
 class FpsTracker {
-    
+
     private start: number
     private frames: number
     private readonly events: Events
-    
+
     constructor(events: Events) {
         this.start = performance.now()
         this.frames = 0
         this.events = events
     }
-    
+
     doneRendering() {
         this.frames = this.frames + 1
         const now = performance.now()
@@ -175,7 +175,7 @@ class Animator {
     private readonly interval: number
     private delta: number
     private handle: number
-    
+
     private fpst: FpsTracker
 
     constructor(callback: Function, events: Events, fps: number) {
@@ -187,7 +187,7 @@ class Animator {
         this.interval = 1000 / this.fps
         this.delta = -1
         this.handle = -1
-        
+
         this.fpst = new FpsTracker(events)
     }
 
@@ -211,4 +211,3 @@ class Animator {
     }
 
 }
-

@@ -2968,7 +2968,7 @@ void main() {
             this.world = new World(gl, def);
             this.events = new Events();
             this.animator = new Animator(() => this.world.render(), this.events, 60);
-            this.worker = new Worker('/build/worker.js');
+            this.worker = new Worker('build/worker.js');
             this.worker.postMessage({
                 'topic': 'mesher',
                 'payload': JSON.stringify(this.world.mesher())
