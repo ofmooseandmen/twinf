@@ -1,4 +1,4 @@
-import { Batch, BatchManager, BatchFactory } from '../src/batches'
+import { Batch, Batcher, BatchFactory } from '../src/batching'
 import { Colour } from './colour'
 import {
     CanvasAffineTransform,
@@ -6,7 +6,7 @@ import {
     StereographicProjection
 } from './coordinate-systems'
 import { RenderableGraphic } from './graphic'
-import { DrawMode, Mesh } from './mesh'
+import { DrawMode, Mesh } from './meshing'
 import { WebGL2 } from './webgl2'
 
 /**
@@ -17,13 +17,16 @@ class Attribute {
     private readonly _name: string
     private readonly _size: GLint
     private readonly _type: GLenum
+    private readonly _isDisabled: (mesh: Mesh) => boolean
     private readonly _extractor: (mesh: Mesh) => ReadonlyArray<number>
 
     constructor(name: string, size: GLint, type: GLenum,
+        isDisabled: (mesh: Mesh) => boolean,
         extractor: (mesh: Mesh) => ReadonlyArray<number>) {
         this._name = name
         this._size = size
         this._type = type
+        this._isDisabled = isDisabled
         this._extractor = extractor
     }
 
@@ -49,6 +52,13 @@ class Attribute {
     }
 
     /**
+     * Predicate to decide whether attribute is disabled for given mesh.
+     */
+    isDisabled(): (mesh: Mesh) => boolean {
+        return this._isDisabled
+    }
+
+    /**
      * Function to extract the data relevant to this
      * attribute from a mesh.
      */
@@ -66,60 +76,50 @@ class Attributes {
 
     constructor(gl: WebGL2RenderingContext) {
         this.atts = [
-            new Attribute('a_geo_pos', 3, gl.FLOAT, m => m.geos()),
+            new Attribute('a_geo_pos', 3, gl.FLOAT,
+                m => m.geos().length === 0, m => m.geos()),
+
             new Attribute('a_prev_geo_pos', 3, gl.FLOAT,
+                m => m.extrusion() === undefined,
                 m => {
                     const e = m.extrusion()
                     return e === undefined ? [] : e.prevGeos()
                 }),
+
             new Attribute('a_next_geo_pos', 3, gl.FLOAT,
+                m => m.extrusion() === undefined,
                 m => {
                     const e = m.extrusion()
                     return e === undefined ? [] : e.nextGeos()
                 }),
+
             new Attribute('a_half_width', 1, gl.FLOAT,
+                m => m.extrusion() === undefined,
                 m => {
                     const e = m.extrusion()
                     return e === undefined ? [] : e.halfWidths()
                 }),
-            new Attribute('a_offset', 2, gl.FLOAT, m => m.offsets()),
-            new Attribute('a_rgba', 1, gl.UNSIGNED_INT, m => m.colours())
+
+            new Attribute('a_offset', 2, gl.FLOAT,
+                m => m.offsets().length === 0, m => m.offsets()),
+
+            new Attribute('a_rgba', 1, gl.UNSIGNED_INT,
+                m => m.colours().length === 0, m => m.colours())
         ]
     }
 
-    enabled(mesh: Mesh): ReadonlyArray<string> {
-        let res = new Array<string>()
-        if (mesh.geos().length > 0) {
-            res.push('a_geo_pos')
-        }
-        const extrusion = mesh.extrusion()
-        if (extrusion !== undefined) {
-            res.push('a_prev_geo_pos')
-            res.push('a_next_geo_pos')
-            res.push('a_half_width')
-        }
-        if (mesh.offsets().length > 0) {
-            res.push('a_offset')
-        }
-        res.push('a_rgba')
-        return res
+    /**
+     * All disabled attributes for given mesh.
+     */
+    disabled(mesh: Mesh): ReadonlyArray<string> {
+        return this.atts.filter(a => a.isDisabled()(mesh)).map(a => a.name())
     }
 
-    disabled(mesh: Mesh): ReadonlyArray<string> {
-        let res = new Array<string>()
-        if (mesh.geos().length === 0) {
-            res.push('a_geo_pos')
-        }
-        const extrusion = mesh.extrusion()
-        if (extrusion === undefined) {
-            res.push('a_prev_geo_pos')
-            res.push('a_next_geo_pos')
-            res.push('a_half_width')
-        }
-        if (mesh.offsets().length === 0) {
-            res.push('a_offset')
-        }
-        return res
+    /**
+     * All disabled attributes for given mesh.
+     */
+    enabled(mesh: Mesh): ReadonlyArray<string> {
+        return this.atts.filter(a => !a.isDisabled()(mesh)).map(a => a.name())
     }
 
     /* count is geos if not empty, offsets otherwise. */
@@ -139,9 +139,9 @@ class Attributes {
 
 class GlBatch extends Batch {
 
-    private readonly enabled: ReadonlyArray<string>
+    private readonly _enabled: ReadonlyArray<string>
     private readonly _disabled: ReadonlyArray<string>
-    private readonly counter: string
+    private readonly _counter: string
     private readonly _drawMode: DrawMode
 
     private readonly gl: WebGL2RenderingContext
@@ -151,14 +151,13 @@ class GlBatch extends Batch {
     private readonly buffers: Map<string, WebGLBuffer>
     private count: number
 
-    constructor(enabled: ReadonlyArray<string>,
-        disabled: ReadonlyArray<string>, counter: string,
-        drawMode: DrawMode, gl: WebGL2RenderingContext,
+    constructor(enabled: ReadonlyArray<string>, disabled: ReadonlyArray<string>,
+        counter: string, drawMode: DrawMode, gl: WebGL2RenderingContext,
         program: WebGLProgram, attributes: Attributes) {
         super()
-        this.enabled = enabled
+        this._enabled = enabled
         this._disabled = disabled
-        this.counter = counter
+        this._counter = counter
         this._drawMode = drawMode
 
         this.gl = gl
@@ -172,7 +171,7 @@ class GlBatch extends Batch {
         }
         this.vao = vao
         this.buffers = new Map<string, WebGLBuffer>()
-        for (const attName of this.enabled) {
+        for (const attName of this._enabled) {
             const attBuff = gl.createBuffer()
             if (attBuff === null) {
                 throw new Error('Could not create buffer for attribute: ' + attName)
@@ -192,10 +191,6 @@ class GlBatch extends Batch {
     draw() {
         const gl = this.gl
         gl.bindVertexArray(this.vao)
-        if (this.isDirty()) {
-            this.update(this.meshes())
-            this.unsetDirty()
-        }
         /*
          * disable the vertex array, the attribute will have
          * the default value which the shader can handle.
@@ -219,14 +214,15 @@ class GlBatch extends Batch {
         return this._drawMode
     }
 
-    private update(meshes: ReadonlyArray<Mesh>) {
+    update(meshes: ReadonlyArray<Mesh>) {
         const gl = this.gl
+        gl.bindVertexArray(this.vao)
         for (const att of this.buffers.entries()) {
             const attName = att[0]
             const a = this.attributes.named(attName)
             const arr = a.type() == gl.UNSIGNED_INT
-                ? this.mkUint32Array(meshes, a.extractor())
-                : this.mkFloat32Array(meshes, a.extractor())
+                ? this.mkArray(meshes, (l) => new Uint32Array(l), a.extractor())
+                : this.mkArray(meshes, (l) => new Float32Array(l), a.extractor())
             const attLocation = gl.getAttribLocation(this.program, attName)
             gl.enableVertexAttribArray(attLocation)
             gl.bindBuffer(gl.ARRAY_BUFFER, att[1])
@@ -240,46 +236,30 @@ class GlBatch extends Batch {
                 gl.vertexAttribPointer(attLocation, a.size(), a.type(), false, stride, offset)
             }
             gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW, 0);
-            if (attName === this.counter) {
+            if (attName === this._counter) {
                 this.count = arr.length / a.size()
             }
         }
+        gl.bindVertexArray(null)
     }
 
-    private mkFloat32Array(ms: ReadonlyArray<Mesh>,
-        extract: (m: Mesh) => ReadonlyArray<number>): Float32Array {
-        const len = ms.length
+    private mkArray(meshes: ReadonlyArray<Mesh>,
+        ctor: (l: number) => Float32Array | Uint32Array,
+        extract: (m: Mesh) => ReadonlyArray<number>): Float32Array | Uint32Array {
         let length = 0
+        const len = meshes.length
         for (let i = 0; i < len; i++) {
-            length += extract(ms[i]).length;
+            length += extract(meshes[i]).length;
         }
-        let result = new Float32Array(length);
+        let result = ctor(length);
         let offset = 0;
         for (let i = 0; i < len; i++) {
-            const arr = extract(ms[i])
+            const arr = extract(meshes[i])
             result.set(arr, offset);
             offset += arr.length;
         }
         return result;
     }
-
-    private mkUint32Array(ms: ReadonlyArray<Mesh>,
-        extract: (m: Mesh) => ReadonlyArray<number>): Uint32Array {
-        const len = ms.length
-        let length = 0
-        for (let i = 0; i < len; i++) {
-            length += extract(ms[i]).length;
-        }
-        let result = new Uint32Array(length);
-        let offset = 0;
-        for (let i = 0; i < len; i++) {
-            const arr = extract(ms[i])
-            result.set(arr, offset);
-            offset += arr.length;
-        }
-        return result;
-    }
-
 
 }
 
@@ -359,7 +339,7 @@ export class Renderer {
     private readonly gl: WebGL2RenderingContext
     private readonly miterLimit: number
     private readonly program: WebGLProgram
-    private readonly bm: BatchManager<GlBatch>
+    private readonly batcher: Batcher<GlBatch>
 
     constructor(gl: WebGL2RenderingContext, miterLimit: number) {
         this.gl = gl
@@ -369,17 +349,17 @@ export class Renderer {
         this.program = WebGL2.createProgram(gl, vertexShader, fragmentShader)
         const attributes = new Attributes(gl)
         const factory = new GlBatchFactory(gl, this.program, attributes)
-        this.bm = new BatchManager<GlBatch>(factory)
+        this.batcher = new Batcher<GlBatch>(factory)
     }
 
     insert(graphic: RenderableGraphic) {
         this.gl.useProgram(this.program)
-        this.bm.insert(graphic)
+        this.batcher.insert(graphic)
     }
 
     delete(graphicName: string) {
         this.gl.useProgram(this.program)
-        this.bm.delete(graphicName)
+        this.batcher.delete(graphicName)
     }
 
     draw(ctx: DrawingContext) {
@@ -417,15 +397,7 @@ export class Renderer {
         const canvasToClipspaceLocation = gl.getUniformLocation(program, 'u_canvas_to_clipspace');
         gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
 
-        const layers = this.bm.layers()
-        const ll = layers.length
-        for (let i = 0; i < ll; i++) {
-            const layer = layers[i]
-            const bl = layer.length
-            for (let j = 0; j < bl; j++) {
-                layer[j].draw()
-            }
-        }
+        this.batcher.draw()
     }
 
     private static readonly VERTEX_SHADER =

@@ -6,7 +6,7 @@ export { LatLong } from './latlong'
 export { Length } from './length'
 export { Geodetics } from './geodetics'
 export { Graphic, RenderableGraphic } from './graphic'
-export { Mesh, Mesher } from './mesh'
+export { Mesh, Mesher } from './meshing'
 export { Offset } from './pixels'
 export {
     Stroke,
@@ -21,4 +21,4 @@ export {
     GeoRelativePolyline,
 } from './shapes'
 export { Speed } from './speed'
-export { RenderingOptions, World, WorldDefinition } from './world0'
+export { RenderingOptions, World, WorldDefinition } from './world'

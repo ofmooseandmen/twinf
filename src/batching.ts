@@ -1,5 +1,5 @@
 import { RenderableGraphic } from './graphic'
-import { Mesh } from './mesh'
+import { Mesh } from './meshing'
 
 export interface BatchFactory<B extends Batch> {
 
@@ -9,7 +9,7 @@ export interface BatchFactory<B extends Batch> {
 
 }
 
-export class BatchManager<B extends Batch> {
+export class Batcher<B extends Batch> {
 
     private readonly factory: BatchFactory<B>
 
@@ -46,7 +46,6 @@ export class BatchManager<B extends Batch> {
                 last.add(graphicName, mesh)
             }
         }
-
         this.refresh()
     }
 
@@ -55,19 +54,22 @@ export class BatchManager<B extends Batch> {
         this.refresh()
     }
 
-    // FIXME rather something like forEach(consumer<B>) so no array
-
     /**
-     * All layers in order of drawing, each element of the array contains all
-     * the batches of the layer.
+     * Draws all the batches in order of z-index and insertion order.
      */
-    layers(): ReadonlyArray<ReadonlyArray<B>> {
+    draw() {
         const sorted = Array.from(this._batches.entries()).sort()
-        const res = new Array<ReadonlyArray<B>>()
         for (const l of sorted) {
-            res.push(l[1])
+            const batches = l[1]
+            const len = batches.length
+            for (let i = 0; i < len; i++) {
+                const batch = batches[i]
+                if (batch.isDirty()) {
+                    batch.clean()
+                }
+                batch.draw()
+            }
         }
-        return res
     }
 
     private remove(graphicName: string) {
@@ -124,22 +126,16 @@ export abstract class Batch {
         return this._meshes.size === 0
     }
 
-    // FIXME do no expose unsetDirty
-
-    unsetDirty() {
-        this._dirty = false
-    }
-
-    meshes(): ReadonlyArray<Mesh> {
-        let all = new Array<Mesh>()
+    clean() {
+        let meshes = new Array<Mesh>()
         for (let ms of this._meshes.values()) {
             const len = ms.length
             for (let i = 0; i < len; i++) {
-                all.push(ms[i])
+                meshes.push(ms[i])
             }
-
         }
-        return all
+        this.update(meshes)
+        this._dirty = false
     }
 
     add(graphicName: string, mesh: Mesh) {
@@ -162,11 +158,19 @@ export abstract class Batch {
         }
     }
 
-
     /**
      * Destroys this batch: delete VAO and all VBOs.
      */
-     // FIXME not abstract but on factory Batch is not absract therefore
     abstract destroy(): void
+
+    /**
+     * Updates this batch VBOs with the given meshes.
+     */
+    abstract update(meshes: ReadonlyArray<Mesh>): void
+
+    /**
+     * Draws this batch.
+     */
+    abstract draw(): void
 
 }
