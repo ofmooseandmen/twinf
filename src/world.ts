@@ -9,10 +9,9 @@ import {
 import { Graphic, RenderableGraphic } from './graphic'
 import { LatLong } from './latlong'
 import { Length } from './length'
-import { Mesher } from './mesh'
-import { Drawing, Renderer, Scene } from './renderer'
+import { Mesher } from './meshing'
+import { DrawingContext, Renderer } from './rendering'
 import { Math2d, Vector2d } from './space2d'
-import { Stack } from './stack'
 
 /**
  * Initial definition of the world to be rendered.
@@ -108,7 +107,6 @@ export class World {
     private sp: StereographicProjection
     private at: CanvasAffineTransform
 
-    private readonly stack: Stack<Drawing>
     private readonly _mesher: Mesher
     private readonly renderer: Renderer
 
@@ -124,19 +122,18 @@ export class World {
         this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS)
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
 
-        this.stack = new Stack()
         this.renderer = new Renderer(gl, options.miterLimit())
         this._mesher = new Mesher(World.EARTH_RADIUS, options.circlePositions(), options.miterLimit())
     }
-    
+
     /**
      * Renders all inserted shapes into the WebGL rendering context given at construction.
      *
      * This should be called within `requestAnimationFrame`
      */
     render() {
-        const scene = new Scene(this.stack.all(), this.bgColour, this.sp, this.at)
-        this.renderer.draw(scene)
+        const ctx = new DrawingContext(this.bgColour, this.sp, this.at)
+        this.renderer.draw(ctx)
     }
 
     /**
@@ -162,13 +159,7 @@ export class World {
         const g = graphic instanceof Graphic
             ? graphic.toRenderable(this._mesher)
             : graphic
-        const name = g.name()
-        let drawing = this.stack.get(name)
-        if (drawing !== undefined) {
-            this.renderer.deleteDrawing(drawing)
-        }
-        drawing = this.renderer.createDrawing(g.meshes())
-        this.stack.insert(name, g.zIndex(), drawing)
+        this.renderer.insert(g)
     }
 
     /**
@@ -177,11 +168,7 @@ export class World {
      * The graphic will be deleted at the next repaint.
      */
     delete(graphicName: string) {
-        let drawing = this.stack.get(name)
-        if (drawing !== undefined) {
-            this.stack.delete(graphicName)
-            this.renderer.deleteDrawing(drawing)
-        }
+        this.renderer.delete(graphicName)
     }
 
     pan(deltaX: number, deltaY: number) {

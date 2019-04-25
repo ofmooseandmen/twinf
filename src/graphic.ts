@@ -1,4 +1,4 @@
-import { Mesh, Mesher } from './mesh'
+import { Mesh, Mesher } from './meshing'
 import { Shape, fromLiteral } from './shapes'
 
 /**
