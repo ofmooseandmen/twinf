@@ -2976,24 +2976,23 @@ void main() {
             this.worker.onmessage = (e) => {
                 const data = e.data;
                 const topic = data.topic;
-                const payload = JSON.parse(e.data.payload);
                 switch (topic) {
                     case 'coastline':
-                        const c = RenderableGraphic.fromLiteral(payload);
+                        const c = RenderableGraphic.fromLiteral(JSON.parse(e.data.payload));
                         this.world.insert(c);
                         this.worker.postMessage({
                             'topic': 'tracks'
                         });
                         break;
                     case 'tracks':
-                        const tracks = payload.map(RenderableGraphic.fromLiteral);
+                        const tracks = JSON.parse(e.data.payload).map(RenderableGraphic.fromLiteral);
                         for (let i = 0; i < tracks.length; i++) {
                             this.world.insert(tracks[i]);
                         }
                         this.events.fireEvent('tracksChanged', tracks.length);
                         break;
                     case 'error':
-                        console.log(payload);
+                        console.log(e.data.payload);
                         break;
                 }
             };

@@ -25,7 +25,7 @@ class EventHandler {
                 }).catch(e => {
                     ctx.postMessage({
                         'topic': 'error',
-                        'payload': JSON.stringify(e)
+                        'payload': e.toString()
                     })
                 })
                 break
@@ -43,7 +43,7 @@ class EventHandler {
                     }).catch(e => {
                         ctx.postMessage({
                             'topic': 'error',
-                            'payload': JSON.stringify(e)
+                            'payload': e.toString()
                         })
                     }).finally(() => setTimeout(h, 10000))
                 }

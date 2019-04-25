@@ -39,24 +39,23 @@ export class DemoApp {
         this.worker.onmessage = (e: MessageEvent) => {
             const data = e.data
             const topic = data.topic
-            const payload = JSON.parse(e.data.payload)
             switch (topic) {
                 case 'coastline':
-                    const c = T.RenderableGraphic.fromLiteral(payload)
+                    const c = T.RenderableGraphic.fromLiteral(JSON.parse(e.data.payload))
                     this.world.insert(c)
                     this.worker.postMessage({
                         'topic': 'tracks'
                     })
                     break
                 case 'tracks':
-                    const tracks = payload.map(T.RenderableGraphic.fromLiteral)
+                    const tracks = JSON.parse(e.data.payload).map(T.RenderableGraphic.fromLiteral)
                     for (let i = 0; i < tracks.length; i++) {
                         this.world.insert(tracks[i])
                     }
                     this.events.fireEvent('tracksChanged', tracks.length)
                     break
                 case 'error':
-                    console.log(payload)
+                    console.log(e.data.payload)
                     break
             }
         }
