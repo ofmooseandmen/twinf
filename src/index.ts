@@ -23,9 +23,9 @@ export class DemoApp {
         const linkoping = T.LatLong.ofDegrees(58.4108, 15.6214)
         const def = new T.WorldDefinition(
             linkoping,
-            T.Length.ofKilometres(2000),
+            T.Length.ofKilometres(8000),
             T.Angle.ofDegrees(0),
-            T.Colour.GAINSBORO)
+            T.Colour.ALICEBLUE)
         this.world = new T.World(gl, def)
         this.events = new Events()
 

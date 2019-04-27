@@ -57,40 +57,45 @@ class EventHandler {
 
 const ctx: Worker = self as any
 const eh = new EventHandler()
-const adsbPaint = T.Paint.complete(new T.Stroke(T.Colour.DEEPPINK, 2), T.Colour.LIGHTPINK)
-const asterixPaint = T.Paint.complete(new T.Stroke(T.Colour.DEEPSKYBLUE, 2), T.Colour.SKYBLUE)
-const mlatPaint = T.Paint.complete(new T.Stroke(T.Colour.LIMEGREEN, 2), T.Colour.LIGHTGREEN)
-const trackPaints = [adsbPaint, asterixPaint, mlatPaint]
+const trackPaint = T.Paint.complete(new T.Stroke(T.Colour.DIMGRAY, 2), T.Colour.LIGHTGREY)
 const trackOffsets = [new T.Offset(-5, -5), new T.Offset(-5, 5), new T.Offset(5, 5), new T.Offset(5, -5)]
 const trackZIndex = 1
 
 ctx.onmessage = eh.handle
 
 async function computeCoastline(mesher: T.Mesher): Promise<T.RenderableGraphic> {
-
-    const response = await fetch('https://ofmooseandmen.github.io/twinf/assets/coastline.json');
-    const data = await response.json();
-    const length = data.features.length
+    const response = await fetch('https://ofmooseandmen.github.io/twinf/assets/ne_50m_coastline.json')
+    const data = await response.json()
+    const nbFeatures = data.features.length
     let meshes = new Array<T.Mesh>()
-    for (let i = 0; i < length; i++) {
+    for (let i = 0; i < nbFeatures; i++) {
         const feature = data.features[i]
-        if (feature.properties.featurecla == 'Coastline') {
-            const coordinates = feature.geometry.coordinates
-            const nb_coordinates = coordinates.length
-            const positions = new Array<T.LatLong>()
-            for (let j = 0; j < nb_coordinates; j++) {
-                const coord = coordinates[j]
-                // Be careful : longitude first, then latitude in geoJSON files
-                const point = T.LatLong.ofDegrees(coord[1], coord[0])
-                positions.push(point)
+        const geometry = feature.geometry
+        if (geometry.type === "LineString") {
+            meshes = meshes.concat(meshesOf(geometry.coordinates, mesher))
+        } else if (geometry.type === "MultiLineString") {
+            const polylines = geometry.coordinates
+            const nbPolylines = polylines.length
+            for (let j = 0; j < nbPolylines; j++) {
+                meshes = meshes.concat(meshesOf(polylines[j], mesher))
             }
-            const shape = new T.GeoPolyline(positions, new T.Stroke(T.Colour.DIMGRAY, 1))
-            meshes = meshes.concat(mesher.meshShape(shape))
         }
     }
     return new T.RenderableGraphic('coastlines', -1, meshes)
 }
 
+function meshesOf(coordinates: any, mesher: T.Mesher): ReadonlyArray<T.Mesh> {
+    const nbCoordinates = coordinates.length
+    const positions = new Array<T.LatLong>()
+    for (let k = 0; k < nbCoordinates; k++) {
+        const coord = coordinates[k]
+        /* longitude first, then latitude. */
+        const point = T.LatLong.ofDegrees(coord[1], coord[0])
+        positions.push(point)
+    }
+    const shape = new T.GeoPolyline(positions, new T.Stroke(T.Colour.LIGHTSLATEGRAY, 1))
+    return mesher.meshShape(shape)
+}
 
 async function computeTracks(mesher: T.Mesher): Promise<ReadonlyArray<T.RenderableGraphic>> {
     const states = await fetchStateVectors()
@@ -100,8 +105,7 @@ async function computeTracks(mesher: T.Mesher): Promise<ReadonlyArray<T.Renderab
     for (let i = 0; i < len; i++) {
         const state = states[i]
         if (state.position !== undefined) {
-            const paint = trackPaints[state.positionSource]
-            const m = mesher.meshShape(new T.GeoRelativePolygon(state.position, trackOffsets, paint))
+            const m = mesher.meshShape(new T.GeoRelativePolygon(state.position, trackOffsets, trackPaint))
             res.push(new T.RenderableGraphic(state.icao24, trackZIndex, m))
         }
     }

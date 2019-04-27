@@ -2964,7 +2964,7 @@ void main() {
     class DemoApp {
         constructor(gl) {
             const linkoping = LatLong.ofDegrees(58.4108, 15.6214);
-            const def = new WorldDefinition(linkoping, Length.ofKilometres(2000), Angle.ofDegrees(0), Colour.GAINSBORO);
+            const def = new WorldDefinition(linkoping, Length.ofKilometres(8000), Angle.ofDegrees(0), Colour.ALICEBLUE);
             this.world = new World(gl, def);
             this.events = new Events();
             this.animator = new Animator(() => this.world.render(), this.events, 60);

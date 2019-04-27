@@ -3077,37 +3077,44 @@ void main() {
     }
     const ctx = self;
     const eh = new EventHandler();
-    const adsbPaint = Paint.complete(new Stroke(Colour.DEEPPINK, 2), Colour.LIGHTPINK);
-    const asterixPaint = Paint.complete(new Stroke(Colour.DEEPSKYBLUE, 2), Colour.SKYBLUE);
-    const mlatPaint = Paint.complete(new Stroke(Colour.LIMEGREEN, 2), Colour.LIGHTGREEN);
-    const trackPaints = [adsbPaint, asterixPaint, mlatPaint];
+    const trackPaint = Paint.complete(new Stroke(Colour.DIMGRAY, 2), Colour.LIGHTGREY);
     const trackOffsets = [new Offset(-5, -5), new Offset(-5, 5), new Offset(5, 5), new Offset(5, -5)];
     const trackZIndex = 1;
     ctx.onmessage = eh.handle;
     function computeCoastline(mesher) {
         return __awaiter(this, void 0, void 0, function* () {
-            const response = yield fetch('https://ofmooseandmen.github.io/twinf/assets/coastline.json');
+            const response = yield fetch('https://ofmooseandmen.github.io/twinf/assets/ne_50m_coastline.json');
             const data = yield response.json();
-            const length = data.features.length;
+            const nbFeatures = data.features.length;
             let meshes = new Array();
-            for (let i = 0; i < length; i++) {
+            for (let i = 0; i < nbFeatures; i++) {
                 const feature = data.features[i];
-                if (feature.properties.featurecla == 'Coastline') {
-                    const coordinates = feature.geometry.coordinates;
-                    const nb_coordinates = coordinates.length;
-                    const positions = new Array();
-                    for (let j = 0; j < nb_coordinates; j++) {
-                        const coord = coordinates[j];
-                        // Be careful : longitude first, then latitude in geoJSON files
-                        const point = LatLong.ofDegrees(coord[1], coord[0]);
-                        positions.push(point);
+                const geometry = feature.geometry;
+                if (geometry.type === "LineString") {
+                    meshes = meshes.concat(meshesOf(geometry.coordinates, mesher));
+                }
+                else if (geometry.type === "MultiLineString") {
+                    const polylines = geometry.coordinates;
+                    const nbPolylines = polylines.length;
+                    for (let j = 0; j < nbPolylines; j++) {
+                        meshes = meshes.concat(meshesOf(polylines[j], mesher));
                     }
-                    const shape = new GeoPolyline(positions, new Stroke(Colour.DIMGRAY, 1));
-                    meshes = meshes.concat(mesher.meshShape(shape));
                 }
             }
             return new RenderableGraphic('coastlines', -1, meshes);
         });
+    }
+    function meshesOf(coordinates, mesher) {
+        const nbCoordinates = coordinates.length;
+        const positions = new Array();
+        for (let k = 0; k < nbCoordinates; k++) {
+            const coord = coordinates[k];
+            /* longitude first, then latitude. */
+            const point = LatLong.ofDegrees(coord[1], coord[0]);
+            positions.push(point);
+        }
+        const shape = new GeoPolyline(positions, new Stroke(Colour.LIGHTSLATEGRAY, 1));
+        return mesher.meshShape(shape);
     }
     function computeTracks(mesher) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -3117,8 +3124,7 @@ void main() {
             for (let i = 0; i < len; i++) {
                 const state = states[i];
                 if (state.position !== undefined) {
-                    const paint = trackPaints[state.positionSource];
-                    const m = mesher.meshShape(new GeoRelativePolygon(state.position, trackOffsets, paint));
+                    const m = mesher.meshShape(new GeoRelativePolygon(state.position, trackOffsets, trackPaint));
                     res.push(new RenderableGraphic(state.icao24, trackZIndex, m));
                 }
             }
