@@ -57,7 +57,7 @@ export class Batcher<B extends Batch> {
     /**
      * Draws all the batches in order of z-index and insertion order.
      */
-    draw() {
+    draw(usingTexture : ImageData | undefined = undefined) {
         const sorted = Array.from(this._batches.entries()).sort()
         for (const l of sorted) {
             const batches = l[1]
@@ -67,7 +67,7 @@ export class Batcher<B extends Batch> {
                 if (batch.isDirty()) {
                     batch.clean()
                 }
-                batch.draw()
+                batch.draw(usingTexture)
             }
         }
     }
@@ -172,5 +172,10 @@ export abstract class Batch {
      * Draws this batch.
      */
     abstract draw(): void
+
+    /**
+     * Draws this batch using a texture.
+     */
+    abstract draw(usingTexture : ImageData | undefined): void
 
 }

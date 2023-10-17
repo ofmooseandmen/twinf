@@ -19,6 +19,8 @@ export {
     GeoRelativeCircle,
     GeoRelativePolygon,
     GeoRelativePolyline,
+    GeoRelativeText,
 } from './shapes'
 export { Speed } from './speed'
-export { RenderingOptions, World, WorldDefinition } from './world'
+export { FontDescriptor } from './rendering'
+export { RenderingOptions, World, WorldDefinition, } from './world'

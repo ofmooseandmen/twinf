@@ -10,7 +10,7 @@ import { Graphic, RenderableGraphic } from './graphic'
 import { LatLong } from './latlong'
 import { Length } from './length'
 import { Mesher } from './meshing'
-import { DrawingContext, Renderer } from './rendering'
+import { DrawingContext, Renderer, FontDescriptor, CharacterGeometry } from './rendering'
 import { Math2d, Vector2d } from './space2d'
 
 /**
@@ -107,10 +107,17 @@ export class World {
     private sp: StereographicProjection
     private at: CanvasAffineTransform
 
+    /*
+     * A mapping from each renderable character to the coordinates on a rastered texture
+     * packed with characters.
+     */
+    private cg: CharacterGeometry
+
     private readonly _mesher: Mesher
     private readonly renderer: Renderer
 
-    constructor(gl: WebGL2RenderingContext, def: WorldDefinition,
+    constructor(gl: WebGL2RenderingContext, def: WorldDefinition, font : FontDescriptor,
+        textCapabilityCallback : (chars: CharacterGeometry) => void = () => {},
         options: RenderingOptions = new RenderingOptions(60, 100, 5)) {
         this._centre = def.centre()
         this._range = def.range()
@@ -122,8 +129,17 @@ export class World {
         this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS)
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
 
+        this.cg = new CharacterGeometry()
+
         this.renderer = new Renderer(gl, options.miterLimit())
-        this._mesher = new Mesher(World.EARTH_RADIUS, options.circlePositions(), options.miterLimit())
+        this.renderer.createFontTexture(font)
+            .then(characterGeom => {
+                this.cg = characterGeom
+                console.log(characterGeom)
+                return characterGeom
+            })
+            .then(textCapabilityCallback)
+        this._mesher = new Mesher(World.EARTH_RADIUS, options.circlePositions(), options.miterLimit(), () => this.cg)
     }
 
     /**
@@ -132,7 +148,7 @@ export class World {
      * This should be called within `requestAnimationFrame`
      */
     render() {
-        const ctx = new DrawingContext(this.bgColour, this.sp, this.at)
+        const ctx = new DrawingContext(this.bgColour, this.sp, this.at, this.cg)
         this.renderer.draw(ctx)
     }
 

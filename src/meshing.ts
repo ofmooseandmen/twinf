@@ -7,6 +7,8 @@ import { Geometry2d, Vector2d } from './space2d'
 import { InternalGeodetics, Vector3d } from './space3d'
 import { Triangle } from './triangle'
 import { Triangulator } from './triangulation'
+import { CharacterGeometry } from './rendering'
+import { Offset } from './pixels'
 
 export enum DrawMode {
     LINES,
@@ -62,14 +64,17 @@ export class Mesh {
     private readonly _offsets: ReadonlyArray<number>
     private readonly _colours: ReadonlyArray<number>
     private readonly _drawMode: DrawMode
+    private readonly _texcoord: ReadonlyArray<number> | undefined
 
     constructor(geos: ReadonlyArray<number>, extrusion: Extrusion | undefined,
-        offsets: ReadonlyArray<number>, colours: ReadonlyArray<number>, drawMode: DrawMode) {
+        offsets: ReadonlyArray<number>, colours: ReadonlyArray<number>,
+        drawMode: DrawMode, texcoord:ReadonlyArray<number> | undefined = undefined) {
         this._geos = geos
         this._extrusion = extrusion
         this._offsets = offsets
         this._colours = colours
         this._drawMode = drawMode
+        this._texcoord = texcoord
     }
 
     static fromLiteral(data: any): Mesh {
@@ -80,7 +85,8 @@ export class Mesh {
         const offsets = data['_offsets']
         const colours = data['_colours']
         const drawMode = data['_drawMode']
-        return new Mesh(geos, extrusion, offsets, colours, drawMode)
+        const texcoord = data['_texcoord']
+        return new Mesh(geos, extrusion, offsets, colours, drawMode, texcoord)
     }
 
     /**
@@ -115,6 +121,10 @@ export class Mesh {
         return this._colours
     }
 
+    texcoord(): ReadonlyArray<number> | undefined {
+        return this._texcoord
+    }
+
     drawMode(): DrawMode {
         return this._drawMode
     }
@@ -126,18 +136,23 @@ export class Mesher {
     private readonly earthRadius: Length
     private readonly circlePositions: number
     private readonly miterLimit: number
+    private readonly characterGeomSupp: Function
 
-    constructor(earthRadius: Length, circlePositions: number, miterLimit: number) {
+    constructor(earthRadius: Length, circlePositions: number, miterLimit: number,
+        characterGeomSupp : () => CharacterGeometry) {
         this.earthRadius = earthRadius
         this.circlePositions = circlePositions
         this.miterLimit = miterLimit
+        this.characterGeomSupp = characterGeomSupp
     }
 
     static fromLiteral(data: any): Mesher {
         const earthRadius = Length.fromLiteral(data['earthRadius'])
         const circlePositions = data['circlePositions']
         const miterLimit = data['miterLimit']
-        return new Mesher(earthRadius, circlePositions, miterLimit)
+        const characterGeomSupp = () => { throw new Error("Accessing character geometry not supported via deserialised mesher!!!") }
+
+        return new Mesher(earthRadius, circlePositions, miterLimit, characterGeomSupp)
     }
 
     meshShape(s: S.Shape): ReadonlyArray<Mesh> {
@@ -150,11 +165,50 @@ export class Mesher {
                 return Mesher.fromGeoPolyline(s)
             case S.ShapeType.GeoRelativeCircle:
                 return Mesher.fromGeoRelativeCircle(s, this.circlePositions, this.miterLimit)
+            case S.ShapeType.GeoRelativeText:
+                return Mesher.fromGeoRelativeText(s, this.characterGeomSupp)
             case S.ShapeType.GeoRelativePolygon:
                 return Mesher.fromGeoRelativePoygon(s, this.miterLimit)
             case S.ShapeType.GeoRelativePolyline:
                 return Mesher.fromGeoRelativePoyline(s, this.miterLimit)
         }
+    }
+
+    private static fromGeoRelativeText(t: S.GeoRelativeText, characterGeomSupp: Function): ReadonlyArray<Mesh> {
+        let res = new Array<Mesh>()
+        let offset = 0
+
+        for (const char of t.text()) {
+            const geom = characterGeomSupp().char(char)
+            const tl = t.offset()
+            const vertices = [
+                new Offset(tl.x(), tl.y()),
+                new Offset(tl.x(), tl.y() + geom.h),
+                new Offset(tl.x() + geom.w, tl.y() + geom.h),
+                new Offset(tl.x() + geom.w, tl.y()),
+            ].map(v => new Vector2d(v.x() + offset, v.y()))
+            const ts = Triangulator.PLANAR.triangulate(vertices)
+            const os = Mesher.offsetTrianglesToArray(ts)
+            const vs = Mesher.reference(CoordinateSystems.latLongToGeocentric(t.ref()), os)
+            const cs = Mesher.colours(Colour.ALICEBLUE, os, 2)
+
+            /*
+             * Mesh is formed with two triangles, x to the right, y up.
+             * Essentially a closedExtrusion with 4 vertices, filled with a texture.
+             */
+            const bl = new Offset(geom.bl.x(), geom.bl.y())
+            const tex = [
+                /* bl */ bl.x(), bl.y(),
+                /* tl */ bl.x(), bl.y() + geom.h,
+                /* tr */ bl.x() + geom.w, bl.y() + geom.h,
+                /* tr */ bl.x() + geom.w, bl.y() + geom.h,
+                /* br */ bl.x() + geom.w, bl.y(),
+                /* bl */ bl.x(), bl.y(),
+            ]
+            res.push(new Mesh(vs, undefined, os, cs, DrawMode.TRIANGLES, tex))
+            offset += geom.w
+        }
+        return res
     }
 
     private static fromGeoCircle(c: S.GeoCircle, earthRadius: Length,
@@ -212,7 +266,7 @@ export class Mesher {
         const centre = new Vector2d(c.centreOffset().x(), c.centreOffset().y())
         const ps = Geometry2d.discretiseCircle(centre, c.radius(), circlePositions)
         const paint = c.paint()
-        return Mesher._fromGeoRelativePoygon(ref, ps, paint, miterLimit)
+        return Mesher._fromGeoRelativePolygon(ref, ps, paint, miterLimit)
     }
 
     private static fromGeoRelativePoygon(p: S.GeoRelativePolygon,
@@ -220,10 +274,10 @@ export class Mesher {
         const ref = p.ref()
         const ps = p.vertices().map(v => new Vector2d(v.x(), v.y()))
         const paint = p.paint()
-        return Mesher._fromGeoRelativePoygon(ref, ps, paint, miterLimit)
+        return Mesher._fromGeoRelativePolygon(ref, ps, paint, miterLimit)
     }
 
-    private static _fromGeoRelativePoygon(ref: LatLong, vertices: ReadonlyArray<Vector2d>,
+    private static _fromGeoRelativePolygon(ref: LatLong, vertices: ReadonlyArray<Vector2d>,
         paint: S.Paint, miterLimit: number): ReadonlyArray<Mesh> {
         const stroke = paint.stroke()
         const fill = paint.fill()
