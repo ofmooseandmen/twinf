@@ -190,7 +190,7 @@ export class Mesher {
             const ts = Triangulator.PLANAR.triangulate(vertices)
             const os = Mesher.offsetTrianglesToArray(ts)
             const vs = Mesher.reference(CoordinateSystems.latLongToGeocentric(t.ref()), os)
-            const cs = Mesher.colours(Colour.ALICEBLUE, os, 2)
+            const cs = Mesher.colours(t.colour(), os, 2)
 
             /*
              * Mesh is formed with two triangles, x to the right, y up.
