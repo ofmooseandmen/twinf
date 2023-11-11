@@ -4,8 +4,11 @@ import { load } from 'opentype.js'
 interface OpenTypeFont extends opentypejs.Font {}
 
 export class CharacterInRaster {
+    /** Bottom left coordinate of character. */
     readonly bl: Offset
+    /** Width of character in pixels. */
     readonly w: number
+    /** Height of character in pixels. */
     readonly h: number
 
     constructor (bl: Offset, w: number, h: number) {
@@ -18,33 +21,24 @@ export class CharacterInRaster {
     }
 }
 
-export class CharacterGeometry {
+export type CharacterGeometry = {
+    [id: string]: CharacterInRaster
+}
 
-    private readonly _textureWidth: number
-    private readonly _textureHeight: number
-    private readonly charGeom: Map<string, CharacterInRaster>
+export class Sprites {
+    /** A mapping of character to its position in the raster. */
+    private readonly charGeom: CharacterGeometry
 
-    constructor(charBoundingBoxes: Map<string, CharacterInRaster> = new Map(),
-        textureWidth: number = 1, textureHeight: number = 1) {
-        this._textureWidth = textureWidth
-        this._textureHeight = textureHeight
+    constructor(charBoundingBoxes: CharacterGeometry = {}) {
         this.charGeom = charBoundingBoxes
     }
 
-    static fromLiteral(data: any): CharacterGeometry {
-        const charBoundingBoxes: Map<string, CharacterInRaster> = new Map()
-        for (let [char, bb] of data) {
-            charBoundingBoxes.set(char, CharacterInRaster.fromLiteral(bb))
+    static fromLiteral(data: any): Sprites {
+        const charBoundingBoxes: CharacterGeometry = {}
+        for (let char in data.charGeom) {
+            charBoundingBoxes[char] = CharacterInRaster.fromLiteral(data.charGeom[char])
         }
-        return new CharacterGeometry(charBoundingBoxes, data['_textureWidth'], data['_textureHeight'])
-    }
-
-    textureWidth() : number {
-        return this._textureWidth
-    }
-
-    textureHeight() : number {
-        return this._textureHeight
+        return new Sprites(charBoundingBoxes)
     }
 
     char(char: string) : CharacterInRaster {
@@ -52,7 +46,7 @@ export class CharacterGeometry {
             console.log("Invalid char '" + char + "'")
             throw new Error("Invalid character")
         }
-        const bb = this.charGeom.get(char)
+        const bb = this.charGeom[char]
         if (!bb) {
             console.log("No bounding box for char '" + char + "'")
             throw new Error("Unknown character")
@@ -61,16 +55,19 @@ export class CharacterGeometry {
     }
 }
 
-type CharacterOnCanvas = {
-    readonly x: number
-    readonly y: number
-    readonly width: number
-    readonly height: number
+/** For identifying the position and size of glyphs rendered onto an intermeditate 2D canvas. */
+type CharactersOnCanvas  = {
+    [id: string]: {
+        readonly x: number
+        readonly y: number
+        readonly width: number
+        readonly height: number
+    }
 }
 
-export class Characters extends CharacterGeometry {
+export class Characters extends Sprites {
 
-    /** The final combined rastered image of every glyph. */
+    /** The final combined rastered image of all glyphs. */
     readonly raster: ImageData
 
     /** Canvas margin below the character glyphs. */
@@ -85,8 +82,8 @@ export class Characters extends CharacterGeometry {
     /** Set of supported characters. */
     static readonly CHARACTER_SET: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!?*'
 
-    private constructor(charBoundingBoxes: Map<string, CharacterInRaster>, raster: ImageData) {
-        super(charBoundingBoxes, raster.width, raster.height)
+    private constructor(charBoundingBoxes: CharacterGeometry, raster: ImageData) {
+        super(charBoundingBoxes)
         this.raster = raster
     }
 
@@ -113,6 +110,14 @@ export class Characters extends CharacterGeometry {
         })
     }
 
+    /**
+     * Render a provided font onto an intermediate 2D canvas, and return both the final
+     * rastered image of all the glyphs and their positions and dimensions.
+     *
+     * @param font to rasterise
+     * @param fontSize to render each glyph in
+     * @returns a single raster of the font and dimensions of each glyph
+     */
     private static rasterOtf(font: OpenTypeFont, fontSize: number) : Characters {
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')
@@ -145,8 +150,7 @@ export class Characters extends CharacterGeometry {
 
         let currentX = 0
         
-        const charData: Map<string, CharacterOnCanvas> = new Map()
-        const charsInRaster: Map<string, CharacterInRaster> = new Map()
+        const charData: CharactersOnCanvas = {}
 
         for (const char of Characters.CHARACTER_SET) {
             const glyph = font.charToGlyph(char)
@@ -156,20 +160,23 @@ export class Characters extends CharacterGeometry {
             path.fill = 'white'
             path.draw(ctx)
 
-            charData.set(char, {
+            charData[char] = {
                 x: currentX,
                 y: 0,
                 width: width,
                 height: maxHeight,
-            })
+            }
             currentX += width + Characters.MARGIN_BW_PX
         }
-        for (let [key, c] of charData) {
-            charsInRaster.set(key, new CharacterInRaster(
+
+        const charsInRaster: CharacterGeometry = {}
+        for (let k in charData) {
+            const c = charData[k]
+            charsInRaster[k] = new CharacterInRaster(
                 new Offset(c.x, c.y + c.height - maxHeight),
                 c.width,
                 c.height + Characters.MARGIN_TOP_PX
-            ))
+            )
         }
         return new Characters(charsInRaster, ctx.getImageData(
             0,
@@ -188,13 +195,5 @@ export class FontDescriptor {
         this.family = family
         this.fontSize = fontSize
         this.url = url
-    }
-}
-
-export class Font extends FontFace {
-    readonly fontSize: number
-    constructor(fam: string, fontSize: number, url: string) {
-        super(fam, url)
-        this.fontSize = fontSize
     }
 }

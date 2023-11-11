@@ -11,7 +11,7 @@ import { WebGL2 } from './webgl2'
 
 import {
     Characters,
-    CharacterGeometry,
+    Sprites,
     FontDescriptor
 } from './text'
 
@@ -367,7 +367,7 @@ export class Renderer {
         this.texture = initialTexture
     }
 
-    async createFontTexture(font: FontDescriptor) : Promise<CharacterGeometry> {
+    async createFontTexture(font: FontDescriptor) : Promise<Sprites> {
         const gl = this.gl
         var texture = gl.createTexture()
         gl.activeTexture(gl.TEXTURE0 + 0)
@@ -433,7 +433,7 @@ export class Renderer {
 
         if (this.texture) {
             const texCoordScaleUniformLocation = gl.getUniformLocation(program, 'u_texcoord_scale')
-            gl.uniform2f(texCoordScaleUniformLocation, this.texture.textureWidth(), this.texture.textureHeight())
+            gl.uniform2f(texCoordScaleUniformLocation, this.texture.raster.width, this.texture.raster.height)
         }
 
         this.batcher.draw()

@@ -11,7 +11,7 @@ import { LatLong } from './latlong'
 import { Length } from './length'
 import { Mesher } from './meshing'
 import { DrawingContext, Renderer } from './rendering'
-import { FontDescriptor, CharacterGeometry } from './text'
+import { FontDescriptor, Sprites } from './text'
 import { Math2d, Vector2d } from './space2d'
 
 /**
@@ -112,7 +112,7 @@ export class World {
      * A mapping from each renderable character to the coordinates on a rastered texture
      * packed with characters.
      */
-    private cg: CharacterGeometry
+    private cg: Sprites
 
     private readonly _options: RenderingOptions
     private readonly renderer: Renderer
@@ -131,7 +131,7 @@ export class World {
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
 
         /* Interesting opportunity here to have some sort of low quality loading effect while fonts load... */
-        this.cg = new CharacterGeometry()
+        this.cg = new Sprites()
         this.renderer = new Renderer(gl, options.miterLimit(), undefined)
     }
 
@@ -219,7 +219,7 @@ export class World {
         return this._centre
     }
 
-    async loadFont(font: FontDescriptor): Promise<CharacterGeometry> {
+    async loadFont(font: FontDescriptor): Promise<Sprites> {
         return this.renderer.createFontTexture(font)
             .then(characterGeom => {
                 this.cg = characterGeom

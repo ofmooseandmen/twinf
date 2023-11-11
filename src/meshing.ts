@@ -7,7 +7,7 @@ import { Geometry2d, Vector2d } from './space2d'
 import { InternalGeodetics, Vector3d } from './space3d'
 import { Triangle } from './triangle'
 import { Triangulator } from './triangulation'
-import { CharacterGeometry } from './text'
+import { Sprites } from './text'
 import { Offset } from './pixels'
 
 export enum DrawMode {
@@ -136,23 +136,23 @@ export class Mesher {
     private readonly earthRadius: Length
     private readonly circlePositions: number
     private readonly miterLimit: number
-    private readonly characterGeometry: CharacterGeometry
+    private readonly sprites: Sprites
 
     constructor(earthRadius: Length, circlePositions: number, miterLimit: number,
-        characterGeometry: CharacterGeometry) {
+        sprites: Sprites) {
         this.earthRadius = earthRadius
         this.circlePositions = circlePositions
         this.miterLimit = miterLimit
-        this.characterGeometry = characterGeometry
+        this.sprites = sprites
     }
 
     static fromLiteral(data: any): Mesher {
         const earthRadius = Length.fromLiteral(data['earthRadius'])
         const circlePositions = data['circlePositions']
         const miterLimit = data['miterLimit']
-        const characterGeometry = CharacterGeometry.fromLiteral(data['characterGeometry'])
+        const sprites = Sprites.fromLiteral(data['sprites'])
 
-        return new Mesher(earthRadius, circlePositions, miterLimit, characterGeometry)
+        return new Mesher(earthRadius, circlePositions, miterLimit, sprites)
     }
 
     meshShape(s: S.Shape): ReadonlyArray<Mesh> {
@@ -166,7 +166,7 @@ export class Mesher {
             case S.ShapeType.GeoRelativeCircle:
                 return Mesher.fromGeoRelativeCircle(s, this.circlePositions, this.miterLimit)
             case S.ShapeType.GeoRelativeText:
-                return Mesher.fromGeoRelativeText(s, this.characterGeometry)
+                return Mesher.fromGeoRelativeText(s, this.sprites)
             case S.ShapeType.GeoRelativePolygon:
                 return Mesher.fromGeoRelativePoygon(s, this.miterLimit)
             case S.ShapeType.GeoRelativePolyline:
@@ -174,7 +174,7 @@ export class Mesher {
         }
     }
 
-    private static fromGeoRelativeText(t: S.GeoRelativeText, characterGeom: CharacterGeometry): ReadonlyArray<Mesh> {
+    private static fromGeoRelativeText(t: S.GeoRelativeText, characterGeom: Sprites): ReadonlyArray<Mesh> {
         let res = new Array<Mesh>()
         let offset = 0
 
