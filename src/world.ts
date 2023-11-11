@@ -10,7 +10,8 @@ import { Graphic, RenderableGraphic } from './graphic'
 import { LatLong } from './latlong'
 import { Length } from './length'
 import { Mesher } from './meshing'
-import { DrawingContext, Renderer, FontDescriptor, CharacterGeometry } from './rendering'
+import { DrawingContext, Renderer } from './rendering'
+import { FontDescriptor, CharacterGeometry } from './text'
 import { Math2d, Vector2d } from './space2d'
 
 /**
@@ -113,33 +114,25 @@ export class World {
      */
     private cg: CharacterGeometry
 
-    private readonly _mesher: Mesher
+    private readonly _options: RenderingOptions
     private readonly renderer: Renderer
 
-    constructor(gl: WebGL2RenderingContext, def: WorldDefinition, font : FontDescriptor,
-        textCapabilityCallback : (chars: CharacterGeometry) => void = () => {},
+    constructor(gl: WebGL2RenderingContext, def: WorldDefinition,
         options: RenderingOptions = new RenderingOptions(60, 100, 5)) {
         this._centre = def.centre()
         this._range = def.range()
         this._rotation = def.rotation()
         this.bgColour = def.bgColour()
+        this._options = options
 
         this.cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight)
 
         this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS)
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
 
+        /* Interesting opportunity here to have some sort of low quality loading effect while fonts load... */
         this.cg = new CharacterGeometry()
-
-        this.renderer = new Renderer(gl, options.miterLimit())
-        this.renderer.createFontTexture(font)
-            .then(characterGeom => {
-                this.cg = characterGeom
-                console.log(characterGeom)
-                return characterGeom
-            })
-            .then(textCapabilityCallback)
-        this._mesher = new Mesher(World.EARTH_RADIUS, options.circlePositions(), options.miterLimit(), () => this.cg)
+        this.renderer = new Renderer(gl, options.miterLimit(), undefined)
     }
 
     /**
@@ -148,7 +141,7 @@ export class World {
      * This should be called within `requestAnimationFrame`
      */
     render() {
-        const ctx = new DrawingContext(this.bgColour, this.sp, this.at, this.cg)
+        const ctx = new DrawingContext(this.bgColour, this.sp, this.at)
         this.renderer.draw(ctx)
     }
 
@@ -173,7 +166,7 @@ export class World {
      */
     insert(graphic: Graphic | RenderableGraphic) {
         const g = graphic instanceof Graphic
-            ? graphic.toRenderable(this._mesher)
+            ? graphic.toRenderable(this.mesher())
             : graphic
         this.renderer.insert(g)
     }
@@ -226,13 +219,21 @@ export class World {
         return this._centre
     }
 
+    async loadFont(font: FontDescriptor): Promise<CharacterGeometry> {
+        return this.renderer.createFontTexture(font)
+            .then(characterGeom => {
+                this.cg = characterGeom
+                return characterGeom
+            })
+    }
+
     /**
      * Returns the mesher to be used to transform shapes into meshes (renderable).
      * Use this to perform meshing of complex shapes (i.e. that require intensive CPU
      * operation) in a web worker (in order not to block the main javascript thread).
      */
     mesher(): Mesher {
-        return this._mesher
+        return new Mesher(World.EARTH_RADIUS, this._options.circlePositions(), this._options.miterLimit(), this.cg)
     }
 
 }

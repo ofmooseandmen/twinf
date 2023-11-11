@@ -2,17 +2,18 @@ import { Batch, Batcher, BatchFactory } from '../src/batching'
 import { Colour } from './colour'
 import {
     CanvasAffineTransform,
-    CanvasDimension,
     CoordinateSystems,
     StereographicProjection
 } from './coordinate-systems'
-import { Offset } from './pixels'
 import { RenderableGraphic } from './graphic'
 import { DrawMode, Mesh } from './meshing'
 import { WebGL2 } from './webgl2'
 
-import { load } from 'opentype.js'
-import { Vector2d } from './space2d'
+import {
+    Characters,
+    CharacterGeometry,
+    FontDescriptor
+} from './text'
 
 /**
  * Characteristics of a WebGL attibute.
@@ -111,7 +112,7 @@ class Attributes {
             new Attribute('a_rgba', 1, gl.UNSIGNED_INT,
                 m => m.colours().length === 0, m => m.colours()),
 
-            new Attribute('a_texcoord', 2, gl.FLOAT,
+            new Attribute('a_texcoord', 3, gl.FLOAT,
                 m => m.texcoord() === undefined, m => {
                     const tc = m.texcoord()
                     return tc === undefined ? [] : tc
@@ -199,28 +200,17 @@ class GlBatch extends Batch {
         gl.deleteVertexArray(this.vao)
     }
 
-    draw(usingTexture : ImageData | undefined = undefined) {
+    draw() {
         const gl = this.gl
+
         gl.bindVertexArray(this.vao)
         /*
-         * disable the vertex array and/or replace texture with a blank pixel, the attribute will have
-         * the default value which the shader can handle.
+         * disable the vertex array, the attribute will have the default value which the shader can handle.
          */
         const len = this._disabled.length
         for (let i = 0; i < len; i++) {
-            if (usingTexture === undefined || this._disabled[i] == 'a_texcoord') {
-                /* Fill the texture with a 1x1 white pixel. */
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
-                                new Uint8Array([0, 255, 255, 255]))
-            }
             const attLocation = gl.getAttribLocation(this.program, this._disabled[i])
             gl.disableVertexAttribArray(attLocation)
-        }
-        for (let i = 0; i < this._enabled.length; i++) {
-            if (usingTexture !== undefined && this._enabled[i] == 'a_texcoord') {
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, usingTexture)
-                gl.generateMipmap(gl.TEXTURE_2D)
-            }
         }
         const drawMode = this._drawMode == DrawMode.LINES
             ? gl.LINES
@@ -331,14 +321,12 @@ export class DrawingContext {
     private readonly _bgColour: Colour
     private readonly _sp: StereographicProjection
     private readonly _at: CanvasAffineTransform
-    private readonly _cg: CharacterGeometry
 
     constructor(bgColour: Colour, sp: StereographicProjection,
-        at: CanvasAffineTransform, cg: CharacterGeometry) {
+        at: CanvasAffineTransform) {
         this._bgColour = bgColour
         this._sp = sp
         this._at = at
-        this._cg = cg
     }
 
     bgColour(): Colour {
@@ -353,188 +341,6 @@ export class DrawingContext {
         return this._at
     }
 
-    cg(): CharacterGeometry {
-        return this._cg
-    }
-
-}
-
-interface OpenTypeFont extends opentypejs.Font {}
-
-export class CharacterInRaster {
-    readonly bl: Offset
-    readonly w: number
-    readonly h: number
-
-    constructor (bl: Offset, w: number, h: number) {
-        this.bl = bl
-        this.w = w
-        this.h = h
-    }
-    static fromLiteral(data: any): CharacterInRaster {
-        return new CharacterInRaster(Offset.fromLiteral(data['bl']), data['w'], data['h'])
-    }
-}
-
-export class CharacterGeometry {
-
-    private readonly _textureWidth: number
-    private readonly _textureHeight: number
-    private readonly charGeom: Map<string, CharacterInRaster>
-
-    constructor(charBoundingBoxes: Map<string, CharacterInRaster> = new Map(),
-        textureWidth: number = 1, textureHeight: number = 1) {
-        this._textureWidth = textureWidth
-        this._textureHeight = textureHeight
-        this.charGeom = charBoundingBoxes
-    }
-
-    static fromLiteral(data: any): CharacterGeometry {
-        const charBoundingBoxes: Map<string, CharacterInRaster> = new Map()
-        for (let [char, bb] of data) {
-            charBoundingBoxes.set(char, CharacterInRaster.fromLiteral(bb))
-        }
-        return new CharacterGeometry(charBoundingBoxes, data['_textureWidth'], data['_textureHeight'])
-    }
-
-    textureWidth() : number {
-        return this._textureWidth
-    }
-
-    textureHeight() : number {
-        return this._textureHeight
-    }
-
-    char(char: string) : CharacterInRaster {
-        if (char.length !== 1) {
-            console.log("Invalid char '" + char + "'")
-            throw new Error("Invalid character")
-        }
-        const bb = this.charGeom.get(char)
-        if (!bb) {
-            console.log("No bounding box for char '" + char + "'")
-            throw new Error("Unknown character")
-        }
-        return bb
-    }
-}
-
-class Characters extends CharacterGeometry {
-
-    private readonly charData: Map<string, any>
-
-    readonly raster: ImageData
-
-    static readonly CHARACTER_SET: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!?*'
-
-    private constructor(charData: Map<string, any>,
-        charBoundingBoxes: Map<string, CharacterInRaster>, raster: ImageData) {
-        super(charBoundingBoxes, raster.width, raster.height)
-        this.charData = charData
-        this.raster = raster
-    }
-
-    static async pack(font: FontDescriptor) : Promise<Characters> {
-        return new Promise<OpenTypeFont>((resolve, reject) => {
-            load(font.url, (err: any, font: OpenTypeFont | undefined) => {
-                if (err || !font) {
-                    console.log("Unable to load font: " + font)
-                    console.log(err)
-                    reject("Font unable to be loaded.")
-                    return
-                }
-                resolve(font)
-            })
-        }).then(fontOtf => Characters.rasterOtf(fontOtf, font.fontSize)).catch(rej => {
-            throw new Error("Unable to create font pack.")
-        })
-    }
-
-    private static rasterOtf(font: OpenTypeFont, fontSize: number) : Characters {
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
-        if (ctx === null) {
-            console.log("Unable to raster; raster canvas is null")
-            throw new Error("Unable to create font pack. Canvas capability not available.")
-        }
-
-        let totalWidth = 0
-        let maxHeight = 0
-        /* min yMin across all characters (negative). */
-        let minYMin = 0
-
-        for (const char of Characters.CHARACTER_SET) {
-            const glyph = font.charToGlyph(char)
-            const width = (glyph.advanceWidth / font.unitsPerEm) * fontSize
-            const height = ((glyph['yMax'] - glyph['yMin']) / font.unitsPerEm) * fontSize
-
-            totalWidth += width + 2
-
-            if (height > maxHeight) {
-                maxHeight = height
-            }
-            if (glyph['yMin'] < minYMin) {
-                minYMin = glyph['yMin']
-            }
-        }
-        canvas.width = totalWidth
-        // TODO AY why
-        canvas.height = maxHeight + 3
-
-        let currentX = 0
-        
-        const charData: Map<string, any> = new Map()
-        const charsInRaster: Map<string, CharacterInRaster> = new Map()
-
-        for (const char of Characters.CHARACTER_SET) {
-            const glyph = font.charToGlyph(char)
-            const width = (glyph.advanceWidth / font.unitsPerEm) * fontSize
-
-            const path: any = glyph.getPath(currentX, 2 + maxHeight + minYMin / font.unitsPerEm * fontSize, fontSize)
-            path.fill = 'white'
-            path.draw(ctx)
-
-            charData.set(char, {
-                x: currentX,
-                y: 0,
-                width: width,
-                height: maxHeight,
-            })
-            for (let [key, c] of charData) {
-                charsInRaster.set(key, new CharacterInRaster(
-                    new Offset(c.x, c.y + c.height - maxHeight),
-                    c.width,
-                    c.height + 2
-                ))
-            }
-            currentX += width + 2
-        }
-        return new Characters(charData, charsInRaster, ctx.getImageData(
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        ))
-    }
-}
-
-export class FontDescriptor {
-    readonly family: string
-    readonly fontSize: number
-    readonly url: string
-    constructor(family: string, fontSize: number, url: string) {
-        this.family = family
-        this.fontSize = fontSize
-        this.url = url
-    }
-}
-
-export class Font extends FontFace {
-    readonly fontSize: number
-    constructor(fam: string, fontSize: number, url: string) {
-        super(fam, url)
-        this.fontSize = fontSize
-    }
 }
 
 /**
@@ -546,9 +352,9 @@ export class Renderer {
     private readonly miterLimit: number
     private readonly program: WebGLProgram
     private readonly batcher: Batcher<GlBatch>
-    private texture: ImageData | undefined
+    private texture: Characters | undefined
 
-    constructor(gl: WebGL2RenderingContext, miterLimit: number) {
+    constructor(gl: WebGL2RenderingContext, miterLimit: number, initialTexture: Characters | undefined) {
         this.gl = gl
         this.miterLimit = miterLimit
         const vertexShader = WebGL2.createShader(gl, gl.VERTEX_SHADER, Renderer.VERTEX_SHADER)
@@ -558,7 +364,7 @@ export class Renderer {
 
         const factory = new GlBatchFactory(gl, this.program, attributes)
         this.batcher = new Batcher<GlBatch>(factory)
-        this.texture = undefined
+        this.texture = initialTexture
     }
 
     async createFontTexture(font: FontDescriptor) : Promise<CharacterGeometry> {
@@ -567,7 +373,9 @@ export class Renderer {
         gl.activeTexture(gl.TEXTURE0 + 0)
         gl.bindTexture(gl.TEXTURE_2D, texture)
         const packedFont = await Characters.pack(font)
-        this.texture = packedFont.raster
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, packedFont.raster)
+        gl.generateMipmap(gl.TEXTURE_2D)
+        this.texture = packedFont
         return packedFont
     }
 
@@ -591,8 +399,6 @@ export class Renderer {
         const geoCentre = [sp.centre().x(), sp.centre().y(), sp.centre().z()]
         const geoToSys = sp.directRotationGl()
         const canvasToClipspace = CoordinateSystems.canvasToClipspace(this.gl.canvas.clientWidth, this.gl.canvas.clientHeight)
-
-        const cg = ctx.cg()
 
         const earthRadiusMetres = sp.earthRadius()
         const gl = this.gl
@@ -624,11 +430,13 @@ export class Renderer {
 
         const canvasToClipspaceLocation = gl.getUniformLocation(program, 'u_canvas_to_clipspace');
         gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
-        
-        const texCoordScaleUniformLocation = gl.getUniformLocation(program, 'u_texcoord_scale')
-        gl.uniform2f(texCoordScaleUniformLocation, cg.textureWidth(), cg.textureHeight())
 
-        this.batcher.draw(this.texture)
+        if (this.texture) {
+            const texCoordScaleUniformLocation = gl.getUniformLocation(program, 'u_texcoord_scale')
+            gl.uniform2f(texCoordScaleUniformLocation, this.texture.textureWidth(), this.texture.textureHeight())
+        }
+
+        this.batcher.draw()
     }
 
     private static readonly VERTEX_SHADER =
@@ -743,16 +551,14 @@ in vec2 a_offset;
 // colour (rgba)
 in uint a_rgba;
 
-// texture scale factor
-uniform vec2 u_texcoord_scale;
-
 // texture coordinate
-in vec2 a_texcoord;
+in vec3 a_texcoord;
 
 // colour for fragment shader
 out vec4 v_colour;
 
-out vec2 v_texcoord;
+// texture coords for fragment shader
+out vec3 v_texcoord;
 
 void main() {
     vec2 c_pos;
@@ -799,8 +605,7 @@ void main() {
 
     v_colour = rgba_to_colour(a_rgba);
 
-    // pass the scaled texcoord to the fragment shader.
-    v_texcoord = a_texcoord / u_texcoord_scale;
+    v_texcoord = a_texcoord;
 }
 `
 
@@ -809,13 +614,22 @@ void main() {
 precision mediump float;
 
 in vec4 v_colour;
-in vec2 v_texcoord;
+in vec3 v_texcoord;
 uniform sampler2D u_texture;
+// texture scale factor
+uniform vec2 u_texcoord_scale;
 
 out vec4 colour;
 
 void main() {
-  colour = v_colour * texture(u_texture, v_texcoord);
+  // texture signalling: v_texcoord.x = 1.0 is used, pushing:
+  // - texture x coords to v_texcoord.y
+  // - texture y coords to v_texcoord.z
+  if (v_texcoord.x == 0.0) {
+    colour = v_colour;
+  } else {
+    colour = v_colour * texture(u_texture, v_texcoord.yz / u_texcoord_scale);
+  }
 }
 `
 

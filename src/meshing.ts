@@ -7,7 +7,7 @@ import { Geometry2d, Vector2d } from './space2d'
 import { InternalGeodetics, Vector3d } from './space3d'
 import { Triangle } from './triangle'
 import { Triangulator } from './triangulation'
-import { CharacterGeometry } from './rendering'
+import { CharacterGeometry } from './text'
 import { Offset } from './pixels'
 
 export enum DrawMode {
@@ -136,23 +136,23 @@ export class Mesher {
     private readonly earthRadius: Length
     private readonly circlePositions: number
     private readonly miterLimit: number
-    private readonly characterGeomSupp: Function
+    private readonly characterGeometry: CharacterGeometry
 
     constructor(earthRadius: Length, circlePositions: number, miterLimit: number,
-        characterGeomSupp : () => CharacterGeometry) {
+        characterGeometry: CharacterGeometry) {
         this.earthRadius = earthRadius
         this.circlePositions = circlePositions
         this.miterLimit = miterLimit
-        this.characterGeomSupp = characterGeomSupp
+        this.characterGeometry = characterGeometry
     }
 
     static fromLiteral(data: any): Mesher {
         const earthRadius = Length.fromLiteral(data['earthRadius'])
         const circlePositions = data['circlePositions']
         const miterLimit = data['miterLimit']
-        const characterGeomSupp = () => { throw new Error("Accessing character geometry not supported via deserialised mesher!!!") }
+        const characterGeometry = CharacterGeometry.fromLiteral(data['characterGeometry'])
 
-        return new Mesher(earthRadius, circlePositions, miterLimit, characterGeomSupp)
+        return new Mesher(earthRadius, circlePositions, miterLimit, characterGeometry)
     }
 
     meshShape(s: S.Shape): ReadonlyArray<Mesh> {
@@ -166,7 +166,7 @@ export class Mesher {
             case S.ShapeType.GeoRelativeCircle:
                 return Mesher.fromGeoRelativeCircle(s, this.circlePositions, this.miterLimit)
             case S.ShapeType.GeoRelativeText:
-                return Mesher.fromGeoRelativeText(s, this.characterGeomSupp)
+                return Mesher.fromGeoRelativeText(s, this.characterGeometry)
             case S.ShapeType.GeoRelativePolygon:
                 return Mesher.fromGeoRelativePoygon(s, this.miterLimit)
             case S.ShapeType.GeoRelativePolyline:
@@ -174,12 +174,12 @@ export class Mesher {
         }
     }
 
-    private static fromGeoRelativeText(t: S.GeoRelativeText, characterGeomSupp: Function): ReadonlyArray<Mesh> {
+    private static fromGeoRelativeText(t: S.GeoRelativeText, characterGeom: CharacterGeometry): ReadonlyArray<Mesh> {
         let res = new Array<Mesh>()
         let offset = 0
 
         for (const char of t.text()) {
-            const geom = characterGeomSupp().char(char)
+            const geom = characterGeom.char(char)
             const tl = t.offset()
             const vertices = [
                 new Offset(tl.x(), tl.y()),
@@ -195,15 +195,19 @@ export class Mesher {
             /*
              * Mesh is formed with two triangles, x to the right, y up.
              * Essentially a closedExtrusion with 4 vertices, filled with a texture.
+             *
+             * For the fragment shader texture signalling, vec3.x = 1.0 is used, pushing:
+             * - x coords to vec3.y
+             * - y coords to vec3.z
              */
             const bl = new Offset(geom.bl.x(), geom.bl.y())
             const tex = [
-                /* bl */ bl.x(), bl.y(),
-                /* tl */ bl.x(), bl.y() + geom.h,
-                /* tr */ bl.x() + geom.w, bl.y() + geom.h,
-                /* tr */ bl.x() + geom.w, bl.y() + geom.h,
-                /* br */ bl.x() + geom.w, bl.y(),
-                /* bl */ bl.x(), bl.y(),
+                /* bl */ 1.0, bl.x(), bl.y(),
+                /* tl */ 1.0, bl.x(), bl.y() + geom.h,
+                /* tr */ 1.0, bl.x() + geom.w, bl.y() + geom.h,
+                /* tr */ 1.0, bl.x() + geom.w, bl.y() + geom.h,
+                /* br */ 1.0, bl.x() + geom.w, bl.y(),
+                /* bl */ 1.0, bl.x(), bl.y(),
             ]
             res.push(new Mesh(vs, undefined, os, cs, DrawMode.TRIANGLES, tex))
             offset += geom.w
