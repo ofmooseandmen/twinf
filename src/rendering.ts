@@ -8,10 +8,9 @@ import {
 import { RenderableGraphic } from './graphic'
 import { DrawMode, Mesh } from './meshing'
 import { WebGL2 } from './webgl2'
-
+import { Offset } from './pixels'
 import {
-    Characters,
-    Sprites,
+    Text,
     FontDescriptor
 } from './text'
 
@@ -343,6 +342,79 @@ export class DrawingContext {
 
 }
 
+export class SpriteInRaster {
+    /** Top left coordinate of sprite. */
+    private readonly tl: Offset
+    /** Width of sprite in pixels. */
+    private readonly w: number
+    /** Height of sprite in pixels. */
+    private readonly h: number
+
+    /**
+     * Constructor.
+     *
+     * @param tl top left offset of sprite in px
+     * @param w width of sprite
+     * @param h height of sprite
+     */
+    constructor (tl: Offset, w: number, h: number) {
+        this.tl = tl
+        this.w = w
+        this.h = h
+    }
+    static fromLiteral(data: any): SpriteInRaster {
+        return new SpriteInRaster(Offset.fromLiteral(data['tl']), data['w'], data['h'])
+    }
+
+    topleft(): Offset {
+        return this.tl
+    }
+
+    width(): number {
+        return this.w
+    }
+
+    height(): number {
+        return this.h
+    }
+
+}
+
+export type SpriteGeometry = {
+    [id: string]: SpriteInRaster
+}
+
+/** An API to get the location and dimensions of a sprite in a rastered texture. */
+export class Sprites {
+
+    private readonly spriteGeom: SpriteGeometry
+
+    constructor(spriteGeom: SpriteGeometry = {}) {
+        this.spriteGeom = spriteGeom
+    }
+
+    static fromLiteral(data: any): Sprites {
+        const spriteGeometry: SpriteGeometry = {}
+        for (let char in data.charGeom) {
+            spriteGeometry[char] = SpriteInRaster.fromLiteral(data.spriteGeom[char])
+        }
+        return new Sprites(spriteGeometry)
+    }
+
+    char(char: string) : SpriteInRaster {
+        if (char.length !== 1) {
+            console.log("Invalid char '" + char + "'")
+            throw new Error("Invalid character")
+        }
+        const bb = this.spriteGeom[char]
+        if (!bb) {
+            console.log("No bounding box for char '" + char + "'")
+            throw new Error("Unknown character")
+        }
+        return bb
+    }
+}
+
 /**
  * WebGL renderer.
  */
@@ -352,9 +424,9 @@ export class Renderer {
     private readonly miterLimit: number
     private readonly program: WebGLProgram
     private readonly batcher: Batcher<GlBatch>
-    private texture: Characters | undefined
+    private raster: ImageData | undefined
 
-    constructor(gl: WebGL2RenderingContext, miterLimit: number, initialTexture: Characters | undefined) {
+    constructor(gl: WebGL2RenderingContext, miterLimit: number, initialRaster: ImageData | undefined) {
         this.gl = gl
         this.miterLimit = miterLimit
         const vertexShader = WebGL2.createShader(gl, gl.VERTEX_SHADER, Renderer.VERTEX_SHADER)
@@ -364,19 +436,39 @@ export class Renderer {
 
         const factory = new GlBatchFactory(gl, this.program, attributes)
         this.batcher = new Batcher<GlBatch>(factory)
-        this.texture = initialTexture
+        this.raster = initialRaster
     }
 
-    async createFontTexture(font: FontDescriptor) : Promise<Sprites> {
+    async createFontTexture(canvas: HTMLCanvasElement, font: FontDescriptor) : Promise<Sprites> {
+        const ctx = canvas.getContext('2d')
+        if (ctx === null) {
+            console.log("Unable to raster; raster canvas is null")
+            throw new Error("Unable to create font pack. Canvas capability not available.")
+        }
         const gl = this.gl
         var texture = gl.createTexture()
         gl.activeTexture(gl.TEXTURE0 + 0)
         gl.bindTexture(gl.TEXTURE_2D, texture)
-        const packedFont = await Characters.pack(font)
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, packedFont.raster)
+        const charData = await Text.pack(canvas, ctx, font)
+        const charsInRaster: SpriteGeometry = {}
+        for (let k in charData) {
+            const c = charData[k]
+            charsInRaster[k] = new SpriteInRaster(
+                new Offset(c.x, c.y),
+                c.width,
+                c.height
+            )
+        }
+        const raster = ctx.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        )
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, raster)
         gl.generateMipmap(gl.TEXTURE_2D)
-        this.texture = packedFont
-        return packedFont
+        this.raster = raster
+        return new Sprites(charsInRaster)
     }
 
     insert(graphic: RenderableGraphic) {
@@ -431,9 +523,9 @@ export class Renderer {
         const canvasToClipspaceLocation = gl.getUniformLocation(program, 'u_canvas_to_clipspace');
         gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
 
-        if (this.texture) {
+        if (this.raster) {
             const texCoordScaleUniformLocation = gl.getUniformLocation(program, 'u_texcoord_scale')
-            gl.uniform2f(texCoordScaleUniformLocation, this.texture.raster.width, this.texture.raster.height)
+            gl.uniform2f(texCoordScaleUniformLocation, this.raster.width, this.raster.height)
         }
 
         this.batcher.draw()

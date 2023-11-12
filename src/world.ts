@@ -10,8 +10,8 @@ import { Graphic, RenderableGraphic } from './graphic'
 import { LatLong } from './latlong'
 import { Length } from './length'
 import { Mesher } from './meshing'
-import { DrawingContext, Renderer } from './rendering'
-import { FontDescriptor, Sprites } from './text'
+import { DrawingContext, Renderer, Sprites } from './rendering'
+import { FontDescriptor } from './text'
 import { Math2d, Vector2d } from './space2d'
 
 /**
@@ -109,10 +109,10 @@ export class World {
     private at: CanvasAffineTransform
 
     /*
-     * A mapping from each renderable character to the coordinates on a rastered texture
+     * A mapping from each renderable sprite to the coordinates on a rastered texture
      * packed with characters.
      */
-    private cg: Sprites
+    private sprites: Sprites
 
     private readonly _options: RenderingOptions
     private readonly renderer: Renderer
@@ -131,7 +131,7 @@ export class World {
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
 
         /* Interesting opportunity here to have some sort of low quality loading effect while fonts load... */
-        this.cg = new Sprites()
+        this.sprites = new Sprites()
         this.renderer = new Renderer(gl, options.miterLimit(), undefined)
     }
 
@@ -219,11 +219,18 @@ export class World {
         return this._centre
     }
 
-    async loadFont(font: FontDescriptor): Promise<Sprites> {
-        return this.renderer.createFontTexture(font)
-            .then(characterGeom => {
-                this.cg = characterGeom
-                return characterGeom
+    /**
+     * Load a font, using the provided offscreen canvas to render a 2D font map.
+     *
+     * @param offscreenCanvas capable of 2D context
+     * @param font to load
+     * @returns sprites for use in webgl2 context
+     */
+    async loadFont(offscreenCanvas: HTMLCanvasElement, font: FontDescriptor): Promise<Sprites> {
+        return this.renderer.createFontTexture(offscreenCanvas, font)
+            .then(sprites => {
+                this.sprites = sprites
+                return sprites
             })
     }
 
@@ -233,7 +240,7 @@ export class World {
      * operation) in a web worker (in order not to block the main javascript thread).
      */
     mesher(): Mesher {
-        return new Mesher(World.EARTH_RADIUS, this._options.circlePositions(), this._options.miterLimit(), this.cg)
+        return new Mesher(World.EARTH_RADIUS, this._options.circlePositions(), this._options.miterLimit(), this.sprites)
     }
 
 }

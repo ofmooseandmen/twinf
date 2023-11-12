@@ -22,5 +22,6 @@ export {
     GeoRelativeText,
 } from './shapes'
 export { Speed } from './speed'
-export { FontDescriptor, Sprites } from './text'
+export { FontDescriptor } from './text'
+export { Sprites } from './rendering'
 export { RenderingOptions, World, WorldDefinition, } from './world'

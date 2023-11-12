@@ -7,7 +7,7 @@ import { Geometry2d, Vector2d } from './space2d'
 import { InternalGeodetics, Vector3d } from './space3d'
 import { Triangle } from './triangle'
 import { Triangulator } from './triangulation'
-import { Sprites } from './text'
+import { Sprites } from './rendering'
 import { Offset } from './pixels'
 
 export enum DrawMode {
@@ -174,18 +174,18 @@ export class Mesher {
         }
     }
 
-    private static fromGeoRelativeText(t: S.GeoRelativeText, characterGeom: Sprites): ReadonlyArray<Mesh> {
+    private static fromGeoRelativeText(t: S.GeoRelativeText, sprites: Sprites): ReadonlyArray<Mesh> {
         let res = new Array<Mesh>()
         let offset = 0
 
         for (const char of t.text()) {
-            const geom = characterGeom.char(char)
+            const geom = sprites.char(char)
             const tl = t.offset()
             const vertices = [
                 new Offset(tl.x(), tl.y()),
-                new Offset(tl.x(), tl.y() + geom.h),
-                new Offset(tl.x() + geom.w, tl.y() + geom.h),
-                new Offset(tl.x() + geom.w, tl.y()),
+                new Offset(tl.x(), tl.y() + geom.height()),
+                new Offset(tl.x() + geom.width(), tl.y() + geom.height()),
+                new Offset(tl.x() + geom.width(), tl.y()),
             ].map(v => new Vector2d(v.x() + offset, v.y()))
             const ts = Triangulator.PLANAR.triangulate(vertices)
             const os = Mesher.offsetTrianglesToArray(ts)
@@ -200,17 +200,17 @@ export class Mesher {
              * - x coords to vec3.y
              * - y coords to vec3.z
              */
-            const bl = new Offset(geom.bl.x(), geom.bl.y())
+            const ttl = new Offset(geom.topleft().x(), geom.topleft().y())
             const tex = [
-                /* bl */ 1.0, bl.x(), bl.y(),
-                /* tl */ 1.0, bl.x(), bl.y() + geom.h,
-                /* tr */ 1.0, bl.x() + geom.w, bl.y() + geom.h,
-                /* tr */ 1.0, bl.x() + geom.w, bl.y() + geom.h,
-                /* br */ 1.0, bl.x() + geom.w, bl.y(),
-                /* bl */ 1.0, bl.x(), bl.y(),
+                /* tl */ 1.0, ttl.x(), ttl.y(),
+                /* bl */ 1.0, ttl.x(), ttl.y() + geom.height(),
+                /* br */ 1.0, ttl.x() + geom.width(), ttl.y() + geom.height(),
+                /* br */ 1.0, ttl.x() + geom.width(), ttl.y() + geom.height(),
+                /* tr */ 1.0, ttl.x() + geom.width(), ttl.y(),
+                /* tl */ 1.0, ttl.x(), ttl.y(),
             ]
             res.push(new Mesh(vs, undefined, os, cs, DrawMode.TRIANGLES, tex))
-            offset += geom.w
+            offset += geom.width()
         }
         return res
     }

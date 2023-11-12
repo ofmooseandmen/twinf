@@ -3,60 +3,8 @@ import { load } from 'opentype.js'
 
 interface OpenTypeFont extends opentypejs.Font {}
 
-export class CharacterInRaster {
-    /** Bottom left coordinate of character. */
-    readonly bl: Offset
-    /** Width of character in pixels. */
-    readonly w: number
-    /** Height of character in pixels. */
-    readonly h: number
-
-    constructor (bl: Offset, w: number, h: number) {
-        this.bl = bl
-        this.w = w
-        this.h = h
-    }
-    static fromLiteral(data: any): CharacterInRaster {
-        return new CharacterInRaster(Offset.fromLiteral(data['bl']), data['w'], data['h'])
-    }
-}
-
-export type CharacterGeometry = {
-    [id: string]: CharacterInRaster
-}
-
-export class Sprites {
-    /** A mapping of character to its position in the raster. */
-    private readonly charGeom: CharacterGeometry
-
-    constructor(charBoundingBoxes: CharacterGeometry = {}) {
-        this.charGeom = charBoundingBoxes
-    }
-
-    static fromLiteral(data: any): Sprites {
-        const charBoundingBoxes: CharacterGeometry = {}
-        for (let char in data.charGeom) {
-            charBoundingBoxes[char] = CharacterInRaster.fromLiteral(data.charGeom[char])
-        }
-        return new Sprites(charBoundingBoxes)
-    }
-
-    char(char: string) : CharacterInRaster {
-        if (char.length !== 1) {
-            console.log("Invalid char '" + char + "'")
-            throw new Error("Invalid character")
-        }
-        const bb = this.charGeom[char]
-        if (!bb) {
-            console.log("No bounding box for char '" + char + "'")
-            throw new Error("Unknown character")
-        }
-        return bb
-    }
-}
-
 /** For identifying the position and size of glyphs rendered onto an intermeditate 2D canvas. */
-type CharactersOnCanvas  = {
+type TextOnCanvas  = {
     [id: string]: {
         readonly x: number
         readonly y: number
@@ -65,10 +13,16 @@ type CharactersOnCanvas  = {
     }
 }
 
-export class Characters extends Sprites {
+type FontRasterDimensions = {
+    width: number,
+    height: number,
+    baseline: number
+}
 
-    /** The final combined rastered image of all glyphs. */
-    readonly raster: ImageData
+/**
+ * Class for rasterizing text onto a canvas.
+ */
+export class Text {
 
     /** Canvas margin below the character glyphs. */
     static readonly MARGIN_BOTTOM_PX = 3
@@ -79,13 +33,11 @@ export class Characters extends Sprites {
     /** Margin between the character glyphs. */
     static readonly MARGIN_BW_PX = 2
 
-    /** Set of supported characters. */
-    static readonly CHARACTER_SET: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!?*'
+    /** Minimum supported ascii character code. */
+    static readonly MIN_ASCII = 32
 
-    private constructor(charBoundingBoxes: CharacterGeometry, raster: ImageData) {
-        super(charBoundingBoxes)
-        this.raster = raster
-    }
+    /** Maximum supported ascii character code. */
+    static readonly MAX_ASCII = 127
 
     /**
      * Given a font, promise to load and pack the font into a rastered image, as well
@@ -94,7 +46,7 @@ export class Characters extends Sprites {
      * @param font the font to pack into an image
      * @returns a promise of characters
      */
-    static async pack(font: FontDescriptor) : Promise<Characters> {
+    static async pack(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, font: FontDescriptor) : Promise<TextOnCanvas> {
         return new Promise<OpenTypeFont>((resolve, reject) => {
             load(font.url, (err: any, font: OpenTypeFont | undefined) => {
                 if (err || !font) {
@@ -105,38 +57,42 @@ export class Characters extends Sprites {
                 }
                 resolve(font)
             })
-        }).then(fontOtf => Characters.rasterOtf(fontOtf, font.fontSize)).catch(rej => {
-            throw new Error("Unable to create font pack.")
+        })
+        .then(fontOtf => {
+            const dim = Text.bounds(fontOtf, font.fontSize)
+            canvas.width = dim.width
+            canvas.height = dim.height
+            return Text.rasterOtf(ctx, 0, 0, dim, fontOtf, font.fontSize)
+        })
+        .catch(rej => {
+            throw new Error("Unable to create font raster.")
         })
     }
 
     /**
-     * Render a provided font onto an intermediate 2D canvas, and return both the final
-     * rastered image of all the glyphs and their positions and dimensions.
+     * Given a font and a fontsize, return the canvas bounds of that font if
+     * all chars were rastered onto canvas.
      *
-     * @param font to rasterise
-     * @param fontSize to render each glyph in
-     * @returns a single raster of the font and dimensions of each glyph
+     * @param font opentype font
+     * @param fontSize to compute the bounds at
+     * @returns dimensions
      */
-    private static rasterOtf(font: OpenTypeFont, fontSize: number) : Characters {
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
-        if (ctx === null) {
-            console.log("Unable to raster; raster canvas is null")
-            throw new Error("Unable to create font pack. Canvas capability not available.")
-        }
-
+    private static bounds(font: OpenTypeFont, fontSize: number) : FontRasterDimensions {
         let totalWidth = 0
         let maxHeight = 0
         /* min yMin across all characters (negative). */
         let minYMin = 0
-
-        for (const char of Characters.CHARACTER_SET) {
+        for (let i=Text.MIN_ASCII; i< Text.MAX_ASCII; i++) {
+            const char = String.fromCharCode(i)
+            console.log(char)
             const glyph = font.charToGlyph(char)
+            if (!glyph) {
+                console.log("Character not found in font: " + char)
+            }
             const width = (glyph.advanceWidth / font.unitsPerEm) * fontSize
             const height = ((glyph['yMax'] - glyph['yMin']) / font.unitsPerEm) * fontSize
 
-            totalWidth += width + 2
+            totalWidth += width + Text.MARGIN_BW_PX
 
             if (height > maxHeight) {
                 maxHeight = height
@@ -145,45 +101,48 @@ export class Characters extends Sprites {
                 minYMin = glyph['yMin']
             }
         }
-        canvas.width = totalWidth
-        canvas.height = maxHeight + Characters.MARGIN_BOTTOM_PX
+        return {
+            width: totalWidth,
+            height: Text.MARGIN_TOP_PX + maxHeight + Text.MARGIN_BOTTOM_PX,
+            baseline: Text.MARGIN_TOP_PX + maxHeight + minYMin / font.unitsPerEm * fontSize
+        }
+    }
 
-        let currentX = 0
-        
-        const charData: CharactersOnCanvas = {}
+    /**
+     * Render a provided font onto an intermediate 2D canvas, and return both the final
+     * rastered image of all the glyphs and their positions and dimensions.
+     *
+     * @param ctx canvas context
+     * @param minX minimum x coord to draw the raster
+     * @param minY minimum y coord to draw the raster
+     * @param dim dimensions of the rastered fontset
+     * @param font to rasterise
+     * @param fontSize to render each glyph in
+     * @returns a single raster of the font and dimensions of each glyph
+     */
+    private static rasterOtf(ctx: CanvasRenderingContext2D, minX: number, minY: number,
+         dim: FontRasterDimensions, font: OpenTypeFont, fontSize: number) : TextOnCanvas {
+        let currentX = minX
+        const charData: TextOnCanvas = {}
 
-        for (const char of Characters.CHARACTER_SET) {
+        for (let i=Text.MIN_ASCII; i< Text.MAX_ASCII; i++) {
+            const char = String.fromCharCode(i)
             const glyph = font.charToGlyph(char)
             const width = (glyph.advanceWidth / font.unitsPerEm) * fontSize
 
-            const path: any = glyph.getPath(currentX, Characters.MARGIN_TOP_PX + maxHeight + minYMin / font.unitsPerEm * fontSize, fontSize)
+            const path: any = glyph.getPath(currentX, dim.baseline, fontSize)
             path.fill = 'white'
             path.draw(ctx)
 
             charData[char] = {
                 x: currentX,
-                y: 0,
+                y: minY,
                 width: width,
-                height: maxHeight,
+                height: dim.height,
             }
-            currentX += width + Characters.MARGIN_BW_PX
+            currentX += width + Text.MARGIN_BW_PX
         }
-
-        const charsInRaster: CharacterGeometry = {}
-        for (let k in charData) {
-            const c = charData[k]
-            charsInRaster[k] = new CharacterInRaster(
-                new Offset(c.x, c.y + c.height - maxHeight),
-                c.width,
-                c.height + Characters.MARGIN_TOP_PX
-            )
-        }
-        return new Characters(charsInRaster, ctx.getImageData(
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        ))
+        return charData
     }
 }
 
