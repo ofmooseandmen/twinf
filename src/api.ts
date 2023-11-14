@@ -24,4 +24,4 @@ export {
 export { Speed } from './speed'
 export { FontDescriptor } from './text'
 export { Sprites } from './rendering'
-export { RenderingOptions, World, WorldDefinition, } from './world'
+export { RenderingOptions, World, WorldDefinition } from './world'
