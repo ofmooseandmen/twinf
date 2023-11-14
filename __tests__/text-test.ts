@@ -21,6 +21,6 @@ describe('text', () => {
         })
     })
 
-    /* TODO: macking opentype, probably should update typescript first! */
+    /* TODO: mocking opentype, probably should update typescript first! */
 
 })
