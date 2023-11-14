@@ -151,7 +151,6 @@ export class Mesher {
         const circlePositions = data['circlePositions']
         const miterLimit = data['miterLimit']
         const sprites = Sprites.fromLiteral(data['sprites'])
-
         return new Mesher(earthRadius, circlePositions, miterLimit, sprites)
     }
 
@@ -177,7 +176,6 @@ export class Mesher {
     private static fromGeoRelativeText(t: S.GeoRelativeText, sprites: Sprites): ReadonlyArray<Mesh> {
         let res = new Array<Mesh>()
         let offset = 0
-
         for (const char of t.text()) {
             const geom = sprites.char(char)
             const tl = t.offset()
@@ -193,7 +191,7 @@ export class Mesher {
             const cs = Mesher.colours(t.colour(), os, 2)
 
             /*
-             * Mesh is formed with two triangles, x to the right, y up.
+             * Mesh is formed with two triangles.
              * Essentially a closedExtrusion with 4 vertices, filled with a texture.
              *
              * For the fragment shader texture signalling, vec3.x = 1.0 is used, pushing:

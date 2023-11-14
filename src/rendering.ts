@@ -9,10 +9,7 @@ import { RenderableGraphic } from './graphic'
 import { DrawMode, Mesh } from './meshing'
 import { WebGL2 } from './webgl2'
 import { Offset } from './pixels'
-import {
-    Text,
-    Font
-} from './text'
+import { Text, Font } from './text'
 
 /**
  * Characteristics of a WebGL attibute.
@@ -201,10 +198,10 @@ class GlBatch extends Batch {
 
     draw() {
         const gl = this.gl
-
         gl.bindVertexArray(this.vao)
         /*
-         * disable the vertex array, the attribute will have the default value which the shader can handle.
+         * disable the vertex array, the attribute will have
+         * the default value which the shader can handle.
          */
         const len = this._disabled.length
         for (let i = 0; i < len; i++) {
@@ -495,13 +492,11 @@ export class Renderer {
         const earthRadiusMetres = sp.earthRadius()
         const gl = this.gl
 
-
         /* Blend the alpha in textures. */
         gl.enable(gl.BLEND)
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
         const program = this.program
-
         gl.useProgram(program)
 
         /* uniforms. */
