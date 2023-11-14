@@ -1,9 +1,5 @@
 export type Font = Pick<opentypejs.Font, 'unitsPerEm' | 'charToGlyph'>
 
-export type Glyph = Pick<opentypejs.Glyph, 'advanceWidth' | 'getPath' /* | 'yMax' | 'yMin' */>
-
-export type Path = Pick<opentypejs.Path, 'draw'>
-
 /** For identifying the position and size of glyphs rendered onto an intermeditate 2D canvas. */
 type TextOnCanvas  = {
     [id: string]: {
@@ -115,7 +111,7 @@ export class Text {
 
         for (let i=Text.MIN_ASCII; i< Text.MAX_ASCII; i++) {
             const char = String.fromCharCode(i)
-            const glyph : Glyph = font.charToGlyph(char)
+            const glyph = font.charToGlyph(char)
             const width = (glyph.advanceWidth / font.unitsPerEm) * fontSize
 
             const path = glyph.getPath(currentX, dim.baseline, fontSize)
