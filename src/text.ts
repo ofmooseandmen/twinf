@@ -1,7 +1,8 @@
-import { Offset } from './pixels'
-import { load } from 'opentype.js'
+export type Font = Pick<opentypejs.Font, 'unitsPerEm' | 'charToGlyph'>
 
-interface OpenTypeFont extends opentypejs.Font {}
+export type Glyph = Pick<opentypejs.Glyph, 'advanceWidth' | 'getPath' /* | 'yMax' | 'yMin' */>
+
+export type Path = Pick<opentypejs.Path, 'draw'>
 
 /** For identifying the position and size of glyphs rendered onto an intermeditate 2D canvas. */
 type TextOnCanvas  = {
@@ -13,7 +14,7 @@ type TextOnCanvas  = {
     }
 }
 
-type FontRasterDimensions = {
+export type FontRasterDimensions = {
     width: number,
     height: number,
     baseline: number
@@ -43,30 +44,18 @@ export class Text {
      * Given a font, promise to load and pack the font into a rastered image, as well
      * as providing details on where each glyph occurs on the rastered image.
      * 
+     * @param canvas offscreen canvas to use for font rastering
+     * @param ctx offscreen canvas context
      * @param font the font to pack into an image
+     * @param fontSize the fontsize
      * @returns a promise of characters
      */
-    static async pack(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, font: FontDescriptor) : Promise<TextOnCanvas> {
-        return new Promise<OpenTypeFont>((resolve, reject) => {
-            load(font.url, (err: any, font: OpenTypeFont | undefined) => {
-                if (err || !font) {
-                    console.log("Unable to load font: " + font)
-                    console.log(err)
-                    reject("Font unable to be loaded.")
-                    return
-                }
-                resolve(font)
-            })
-        })
-        .then(fontOtf => {
-            const dim = Text.bounds(fontOtf, font.fontSize)
-            canvas.width = dim.width
-            canvas.height = dim.height
-            return Text.rasterOtf(ctx, 0, 0, dim, fontOtf, font.fontSize)
-        })
-        .catch(rej => {
-            throw new Error("Unable to create font raster.")
-        })
+    static pack(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D,
+        font: Font, fontSize: number) : TextOnCanvas {
+        const dim = Text.bounds(font, fontSize)
+        canvas.width = dim.width
+        canvas.height = dim.height
+        return Text.rasterOtf(ctx, 0, 0, dim, font, fontSize)
     }
 
     /**
@@ -77,14 +66,13 @@ export class Text {
      * @param fontSize to compute the bounds at
      * @returns dimensions
      */
-    private static bounds(font: OpenTypeFont, fontSize: number) : FontRasterDimensions {
+    static bounds(font: Font, fontSize: number) : FontRasterDimensions {
         let totalWidth = 0
         let maxHeight = 0
         /* min yMin across all characters (negative). */
         let minYMin = 0
         for (let i=Text.MIN_ASCII; i< Text.MAX_ASCII; i++) {
             const char = String.fromCharCode(i)
-            console.log(char)
             const glyph = font.charToGlyph(char)
             if (!glyph) {
                 console.log("Character not found in font: " + char)
@@ -120,18 +108,18 @@ export class Text {
      * @param fontSize to render each glyph in
      * @returns a single raster of the font and dimensions of each glyph
      */
-    private static rasterOtf(ctx: CanvasRenderingContext2D, minX: number, minY: number,
-         dim: FontRasterDimensions, font: OpenTypeFont, fontSize: number) : TextOnCanvas {
+    static rasterOtf(ctx: CanvasRenderingContext2D, minX: number, minY: number,
+         dim: FontRasterDimensions, font: Font, fontSize: number) : TextOnCanvas {
         let currentX = minX
         const charData: TextOnCanvas = {}
 
         for (let i=Text.MIN_ASCII; i< Text.MAX_ASCII; i++) {
             const char = String.fromCharCode(i)
-            const glyph = font.charToGlyph(char)
+            const glyph : Glyph = font.charToGlyph(char)
             const width = (glyph.advanceWidth / font.unitsPerEm) * fontSize
 
-            const path: any = glyph.getPath(currentX, dim.baseline, fontSize)
-            path.fill = 'white'
+            const path = glyph.getPath(currentX, dim.baseline, fontSize)
+            path['fill'] = 'white'
             path.draw(ctx)
 
             charData[char] = {

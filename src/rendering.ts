@@ -11,7 +11,7 @@ import { WebGL2 } from './webgl2'
 import { Offset } from './pixels'
 import {
     Text,
-    FontDescriptor
+    Font
 } from './text'
 
 /**
@@ -389,13 +389,13 @@ export class Sprites {
 
     private readonly spriteGeom: SpriteGeometry
 
-    constructor(spriteGeom: SpriteGeometry = {}) {
+    constructor(spriteGeom: SpriteGeometry) {
         this.spriteGeom = spriteGeom
     }
 
     static fromLiteral(data: any): Sprites {
         const spriteGeometry: SpriteGeometry = {}
-        for (let char in data.charGeom) {
+        for (let char in data.spriteGeom) {
             spriteGeometry[char] = SpriteInRaster.fromLiteral(data.spriteGeom[char])
         }
         return new Sprites(spriteGeometry)
@@ -439,7 +439,7 @@ export class Renderer {
         this.raster = initialRaster
     }
 
-    async createFontTexture(canvas: HTMLCanvasElement, font: FontDescriptor) : Promise<Sprites> {
+    createSprites(canvas: HTMLCanvasElement, font: Font, fontSize: number) : Sprites {
         const ctx = canvas.getContext('2d')
         if (ctx === null) {
             console.log("Unable to raster; raster canvas is null")
@@ -449,7 +449,7 @@ export class Renderer {
         var texture = gl.createTexture()
         gl.activeTexture(gl.TEXTURE0 + 0)
         gl.bindTexture(gl.TEXTURE_2D, texture)
-        const charData = await Text.pack(canvas, ctx, font)
+        const charData = Text.pack(canvas, ctx, font, fontSize)
         const charsInRaster: SpriteGeometry = {}
         for (let k in charData) {
             const c = charData[k]

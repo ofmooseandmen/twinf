@@ -11,8 +11,9 @@ import { LatLong } from './latlong'
 import { Length } from './length'
 import { Mesher } from './meshing'
 import { DrawingContext, Renderer, Sprites } from './rendering'
-import { FontDescriptor } from './text'
+import { FontDescriptor, Font } from './text'
 import { Math2d, Vector2d } from './space2d'
+import { load as loadFont } from 'opentype.js'
 
 /**
  * Initial definition of the world to be rendered.
@@ -131,7 +132,7 @@ export class World {
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
 
         /* Interesting opportunity here to have some sort of low quality loading effect while fonts load... */
-        this.sprites = new Sprites()
+        this.sprites = new Sprites({})
         this.renderer = new Renderer(gl, options.miterLimit(), undefined)
     }
 
@@ -226,12 +227,26 @@ export class World {
      * @param font to load
      * @returns sprites for use in webgl2 context
      */
-    async loadFont(offscreenCanvas: HTMLCanvasElement, font: FontDescriptor): Promise<Sprites> {
-        return this.renderer.createFontTexture(offscreenCanvas, font)
-            .then(sprites => {
-                this.sprites = sprites
-                return sprites
+    async loadSprites(offscreenCanvas: HTMLCanvasElement, fontDesc: FontDescriptor): Promise<Sprites> {
+        return new Promise<Font>((resolve, reject) => {
+            loadFont(fontDesc.url, (err: any, font: Font | undefined) => {
+                if (err || !font) {
+                    console.log("Unable to load font: " + font)
+                    console.log(err)
+                    reject("Font unable to be loaded.")
+                    return
+                }
+                resolve(font)
             })
+        })
+        .then(font => this.renderer.createSprites(offscreenCanvas, font, fontDesc.fontSize))
+        .then(sprites => {
+            this.sprites = sprites
+            return sprites
+        })
+        .catch(rej => {
+            throw new Error("Unable to create font raster.")
+        })
     }
 
     /**
