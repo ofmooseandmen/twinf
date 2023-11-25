@@ -10,8 +10,10 @@ import { Graphic, RenderableGraphic } from './graphic'
 import { LatLong } from './latlong'
 import { Length } from './length'
 import { Mesher } from './meshing'
-import { DrawingContext, Renderer } from './rendering'
+import { DrawingContext, Renderer, Sprites } from './rendering'
+import { FontDescriptor, Font } from './text'
 import { Math2d, Vector2d } from './space2d'
+import { load as loadFont } from 'opentype.js'
 
 /**
  * Initial definition of the world to be rendered.
@@ -107,7 +109,13 @@ export class World {
     private sp: StereographicProjection
     private at: CanvasAffineTransform
 
-    private readonly _mesher: Mesher
+    /*
+     * A mapping from each renderable sprite to the coordinates on a rastered texture
+     * packed with characters.
+     */
+    private sprites: Sprites
+
+    private readonly _options: RenderingOptions
     private readonly renderer: Renderer
 
     constructor(gl: WebGL2RenderingContext, def: WorldDefinition,
@@ -116,14 +124,16 @@ export class World {
         this._range = def.range()
         this._rotation = def.rotation()
         this.bgColour = def.bgColour()
+        this._options = options
 
         this.cd = new CanvasDimension(gl.canvas.clientWidth, gl.canvas.clientHeight)
 
         this.sp = CoordinateSystems.computeStereographicProjection(this._centre, World.EARTH_RADIUS)
         this.at = CoordinateSystems.computeCanvasAffineTransform(this._centre, this._range, this._rotation, this.cd, this.sp)
 
-        this.renderer = new Renderer(gl, options.miterLimit())
-        this._mesher = new Mesher(World.EARTH_RADIUS, options.circlePositions(), options.miterLimit())
+        /* Interesting opportunity here to have some sort of low quality loading effect while fonts load... */
+        this.sprites = new Sprites({})
+        this.renderer = new Renderer(gl, options.miterLimit(), undefined)
     }
 
     /**
@@ -157,7 +167,7 @@ export class World {
      */
     insert(graphic: Graphic | RenderableGraphic) {
         const g = graphic instanceof Graphic
-            ? graphic.toRenderable(this._mesher)
+            ? graphic.toRenderable(this.mesher())
             : graphic
         this.renderer.insert(g)
     }
@@ -211,12 +221,41 @@ export class World {
     }
 
     /**
+     * Load a font, using the provided offscreen canvas to render a 2D font map.
+     *
+     * @param offscreenCanvas capable of 2D context
+     * @param font to load
+     * @returns sprites for use in webgl2 context
+     */
+    async loadSprites(offscreenCanvas: HTMLCanvasElement, fontDesc: FontDescriptor): Promise<Sprites> {
+        return new Promise<Font>((resolve, reject) => {
+            loadFont(fontDesc.url, (err: any, font: Font | undefined) => {
+                if (err || !font) {
+                    console.log("Unable to load font: " + font)
+                    console.log(err)
+                    reject("Font unable to be loaded.")
+                    return
+                }
+                resolve(font)
+            })
+        })
+        .then(font => this.renderer.createSprites(offscreenCanvas, font, fontDesc.fontSize))
+        .then(sprites => {
+            this.sprites = sprites
+            return sprites
+        })
+        .catch(rej => {
+            throw new Error("Unable to create font raster.")
+        })
+    }
+
+    /**
      * Returns the mesher to be used to transform shapes into meshes (renderable).
      * Use this to perform meshing of complex shapes (i.e. that require intensive CPU
      * operation) in a web worker (in order not to block the main javascript thread).
      */
     mesher(): Mesher {
-        return this._mesher
+        return new Mesher(World.EARTH_RADIUS, this._options.circlePositions(), this._options.miterLimit(), this.sprites)
     }
 
 }

@@ -85,7 +85,6 @@ export class Paint {
 // - GeoText
 // - GeoSymbol
 // - GeoRelativeArc
-// - GeoRelativeText
 // - GeoRelativeSymbol
 // - CanvasArc
 // - CanvasCircle
@@ -98,6 +97,7 @@ export enum ShapeType {
     GeoPolygon,
     GeoPolyline,
     GeoRelativeCircle,
+    GeoRelativeText,
     GeoRelativePolygon,
     GeoRelativePolyline,
 }
@@ -282,6 +282,50 @@ export class GeoRelativePolygon {
     }
 
 }
+/**
+ * Text whose top left edge is defined as a pixel offset from a reference
+ * latitude/longitude.
+ */
+export class GeoRelativeText {
+
+    readonly type: ShapeType.GeoRelativeText = ShapeType.GeoRelativeText;
+    private readonly _ref: LatLong
+    private readonly _offset: Offset
+    private readonly _colour: Colour
+    private readonly _text: String
+
+    constructor(ref: LatLong, offset: Offset, colour: Colour, text: String) {
+        this._ref = ref
+        this._offset = offset
+        this._colour = colour
+        this._text = text
+    }
+
+    static fromLiteral(data: any): GeoRelativeText {
+        const ref = LatLong.fromLiteral(data['_ref'])
+        const offset = Offset.fromLiteral(data['_offset'])
+        const colour = Colour.fromLiteral(data['_colour'])
+        const text = data['_text']
+        return new GeoRelativeText(ref, offset, colour, text)
+    }
+
+    ref(): LatLong {
+        return this._ref
+    }
+
+    offset(): Offset {
+        return this._offset
+    }
+
+    colour(): Colour {
+        return this._colour
+    }
+
+    text(): String {
+        return this._text
+    }
+
+}
 
 /**
  * Polyline whose points are defined as pixels offsets from a reference
@@ -328,6 +372,7 @@ export type Shape =
     GeoCircle
     | GeoPolygon
     | GeoPolyline
+    | GeoRelativeText
     | GeoRelativeCircle
     | GeoRelativePolygon
     | GeoRelativePolyline
@@ -337,6 +382,7 @@ export const Shape = {
     GeoCircle,
     GeoPolygon,
     GeoPolyline,
+    GeoRelativeText,
     GeoRelativeCircle,
     GeoRelativePolygon,
     GeoRelativePolyline
@@ -356,6 +402,8 @@ export function fromLiteral(data: any): Shape {
             return GeoPolyline.fromLiteral(data)
         case ShapeType.GeoRelativeCircle:
             return GeoRelativeCircle.fromLiteral(data)
+        case ShapeType.GeoRelativeText:
+            return GeoRelativeText.fromLiteral(data)
         case ShapeType.GeoRelativePolygon:
             return GeoRelativePolygon.fromLiteral(data)
         case ShapeType.GeoRelativePolyline:

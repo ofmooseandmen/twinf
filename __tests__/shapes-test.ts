@@ -71,6 +71,16 @@ describe('shapes', () => {
         expect(S.fromLiteral(data)).toEqual(s)
     })
 
+    test('fromLiteral, GeoRelativeText', () => {
+        const s = new S.GeoRelativeText(
+            LatLong.ofDegrees(24, -76),
+            new Offset(10, 30),
+            Colour.ANTIQUEWHITE,
+            "HM3")
+        const data = JSON.parse(JSON.stringify(s))
+        expect(S.fromLiteral(data)).toEqual(s)
+    })
+
     test('fromLiteral, GeoRelativePolygon', () => {
         const s = new S.GeoRelativePolygon(
             LatLong.ofDegrees(24, -76),

@@ -172,5 +172,4 @@ export abstract class Batch {
      * Draws this batch.
      */
     abstract draw(): void
-
 }

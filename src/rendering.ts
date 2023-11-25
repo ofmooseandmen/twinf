@@ -8,6 +8,8 @@ import {
 import { RenderableGraphic } from './graphic'
 import { DrawMode, Mesh } from './meshing'
 import { WebGL2 } from './webgl2'
+import { Offset } from './pixels'
+import { Text, Font } from './text'
 
 /**
  * Characteristics of a WebGL attibute.
@@ -104,7 +106,13 @@ class Attributes {
                 m => m.offsets().length === 0, m => m.offsets()),
 
             new Attribute('a_rgba', 1, gl.UNSIGNED_INT,
-                m => m.colours().length === 0, m => m.colours())
+                m => m.colours().length === 0, m => m.colours()),
+
+            new Attribute('a_texcoord', 3, gl.FLOAT,
+                m => m.texcoord() === undefined, m => {
+                    const tc = m.texcoord()
+                    return tc === undefined ? [] : tc
+                })
         ]
     }
 
@@ -116,7 +124,7 @@ class Attributes {
     }
 
     /**
-     * All disabled attributes for given mesh.
+     * All enabled attributes for given mesh.
      */
     enabled(mesh: Mesh): ReadonlyArray<string> {
         return this.atts.filter(a => !a.isDisabled()(mesh)).map(a => a.name())
@@ -331,6 +339,79 @@ export class DrawingContext {
 
 }
 
+export class SpriteInRaster {
+    /** Top left coordinate of sprite. */
+    private readonly tl: Offset
+    /** Width of sprite in pixels. */
+    private readonly w: number
+    /** Height of sprite in pixels. */
+    private readonly h: number
+
+    /**
+     * Constructor.
+     *
+     * @param tl top left offset of sprite in px
+     * @param w width of sprite
+     * @param h height of sprite
+     */
+    constructor (tl: Offset, w: number, h: number) {
+        this.tl = tl
+        this.w = w
+        this.h = h
+    }
+    static fromLiteral(data: any): SpriteInRaster {
+        return new SpriteInRaster(Offset.fromLiteral(data['tl']), data['w'], data['h'])
+    }
+
+    topleft(): Offset {
+        return this.tl
+    }
+
+    width(): number {
+        return this.w
+    }
+
+    height(): number {
+        return this.h
+    }
+
+}
+
+export type SpriteGeometry = {
+    [id: string]: SpriteInRaster
+}
+
+/** An API to get the location and dimensions of a sprite in a rastered texture. */
+export class Sprites {
+
+    private readonly spriteGeom: SpriteGeometry
+
+    constructor(spriteGeom: SpriteGeometry) {
+        this.spriteGeom = spriteGeom
+    }
+
+    static fromLiteral(data: any): Sprites {
+        const spriteGeometry: SpriteGeometry = {}
+        for (let char in data.spriteGeom) {
+            spriteGeometry[char] = SpriteInRaster.fromLiteral(data.spriteGeom[char])
+        }
+        return new Sprites(spriteGeometry)
+    }
+
+    char(char: string) : SpriteInRaster {
+        if (char.length !== 1) {
+            console.log("Invalid char '" + char + "'")
+            throw new Error("Invalid character")
+        }
+        const bb = this.spriteGeom[char]
+        if (!bb) {
+            console.log("No bounding box for char '" + char + "'")
+            throw new Error("Unknown character")
+        }
+        return bb
+    }
+}
+
 /**
  * WebGL renderer.
  */
@@ -340,16 +421,51 @@ export class Renderer {
     private readonly miterLimit: number
     private readonly program: WebGLProgram
     private readonly batcher: Batcher<GlBatch>
+    private raster: ImageData | undefined
 
-    constructor(gl: WebGL2RenderingContext, miterLimit: number) {
+    constructor(gl: WebGL2RenderingContext, miterLimit: number, initialRaster: ImageData | undefined) {
         this.gl = gl
         this.miterLimit = miterLimit
         const vertexShader = WebGL2.createShader(gl, gl.VERTEX_SHADER, Renderer.VERTEX_SHADER)
         const fragmentShader = WebGL2.createShader(gl, gl.FRAGMENT_SHADER, Renderer.FRAGMENT_SHADER)
         this.program = WebGL2.createProgram(gl, vertexShader, fragmentShader)
         const attributes = new Attributes(gl)
+
         const factory = new GlBatchFactory(gl, this.program, attributes)
         this.batcher = new Batcher<GlBatch>(factory)
+        this.raster = initialRaster
+    }
+
+    createSprites(canvas: HTMLCanvasElement, font: Font, fontSize: number) : Sprites {
+        const ctx = canvas.getContext('2d')
+        if (ctx === null) {
+            console.log("Unable to raster; raster canvas is null")
+            throw new Error("Unable to create font pack. Canvas capability not available.")
+        }
+        const gl = this.gl
+        var texture = gl.createTexture()
+        gl.activeTexture(gl.TEXTURE0 + 0)
+        gl.bindTexture(gl.TEXTURE_2D, texture)
+        const charData = Text.pack(canvas, ctx, font, fontSize)
+        const charsInRaster: SpriteGeometry = {}
+        for (let k in charData) {
+            const c = charData[k]
+            charsInRaster[k] = new SpriteInRaster(
+                new Offset(c.x, c.y),
+                c.width,
+                c.height
+            )
+        }
+        const raster = ctx.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        )
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, raster)
+        gl.generateMipmap(gl.TEXTURE_2D)
+        this.raster = raster
+        return new Sprites(charsInRaster)
     }
 
     insert(graphic: RenderableGraphic) {
@@ -375,6 +491,11 @@ export class Renderer {
 
         const earthRadiusMetres = sp.earthRadius()
         const gl = this.gl
+
+        /* Blend the alpha in textures. */
+        gl.enable(gl.BLEND)
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
         const program = this.program
         gl.useProgram(program)
 
@@ -396,6 +517,11 @@ export class Renderer {
 
         const canvasToClipspaceLocation = gl.getUniformLocation(program, 'u_canvas_to_clipspace');
         gl.uniformMatrix3fv(canvasToClipspaceLocation, false, canvasToClipspace)
+
+        if (this.raster) {
+            const texCoordScaleUniformLocation = gl.getUniformLocation(program, 'u_texcoord_scale')
+            gl.uniform2f(texCoordScaleUniformLocation, this.raster.width, this.raster.height)
+        }
 
         this.batcher.draw()
     }
@@ -512,8 +638,14 @@ in vec2 a_offset;
 // colour (rgba)
 in uint a_rgba;
 
+// texture coordinate
+in vec3 a_texcoord;
+
 // colour for fragment shader
 out vec4 v_colour;
+
+// texture coords for fragment shader
+out vec3 v_texcoord;
 
 void main() {
     vec2 c_pos;
@@ -559,6 +691,8 @@ void main() {
     gl_Position = vec4((vec3(c_pos, 1) * u_canvas_to_clipspace).xy, 0, 1);
 
     v_colour = rgba_to_colour(a_rgba);
+
+    v_texcoord = a_texcoord;
 }
 `
 
@@ -567,11 +701,22 @@ void main() {
 precision mediump float;
 
 in vec4 v_colour;
+in vec3 v_texcoord;
+uniform sampler2D u_texture;
+// texture scale factor
+uniform vec2 u_texcoord_scale;
 
 out vec4 colour;
 
 void main() {
-  colour = v_colour;
+  // texture signalling: v_texcoord.x = 1.0 is used, pushing:
+  // - texture x coords to v_texcoord.y
+  // - texture y coords to v_texcoord.z
+  if (v_texcoord.x == 0.0) {
+    colour = v_colour;
+  } else {
+    colour = v_colour * texture(u_texture, v_texcoord.yz / u_texcoord_scale);
+  }
 }
 `
 
